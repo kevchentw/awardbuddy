@@ -3,7 +3,7 @@ import { CABIN_LABELS, CABIN_COLORS, CABIN_ORDER } from '../common/constants.js'
 import { useOutsideClick, cx } from './util.js'
 
 const PAGE_SIZE = 50
-const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+export const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const stopsOf = r => (r.segs?.length ?? 1) - 1
 const hhmm = iso => iso?.slice(11, 16) || ''
 
@@ -35,7 +35,7 @@ function CabinCell({ r, c }) {
   )
 }
 
-function Pagination({ page, totalPages, total, setPage }) {
+export function Pagination({ page, totalPages, total, setPage }) {
   const pages = []
   for (let i = 0; i < totalPages; i++) {
     if (totalPages <= 5 || i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1)
@@ -56,14 +56,46 @@ function Pagination({ page, totalPages, total, setPage }) {
   )
 }
 
+// Dropdown filter pills; pills: [{ id, label, display, items: [[value, text, style?]] }], null value = no filter.
+// children go at the end of the bar (e.g. a reset button).
+export function FilterBar({ pills, filters, onChange, children }) {
+  const [drop, setDrop] = useState(null)  // { id, top, left } of the open filter dropdown
+  const barRef = useRef()
+  useOutsideClick(barRef, () => setDrop(null))
+  return (
+    <div class="ab-flt-bar" ref={barRef}>
+      {pills.map(p => {
+        const value = filters[p.id], isOpen = drop?.id === p.id
+        return (
+          <div class="ab-pill" key={p.id}>
+            <button class={cx('ab-pill-btn', value !== null && 'active', isOpen && 'open')} onClick={e => {
+              if (isOpen) return setDrop(null)
+              const r = e.currentTarget.getBoundingClientRect()
+              setDrop({ id: p.id, top: r.bottom + 6, left: r.left })
+            }}>
+              {p.label}{value !== null && <>: <b>{p.display}</b></>} <span class="ab-pill-chevron">▾</span>
+            </button>
+            {/* position:fixed so the dropdown escapes the panel's overflow clipping */}
+            {isOpen && (
+              <div class="ab-drop open" style={{ top: drop.top, left: drop.left }}>
+                {p.items.map(([v, text, style]) => (
+                  <button key={String(v)} class={cx('ab-drop-item', value === v && 'active')} style={style}
+                    onClick={() => { onChange({ ...filters, [p.id]: v }); setDrop(null) }}>{text}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+      {children}
+    </div>
+  )
+}
+
 export function ResultsTable({ results }) {
   const [sort, setSort] = useState({ key: 'date', dir: 1 })
   const [filters, setFilters] = useState({ cabin: null, stops: null, dow: null })
   const [page, setPage] = useState(0)
-  const [drop, setDrop] = useState(null)  // { id, top, left } of the open filter dropdown
-  const barRef = useRef()
-  useOutsideClick(barRef, () => setDrop(null))
-
   if (!results.length) return null
 
   const cols = CABIN_ORDER.filter(c => results.some(r => r.cabins?.[c] !== undefined))
@@ -95,34 +127,11 @@ export function ResultsTable({ results }) {
 
   return (
     <div>
-      <div class="ab-flt-bar" ref={barRef}>
-        {pills.map(p => {
-          const value = filters[p.id], isOpen = drop?.id === p.id
-          return (
-            <div class="ab-pill" key={p.id}>
-              <button class={cx('ab-pill-btn', value !== null && 'active', isOpen && 'open')} onClick={e => {
-                if (isOpen) return setDrop(null)
-                const r = e.currentTarget.getBoundingClientRect()
-                setDrop({ id: p.id, top: r.bottom + 6, left: r.left })
-              }}>
-                {p.label}{value !== null && <>: <b>{p.display}</b></>} <span class="ab-pill-chevron">▾</span>
-              </button>
-              {/* position:fixed so the dropdown escapes the panel's overflow clipping */}
-              {isOpen && (
-                <div class="ab-drop open" style={{ top: drop.top, left: drop.left }}>
-                  {p.items.map(([v, text, style]) => (
-                    <button key={String(v)} class={cx('ab-drop-item', value === v && 'active')} style={style}
-                      onClick={() => { setFilters({ ...filters, [p.id]: v }); setDrop(null); setPage(0) }}>{text}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
+      <FilterBar pills={pills} filters={filters} onChange={f => { setFilters(f); setPage(0) }}>
         {(sort.key !== 'date' || sort.dir !== 1) && (
           <button class="ab-flt-btn" style={{ marginLeft: 'auto' }} onClick={() => { setSort({ key: 'date', dir: 1 }); setPage(0) }}>↺ Reset sort</button>
         )}
-      </div>
+      </FilterBar>
       <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>{rows.length} / {results.length} result(s)</div>
       <table class="ab-tbl">
         <thead><tr>

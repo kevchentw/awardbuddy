@@ -2,11 +2,16 @@
 
 <img src="assets/icons/icon-128.png" alt="" width="64" align="right">
 
-A search panel that sits on top of airline award booking sites and runs searches across several dates and airports at once. Pick origins, destinations, a date range and cabins, and Award Buddy runs every route × date combination through the airline's own site and puts the results in one sortable table.
+A search panel that sits on top of airline and hotel award booking sites and searches many dates at once.
 
-It runs in your browser on the airline's page, using your own session. There's no server, and it doesn't collect any data.
+- **Flights:** pick origins, destinations, a date range and cabins. Award Buddy runs every route × date combination through the airline's own site and puts the results in one sortable table.
+- **Hotels:** pick hotels by name, city or from the page you're on, and a range of months. Award Buddy finds the points per night for every date and shows them on a calendar and in a table.
+
+It runs in your browser on the airline's or hotel's page, using your own session. There's no server, and it doesn't collect any data.
 
 ## Supported programs
+
+### Airlines
 
 | Program | Site | Calendar mode | Session |
 |---|---|:---:|---|
@@ -20,6 +25,14 @@ It runs in your browser on the airline's page, using your own session. There's n
 | Japan Airlines (JMB) | jal.co.jp | ✓ (JAL flights only) | Log in |
 | LifeMiles | lifemiles.com | | Log in |
 | Starlux Airlines (COSMILE) | starlux-airlines.com | ✓ | Log in |
+
+### Hotels
+
+| Program | Site | Session |
+|---|---|---|
+| IHG One Rewards | ihg.com | Not needed |
+
+More hotel chains are planned.
 
 When a program needs a session and doesn't have one yet, the panel shows a **Get session** link that takes you to the right page.
 
@@ -48,20 +61,33 @@ The script updates itself from this repo.
 
 ## Usage
 
-1. Go to a supported airline site. A ✈ button appears in the corner of the page.
-2. Click it to open the panel. If it asks for a session, log in or follow the **Get session** link.
-3. Enter one or more origins and destinations, a date range, and optionally the cabins you want.
-4. Click **Search**. Results come in as each request finishes. You can sort by date, duration or miles, and filter by cabin, number of stops or day of week. Each row links to the airline's booking page for that flight.
+Go to a supported site. A button appears in the corner of the page (✈ on airline sites, 🏨 on hotel sites). Click it to open the panel. If it asks for a session, log in or follow the **Get session** link.
+
+### Flights
+
+1. Enter one or more origins and destinations, a date range, and optionally the cabins you want.
+2. Click **Search**. Results come in as each request finishes. You can sort by date, duration or miles, and filter by cabin, number of stops or day of week. Each row links to the airline's booking page for that flight.
 
 **Calendar mode** (on programs that support it) searches whole months and shows the lowest price per day on a calendar. It needs far fewer requests than searching day by day.
 
-The panel shows roughly how many requests a search will make before you start. Your last route, cabins and options are saved for each site. If you change the inputs while a search is running, it stops and starts over with the new values.
+### Hotels
+
+1. Add hotels:
+   - Type a hotel name, city or airport. Picking a hotel adds it; picking a place lists the hotels nearby (nearest first) to tick.
+   - Or click **Pick from hotels on this page** to choose from the hotels on the site's search results, or the hotel page you're on.
+   - Or type a hotel code (for example IHG's `TPEKM`) and press Enter.
+2. Pick a range of months and click **Search**. There's one request per hotel per month.
+3. The calendar shows the lowest points per night for each day, one color per hotel. Click a day to see its rates in the table. The table lists every reward-night rate by room type, with rooms left, and can be sorted by date or points and filtered by hotel or day of week.
+
+Hotel search covers standard reward nights paid in points only. There's no booking link yet; book on the hotel's site.
+
+The panel shows roughly how many requests a search will make before you start. Your last search is saved for each site. If you change the inputs while a search is running, it stops and starts over with the new values.
 
 ## Notes
 
-- Searches go through the airline's own endpoints, spaced out and run a few at a time. Large searches (many airports × many days) can still get you rate limited or sent to a bot check. If that happens, the panel asks you to refresh the session.
-- Airline sites change often. If a program stops working, please [open an issue](https://github.com/kevchentw/awardbuddy/issues).
-- Not affiliated with any airline or loyalty program.
+- Searches go through the airline's or hotel's own endpoints, spaced out and run a few at a time. Large searches (many airports × many days, or many hotels × many months) can still get you rate limited or sent to a bot check. If that happens, the panel asks you to refresh the session or the page.
+- Airline and hotel sites change often. If a program stops working, please [open an issue](https://github.com/kevchentw/awardbuddy/issues).
+- Not affiliated with any airline, hotel or loyalty program.
 
 ## Development
 
@@ -76,21 +102,22 @@ The source is ES modules + [Preact](https://preactjs.com/), bundled with esbuild
 ```
 src/
   entrypoint.js       picks the program for the current hostname and mounts the panel
-  common/             shared constants (cabins, airport list) and search helpers
-  programs/<id>.js    one module per airline: session handling, request building, response parsing
-  ui/                 Preact panel: form, date/month pickers, results table, calendar view
+  common/             shared constants (cabins, airport list), search and hotel-result helpers
+  programs/<id>.js    one module per airline or hotel chain: session handling, request building, response parsing
+  ui/                 Preact panel: flight and hotel forms, hotel picker, date/month pickers, results tables, calendars
 build.cjs             builds the userscript, the unpacked extension and the store ZIP
 ```
 
 ## Contributing
 
-Pull requests are welcome. New airlines, new search modes, fixes for sites that changed, and UI improvements are all useful.
+Pull requests are welcome. New airlines and hotel chains, new search modes, fixes for sites that changed, and UI improvements are all useful.
 
 - **Add an airline:** write a module in `src/programs/` that exports a program object (`id`, `name`, `cabins`, `matches`, `onSearch`, plus `onCalendarSearch` and the session hooks if needed). Register it in `src/entrypoint.js` and add the site to `MATCHES` in `build.cjs`.
+- **Add a hotel chain:** write a module with `kind: 'hotel'` and `onHotelSearch({ hotel, start, end })`, which returns the reward-night rates for one hotel over one month. Register it and add the site the same way as an airline. `src/programs/ihg.js` is an example. The comments at the top of `src/ui/HotelSearch.jsx` and `src/ui/HotelPicker.jsx` list the optional hotel-finding functions (name search, hotels nearby, hotels on the page).
 - **Add a search mode:** give the program `carriers` (shown as a dropdown) and, if the mode needs extra inputs, `optionsFor`. The Air Canada stopover mode in `src/programs/ac.js` is an example.
 - **Fix a broken program:** the comments at the top of each module explain how it gets a session and which endpoints it calls. That's usually where to start.
 
-Before you open a PR, run `npm test` and `npm run build`, and commit the rebuilt `dist/award-buddy.user.js` and `extension/` too, since users install straight from those. Keep request pacing gentle so searches don't trip the airline's bot protection.
+Before you open a PR, run `npm test` and `npm run build`, and commit the rebuilt `dist/award-buddy.user.js` and `extension/` too, since users install straight from those. Keep request pacing gentle so searches don't trip the site's bot protection.
 
 For bigger changes, you can [open an issue](https://github.com/kevchentw/awardbuddy/issues) first to talk it over.
 

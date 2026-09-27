@@ -121,6 +121,20 @@ export const CSS = `
   }
   .ab-summary span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ab-summary button { background: none; border: none; color: var(--ab-color); font-size: 12px; font-weight: 600; cursor: pointer; }
+  .ab-link-btn { background: none; border: none; color: var(--ab-color); font-size: 11px; font-weight: 600; cursor: pointer; margin-left: 6px; }
+  .ab-hlist { margin-top: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; background: #fafafa; }
+  .ab-hlist-head { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 6px; }
+  .ab-hlist-head .ab-link-btn { margin-left: 0; }
+  .ab-hlist-note { font-size: 12px; color: #999; padding: 6px 0; }
+  .ab-hlist-items { max-height: 220px; overflow-y: auto; }
+  .ab-hlist-item { display: flex; align-items: baseline; gap: 6px; padding: 4px 2px; font-size: 12px; cursor: pointer; }
+  .ab-hlist-item.added { color: #999; cursor: default; }
+  .ab-hlist-name { flex: 1; }
+  .ab-hlist-sub { font-size: 11px; color: #999; white-space: nowrap; }
+  .ab-hlist-add { width: 100%; margin-top: 6px; padding: 6px; border: 1px solid var(--ab-color); border-radius: 6px; background: #fff; color: var(--ab-color); font-size: 12px; font-weight: 600; cursor: pointer; }
+  .ab-hotel-cell { font-size: 11px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+  .ab-hotel-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: #555; margin-bottom: 8px; }
+  .ab-hotel-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
   .ab-no-results { text-align: center; color: #999; font-size: 13px; padding: 20px 0; }
   .ab-mode-toggle { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
   .ab-mode-btn { flex: 1; padding: 5px; font-size: 12px; background: #fff; border: none; cursor: pointer; color: #666; }
@@ -133,6 +147,7 @@ export const CSS = `
   .ab-cal-day { min-height: 38px; border: 1px solid #f0f0f0; border-radius: 4px; padding: 2px 3px; }
   .ab-cal-day.avail { cursor: pointer; background: #f8fafc; }
   .ab-cal-day.avail:hover { background: #e8f4ff; }
+  .ab-cal-day.sel { outline: 2px solid var(--ab-color); outline-offset: -1px; }
   .ab-cal-day-num { font-size: 10px; color: #666; }
   .ab-cal-m { padding: 1px 3px; border-radius: 3px; font-size: 9px; color: #fff; white-space: nowrap; margin-top: 1px; display: block; }
   .ab-drp { position: relative; }

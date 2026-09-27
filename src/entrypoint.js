@@ -9,10 +9,11 @@ import { jalProgram } from './programs/jal.js'
 import { anaProgram } from './programs/ana.js'
 import { acProgram } from './programs/ac.js'
 import { aaProgram } from './programs/aa.js'
+import { ihgProgram } from './programs/ihg.js'
 
-// Dispatch: pick the right program for this hostname and mount the panel (session wiring lives in the UI)
+// Dispatch: pick the right program (airline or hotel) for this hostname and mount the panel (session wiring lives in the UI)
 
-const ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram]
+const ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram]
 const program = ALL_PROGRAMS.find(p => p.matchHost?.(location.hostname) ?? p.matches.includes(location.hostname))
 
 // program is undefined when not on a supported site

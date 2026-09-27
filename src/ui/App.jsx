@@ -8,6 +8,8 @@ import { DateRangePicker } from './DateRangePicker.jsx'
 import { ResultsTable } from './ResultsTable.jsx'
 import { CalendarView, MonthRangePicker, calToRows, inMonthRange } from './Calendar.jsx'
 import { cx } from './util.js'
+import { useSearchRun, SearchSummary, SearchControls } from './searchRun.jsx'
+import { HotelSearch } from './HotelSearch.jsx'
 
 // Airport list (combo) or comma-separated text (programs without an airport list)
 const codes = v => Array.isArray(v) ? v : v.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
@@ -95,9 +97,7 @@ function useSession(program) {
   return session
 }
 
-function App({ program }) {
-  const [open, setOpen] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+function FlightSearch({ program, session }) {
   const [calMode, setCalMode] = useState(false)
   const [form, setForm] = useState(() => initialForm(program))
   const set = patch => setForm(f => ({ ...f, ...patch }))
@@ -109,13 +109,9 @@ function App({ program }) {
     const { origins, dests, cabins, carrier, options } = form
     try { localStorage.setItem(storeKey(program), JSON.stringify({ origins, dests, cabins, carrier, options })) } catch {}
   }, [form])
-  const [collapsed, setCollapsed] = useState(false)  // form folds to a one-line summary once a search starts
-  const session = useSession(program)
 
-  const [searching, setSearching] = useState(false)
-  const [btnLabel, setBtnLabel] = useState(null)  // 'Stopping…' / 'Restarting…' override while searching
-  const [status, setStatus] = useState('')
-  const [progress, setProgress] = useState(null)  // 0–100, null hides the bar
+  const run = useSearchRun(form)
+  const { ctl, setStatus, setProgress } = run
   const [results, setResults] = useState([])
   const [cal, setCal] = useState(null)            // { data, fromMonth, toMonth }
   const [noResults, setNoResults] = useState(false)
@@ -123,31 +119,9 @@ function App({ program }) {
   // Search loop reads the latest inputs via ref so a queued re-run picks up edits
   const latest = useRef()
   latest.current = { form, calMode }
-  const ctl = useRef({ searching: false, stop: false, rerun: false }).current
-
-  // Editing inputs mid-search aborts and re-runs with the new values
-  useEffect(() => {
-    if (!ctl.searching) return
-    ctl.rerun = true; ctl.stop = true
-    setBtnLabel('Restarting…')
-  }, [form])
-
-  function begin() {
-    ctl.searching = true; ctl.stop = false; ctl.t0 = Date.now()
-    setSearching(true); setBtnLabel(null); setProgress(0); setNoResults(false); setCollapsed(true)
-  }
-  // Wall-clock time since begin(), e.g. "8.4s" or "2m 05s"
-  function elapsed() {
-    const sec = (Date.now() - ctl.t0) / 1000
-    return sec < 60 ? `${sec.toFixed(1)}s` : `${Math.floor(sec / 60)}m ${String(Math.floor(sec % 60)).padStart(2, '0')}s`
-  }
-  function end() {
-    ctl.searching = false
-    setSearching(false); setBtnLabel(null)
-  }
 
   async function search() {
-    if (ctl.searching) { ctl.stop = true; ctl.rerun = false; setBtnLabel('Stopping…'); return }
+    if (run.stopIfRunning()) return
     const { form: f, calMode } = latest.current
     const origins = codes(f.origins), dests = codes(f.dests)
     const cabinFilter = [...f.cabins]
@@ -155,7 +129,7 @@ function App({ program }) {
     if (calMode) {
       const { fromMonth, toMonth } = f
       if (!origins.length || !dests.length || !fromMonth || !toMonth) { setStatus('⚠ Fill in all fields'); return }
-      begin()
+      run.begin(); setNoResults(false)
       setResults([])
       setStatus('Fetching calendar…')
       const merged = {}
@@ -182,13 +156,13 @@ function App({ program }) {
           const result = await program.onCalendarSearch(o, d, cabinFilter, fromMonth, toMonth, onProgress)
           if (result === 'SESSION_EXPIRED') {
             setStatus(program.expiredMessage ?? '⚠ Session expired — navigate to the award booking page to refresh')
-            end(); return
+            run.end(); return
           }
         }
       }
-      end()
+      run.end()
       setProgress(null)
-      setStatus(`Done in ${elapsed()}. ${found()} date(s) with availability.`)
+      setStatus(`Done in ${run.elapsed()}. ${found()} date(s) with availability.`)
       if (ctl.rerun) { ctl.rerun = false; search() }
       return
     }
@@ -198,7 +172,7 @@ function App({ program }) {
     if (!origins.length || !dests.length || !from || !optionSets.length) { setStatus('⚠ Fill in all fields'); return }
     const dates = getDates(from, to)
     const total = origins.length * dests.length * dates.length * optionSets.length
-    begin()
+    run.begin(); setNoResults(false)
     setCal(null); setResults([]); setStatus('')
 
     let done = 0
@@ -221,11 +195,11 @@ function App({ program }) {
 
     await runPool(tasks, CONCURRENCY)
 
-    end()
+    run.end()
     if (ctl.rerun) { ctl.rerun = false; search(); return }
     if (!ctl.stop) {
       setProgress(null)
-      setStatus(`Done in ${elapsed()}. Found ${all.length} result(s) across ${total} searches.`)
+      setStatus(`Done in ${run.elapsed()}. Found ${all.length} result(s) across ${total} searches.`)
       if (!all.length) setNoResults(true)
     } else if (all.length) setStatus(s => `${s} (${all.length} found so far)`)
   }
@@ -242,12 +216,90 @@ function App({ program }) {
 
   return (
     <>
+      {run.collapsed ? <SearchSummary run={run} text={summary(program, form, calMode)} /> : <>
+      {program.carriers && (
+        <div class="ab-row">
+          <div class="ab-field">
+            <label>{program.carrierLabel ?? 'Carrier'}</label>
+            <select value={form.carrier} onChange={e => set({ carrier: e.currentTarget.value })}>
+              {program.carriers.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+      {optionFields(program, form).length > 0 && (
+        <div class="ab-row">
+          {optionFields(program, form).map(fd => (
+            <div class="ab-field" key={fd.key}>
+              <label>{fd.label}</label>
+              {fd.type === 'airports'
+                ? <AirportCombo airports={airports} value={optionRaw(fd, form)} onChange={v => set({ options: { ...form.options, [fd.key]: v } })} />
+                : <input type="text" placeholder={fd.placeholder} value={optionRaw(fd, form)}
+                    onInput={e => set({ options: { ...form.options, [fd.key]: e.currentTarget.value } })} />}
+            </div>
+          ))}
+        </div>
+      )}
+      {hasCalendar && (
+        <div class="ab-mode-toggle">
+          <button class={cx('ab-mode-btn', !calMode && 'active')} onClick={() => setCalMode(false)}>Search</button>
+          <button class={cx('ab-mode-btn', calMode && 'active')} onClick={() => setCalMode(true)}>Calendar</button>
+        </div>
+      )}
+      <div class="ab-row">
+        {airportField('origins', 'Origins', 'e.g. TPE, TSA')}
+        {airportField('dests', 'Destinations', 'e.g. NRT, HND')}
+      </div>
+      {calMode ? (
+        <div class="ab-row">
+          <div class="ab-field"><label>Months (click start, then end)</label>
+            <MonthRangePicker from={form.fromMonth} to={form.toMonth} onChange={(fromMonth, toMonth) => set({ fromMonth, toMonth })} /></div>
+        </div>
+      ) : (
+        <div class="ab-row">
+          <div class="ab-field">
+            <label>Dates</label>
+            <DateRangePicker start={form.start} end={form.end} onChange={(start, end) => set({ start, end })} />
+          </div>
+        </div>
+      )}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 5 }}>Cabin (leave all off = any)</label>
+        <div class="ab-cabins">
+          {program.cabins.map(c => (
+            <button key={c} class="ab-cabin-btn" onClick={() => toggleCabin(c)}
+              style={form.cabins.includes(c) ? { background: CABIN_COLORS[c], color: '#fff', borderColor: 'transparent' } : undefined}>
+              {CABIN_LABELS[c]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ fontSize: 11, color: '#888', marginBottom: 6, minHeight: 14 }}>{requestHint(program, form, calMode)}</div>
+      </>}
+      <SearchControls run={run} session={session} onSearch={search} />
+      <div>
+        {cal && <CalendarView calData={cal.data} fromMonth={cal.fromMonth} toMonth={cal.toMonth} />}
+        <ResultsTable results={cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results} />
+        {noResults && <div class="ab-no-results">No award availability found.</div>}
+      </div>
+    </>
+  )
+}
+
+function App({ program }) {
+  const [open, setOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const session = useSession(program)
+  const Search = program.kind === 'hotel' ? HotelSearch : FlightSearch
+
+  return (
+    <>
       <style>{CSS}</style>
-      <button id="ab-fab" title={`Award Buddy – ${program.name}`} onClick={() => setOpen(!open)}>✈</button>
+      <button id="ab-fab" title={`Award Buddy – ${program.name}`} onClick={() => setOpen(!open)}>{program.kind === 'hotel' ? '🏨' : '✈'}</button>
       {/* Hidden rather than unmounted so form and table state survive closing */}
       <div id="ab-panel" class={cx(!open && 'hidden', expanded && 'ab-expanded')}>
         <div class="ab-header">
-          <span>✈ Award Buddy – {program.name}</span>
+          <span>{program.kind === 'hotel' ? '🏨' : '✈'} Award Buddy – {program.name}</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button title="Expand" style={{ fontSize: 20, lineHeight: 1 }} onClick={() => setExpanded(!expanded)}>{expanded ? '⤡' : '⤢'}</button>
             <button onClick={() => setOpen(false)}>✕</button>
@@ -262,81 +314,7 @@ function App({ program }) {
                 : session.url && <a href={session.url} target="_blank" style={{ color: 'inherit', marginLeft: 6 }}>→ Get session</a>}
             </div>)}
         <div class="ab-body">
-          {collapsed ? (
-            <div class="ab-summary">
-              <span>{summary(program, form, calMode)}</span>
-              <button onClick={() => setCollapsed(false)}>Edit</button>
-            </div>
-          ) : <>
-          {program.carriers && (
-            <div class="ab-row">
-              <div class="ab-field">
-                <label>{program.carrierLabel ?? 'Carrier'}</label>
-                <select value={form.carrier} onChange={e => set({ carrier: e.currentTarget.value })}>
-                  {program.carriers.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-          {optionFields(program, form).length > 0 && (
-            <div class="ab-row">
-              {optionFields(program, form).map(fd => (
-                <div class="ab-field" key={fd.key}>
-                  <label>{fd.label}</label>
-                  {fd.type === 'airports'
-                    ? <AirportCombo airports={airports} value={optionRaw(fd, form)} onChange={v => set({ options: { ...form.options, [fd.key]: v } })} />
-                    : <input type="text" placeholder={fd.placeholder} value={optionRaw(fd, form)}
-                        onInput={e => set({ options: { ...form.options, [fd.key]: e.currentTarget.value } })} />}
-                </div>
-              ))}
-            </div>
-          )}
-          {hasCalendar && (
-            <div class="ab-mode-toggle">
-              <button class={cx('ab-mode-btn', !calMode && 'active')} onClick={() => setCalMode(false)}>Search</button>
-              <button class={cx('ab-mode-btn', calMode && 'active')} onClick={() => setCalMode(true)}>Calendar</button>
-            </div>
-          )}
-          <div class="ab-row">
-            {airportField('origins', 'Origins', 'e.g. TPE, TSA')}
-            {airportField('dests', 'Destinations', 'e.g. NRT, HND')}
-          </div>
-          {calMode ? (
-            <div class="ab-row">
-              <div class="ab-field"><label>Months (click start, then end)</label>
-                <MonthRangePicker from={form.fromMonth} to={form.toMonth} onChange={(fromMonth, toMonth) => set({ fromMonth, toMonth })} /></div>
-            </div>
-          ) : (
-            <div class="ab-row">
-              <div class="ab-field">
-                <label>Dates</label>
-                <DateRangePicker start={form.start} end={form.end} onChange={(start, end) => set({ start, end })} />
-              </div>
-            </div>
-          )}
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 12, color: '#666', display: 'block', marginBottom: 5 }}>Cabin (leave all off = any)</label>
-            <div class="ab-cabins">
-              {program.cabins.map(c => (
-                <button key={c} class="ab-cabin-btn" onClick={() => toggleCabin(c)}
-                  style={form.cabins.includes(c) ? { background: CABIN_COLORS[c], color: '#fff', borderColor: 'transparent' } : undefined}>
-                  {CABIN_LABELS[c]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{ fontSize: 11, color: '#888', marginBottom: 6, minHeight: 14 }}>{requestHint(program, form, calMode)}</div>
-          </>}
-          <button class="ab-search-btn" disabled={!session.ready && !searching} onClick={search}>
-            {btnLabel ?? (searching ? 'Stop' : 'Search')}
-          </button>
-          <div class="ab-status">{status}</div>
-          {progress !== null && <div class="ab-progress"><div class="ab-progress-bar" style={{ width: `${progress}%` }} /></div>}
-          <div>
-            {cal && <CalendarView calData={cal.data} fromMonth={cal.fromMonth} toMonth={cal.toMonth} />}
-            <ResultsTable results={cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results} />
-            {noResults && <div class="ab-no-results">No award availability found.</div>}
-          </div>
+          <Search program={program} session={session} />
         </div>
       </div>
     </>
