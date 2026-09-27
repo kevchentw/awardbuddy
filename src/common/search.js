@@ -47,3 +47,17 @@ export function combos(lists) {
   return Object.entries(lists).reduce(
     (acc, [key, values]) => acc.flatMap(c => values.map(v => ({ ...c, [key]: v }))), [{}])
 }
+
+// "YYYY-MM" range → one { start, end } date span per month; the first span starts no earlier than minDate
+export function monthSpans(fromMonth, toMonth, minDate = todayISO()) {
+  const spans = []
+  let [y, m] = fromMonth.split('-').map(Number)
+  const [ty, tm] = toMonth.split('-').map(Number)
+  for (; y < ty || (y === ty && m <= tm); m > 11 ? (y++, m = 1) : m++) {
+    const ym = `${y}-${String(m).padStart(2, '0')}`
+    const end = `${ym}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`
+    const start = `${ym}-01` < minDate ? minDate : `${ym}-01`
+    if (start <= end) spans.push({ start, end })
+  }
+  return spans
+}

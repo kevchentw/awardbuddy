@@ -157,13 +157,13 @@
     };
   }
   function q(n2, u4, t3, i3, r3, o3, e3, f4, c3, a3) {
-    var s3, h3, p3, v3, y3, d3, _3, k4, x2, M, I2, P2, A3, H2, T3, j3, F = u4.type;
+    var s3, h3, p3, v3, y3, d3, _3, k5, x2, M, I2, P2, A3, H2, T3, j3, F = u4.type;
     if (void 0 !== u4.constructor) return null;
     128 & t3.__u && (c3 = !!(32 & t3.__u), o3 = [f4 = u4.__e = t3.__e]), (s3 = l.__b) && s3(u4);
     n: if ("function" == typeof F) {
       h3 = e3.length;
       try {
-        if (x2 = u4.props, M = F.prototype && F.prototype.render, I2 = (s3 = F.contextType) && i3[s3.__c], P2 = s3 ? I2 ? I2.props.value : s3.__ : i3, t3.__c ? k4 = (p3 = u4.__c = t3.__c).__ = p3.__E : (M ? u4.__c = p3 = new F(x2, P2) : (u4.__c = p3 = new C(x2, P2), p3.constructor = F, p3.render = Q), I2 && I2.sub(p3), p3.state || (p3.state = {}), p3.__n = i3, v3 = p3.__d = true, p3.__h = [], p3._sb = []), M && null == p3.__s && (p3.__s = p3.state), M && null != F.getDerivedStateFromProps && (p3.__s == p3.state && (p3.__s = m({}, p3.__s)), m(p3.__s, F.getDerivedStateFromProps(x2, p3.__s))), y3 = p3.props, d3 = p3.state, p3.__v = u4, v3) M && null == F.getDerivedStateFromProps && null != p3.componentWillMount && p3.componentWillMount(), M && null != p3.componentDidMount && p3.__h.push(p3.componentDidMount);
+        if (x2 = u4.props, M = F.prototype && F.prototype.render, I2 = (s3 = F.contextType) && i3[s3.__c], P2 = s3 ? I2 ? I2.props.value : s3.__ : i3, t3.__c ? k5 = (p3 = u4.__c = t3.__c).__ = p3.__E : (M ? u4.__c = p3 = new F(x2, P2) : (u4.__c = p3 = new C(x2, P2), p3.constructor = F, p3.render = Q), I2 && I2.sub(p3), p3.state || (p3.state = {}), p3.__n = i3, v3 = p3.__d = true, p3.__h = [], p3._sb = []), M && null == p3.__s && (p3.__s = p3.state), M && null != F.getDerivedStateFromProps && (p3.__s == p3.state && (p3.__s = m({}, p3.__s)), m(p3.__s, F.getDerivedStateFromProps(x2, p3.__s))), y3 = p3.props, d3 = p3.state, p3.__v = u4, v3) M && null == F.getDerivedStateFromProps && null != p3.componentWillMount && p3.componentWillMount(), M && null != p3.componentDidMount && p3.__h.push(p3.componentDidMount);
         else {
           if (M && null == F.getDerivedStateFromProps && x2 !== y3 && null != p3.componentWillReceiveProps && p3.componentWillReceiveProps(x2, P2), u4.__v == t3.__v || !p3.__e && null != p3.shouldComponentUpdate && false === p3.shouldComponentUpdate(x2, p3.__s, P2)) {
             u4.__v != t3.__v && (p3.props = x2, p3.state = p3.__s, p3.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
@@ -179,7 +179,7 @@
         else do {
           p3.__d = false, A3 && A3(u4), s3 = p3.render(p3.props, p3.state, p3.context), p3.state = p3.__s;
         } while (p3.__d && ++H2 < 25);
-        p3.state = p3.__s, null != p3.getChildContext && (i3 = m(m({}, i3), p3.getChildContext())), M && !v3 && null != p3.getSnapshotBeforeUpdate && (_3 = p3.getSnapshotBeforeUpdate(y3, d3)), T3 = null != s3 && s3.type === S && null == s3.key ? E(s3.props.children) : s3, f4 = L(n2, g(T3) ? T3 : [T3], u4, t3, i3, r3, o3, e3, f4, c3, a3), p3.base = u4.__e, u4.__u &= -161, p3.__h.length && e3.push(p3), k4 && (p3.__E = p3.__ = null);
+        p3.state = p3.__s, null != p3.getChildContext && (i3 = m(m({}, i3), p3.getChildContext())), M && !v3 && null != p3.getSnapshotBeforeUpdate && (_3 = p3.getSnapshotBeforeUpdate(y3, d3)), T3 = null != s3 && s3.type === S && null == s3.key ? E(s3.props.children) : s3, f4 = L(n2, g(T3) ? T3 : [T3], u4, t3, i3, r3, o3, e3, f4, c3, a3), p3.base = u4.__e, u4.__u &= -161, p3.__h.length && e3.push(p3), k5 && (p3.__E = p3.__ = null);
       } catch (n3) {
         if (e3.length = h3, u4.__v = null, c3 || null != o3) {
           if (n3.then) {
@@ -211,7 +211,7 @@
     return "object" != typeof n2 || null == n2 || n2.__b > 0 ? n2 : g(n2) ? n2.map(E) : void 0 !== n2.constructor ? null : m({}, n2);
   }
   function G(u4, t3, i3, r3, o3, e3, f4, c3, a3) {
-    var s3, h3, p3, v3, y3, w3, _3, m3 = i3.props || d, k4 = t3.props, x2 = t3.type;
+    var s3, h3, p3, v3, y3, w3, _3, m3 = i3.props || d, k5 = t3.props, x2 = t3.type;
     if ("svg" == x2 ? o3 = "http://www.w3.org/2000/svg" : "math" == x2 ? o3 = "http://www.w3.org/1998/Math/MathML" : o3 || (o3 = "http://www.w3.org/1999/xhtml"), null != e3) {
       for (s3 = 0; s3 < e3.length; s3++) if ((y3 = e3[s3]) && "setAttribute" in y3 == !!x2 && (x2 ? y3.localName == x2 : 3 == y3.nodeType)) {
         u4 = y3, e3[s3] = null;
@@ -219,14 +219,14 @@
       }
     }
     if (null == u4) {
-      if (null == x2) return document.createTextNode(k4);
-      u4 = document.createElementNS(o3, x2, k4.is && k4), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
+      if (null == x2) return document.createTextNode(k5);
+      u4 = document.createElementNS(o3, x2, k5.is && k5), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
     }
-    if (null == x2) m3 === k4 || c3 && u4.data == k4 || (u4.data = k4);
+    if (null == x2) m3 === k5 || c3 && u4.data == k5 || (u4.data = k5);
     else {
-      if (e3 = "textarea" == x2 && null != k4.defaultValue ? null : e3 && n.call(u4.childNodes), !c3 && null != e3) for (m3 = {}, s3 = 0; s3 < u4.attributes.length; s3++) m3[(y3 = u4.attributes[s3]).name] = y3.value;
-      for (s3 in m3) y3 = m3[s3], "dangerouslySetInnerHTML" == s3 ? p3 = y3 : "children" == s3 || s3 in k4 || "value" == s3 && "defaultValue" in k4 || "checked" == s3 && "defaultChecked" in k4 || N(u4, s3, null, y3, o3);
-      for (s3 in k4) y3 = k4[s3], "children" == s3 ? v3 = y3 : "dangerouslySetInnerHTML" == s3 ? h3 = y3 : "value" == s3 ? w3 = y3 : "checked" == s3 ? _3 = y3 : c3 && "function" != typeof y3 || m3[s3] === y3 || N(u4, s3, y3, m3[s3], o3);
+      if (e3 = "textarea" == x2 && null != k5.defaultValue ? null : e3 && n.call(u4.childNodes), !c3 && null != e3) for (m3 = {}, s3 = 0; s3 < u4.attributes.length; s3++) m3[(y3 = u4.attributes[s3]).name] = y3.value;
+      for (s3 in m3) y3 = m3[s3], "dangerouslySetInnerHTML" == s3 ? p3 = y3 : "children" == s3 || s3 in k5 || "value" == s3 && "defaultValue" in k5 || "checked" == s3 && "defaultChecked" in k5 || N(u4, s3, null, y3, o3);
+      for (s3 in k5) y3 = k5[s3], "children" == s3 ? v3 = y3 : "dangerouslySetInnerHTML" == s3 ? h3 = y3 : "value" == s3 ? w3 = y3 : "checked" == s3 ? _3 = y3 : c3 && "function" != typeof y3 || m3[s3] === y3 || N(u4, s3, y3, m3[s3], o3);
       if (h3) c3 || p3 && (h3.__html == p3.__html || h3.__html == u4.innerHTML) || (u4.innerHTML = h3.__html), t3.__k = [];
       else if (p3 && (u4.innerHTML = ""), L("template" == t3.type ? u4.content : u4, g(v3) ? v3 : [v3], t3, i3, r3, "foreignObject" == x2 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i3.__k && $(i3, 0), c3, a3), null != e3) for (s3 = e3.length; s3--; ) b(e3[s3]);
       c3 && "textarea" != x2 || (s3 = "value", "progress" == x2 && null == w3 ? u4.removeAttribute("value") : null != w3 && (w3 !== u4[s3] || "progress" == x2 && !w3 || "option" == x2 && w3 != m3[s3]) && N(u4, s3, w3, m3[s3], o3), s3 = "checked", null != _3 && _3 != u4[s3] && N(u4, s3, _3, m3[s3], o3));
@@ -3753,6 +3753,18 @@
       [{}]
     );
   }
+  function monthSpans(fromMonth, toMonth, minDate = todayISO()) {
+    const spans = [];
+    let [y3, m3] = fromMonth.split("-").map(Number);
+    const [ty, tm] = toMonth.split("-").map(Number);
+    for (; y3 < ty || y3 === ty && m3 <= tm; m3 > 11 ? (y3++, m3 = 1) : m3++) {
+      const ym = `${y3}-${String(m3).padStart(2, "0")}`;
+      const end = `${ym}-${String(new Date(Date.UTC(y3, m3, 0)).getUTCDate()).padStart(2, "0")}`;
+      const start = `${ym}-01` < minDate ? minDate : `${ym}-01`;
+      if (start <= end) spans.push({ start, end });
+    }
+    return spans;
+  }
 
   // src/ui/styles.js
   var CSS = `
@@ -3877,6 +3889,7 @@
   }
   .ab-summary span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ab-summary button { background: none; border: none; color: var(--ab-color); font-size: 12px; font-weight: 600; cursor: pointer; }
+  .ab-link-btn { background: none; border: none; color: var(--ab-color); font-size: 11px; font-weight: 600; cursor: pointer; margin-left: 6px; }
   .ab-no-results { text-align: center; color: #999; font-size: 13px; padding: 20px 0; }
   .ab-mode-toggle { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
   .ab-mode-btn { flex: 1; padding: 5px; font-size: 12px; background: #fff; border: none; cursor: pointer; color: #666; }
@@ -3889,6 +3902,7 @@
   .ab-cal-day { min-height: 38px; border: 1px solid #f0f0f0; border-radius: 4px; padding: 2px 3px; }
   .ab-cal-day.avail { cursor: pointer; background: #f8fafc; }
   .ab-cal-day.avail:hover { background: #e8f4ff; }
+  .ab-cal-day.sel { outline: 2px solid var(--ab-color); outline-offset: -1px; }
   .ab-cal-day-num { font-size: 10px; color: #666; }
   .ab-cal-m { padding: 1px 3px; border-radius: 3px; font-size: 9px; color: #fff; white-space: nowrap; margin-top: 1px; display: block; }
   .ab-drp { position: relative; }
@@ -4244,13 +4258,49 @@
       ] })
     ] });
   }
+  function FilterBar({ pills, filters, onChange, children }) {
+    const [drop, setDrop] = d2(null);
+    const barRef = A2();
+    useOutsideClick(barRef, () => setDrop(null));
+    return /* @__PURE__ */ u3("div", { class: "ab-flt-bar", ref: barRef, children: [
+      pills.map((p3) => {
+        const value = filters[p3.id], isOpen = drop?.id === p3.id;
+        return /* @__PURE__ */ u3("div", { class: "ab-pill", children: [
+          /* @__PURE__ */ u3("button", { class: cx("ab-pill-btn", value !== null && "active", isOpen && "open"), onClick: (e3) => {
+            if (isOpen) return setDrop(null);
+            const r3 = e3.currentTarget.getBoundingClientRect();
+            setDrop({ id: p3.id, top: r3.bottom + 6, left: r3.left });
+          }, children: [
+            p3.label,
+            value !== null && /* @__PURE__ */ u3(S, { children: [
+              ": ",
+              /* @__PURE__ */ u3("b", { children: p3.display })
+            ] }),
+            " ",
+            /* @__PURE__ */ u3("span", { class: "ab-pill-chevron", children: "\u25BE" })
+          ] }),
+          isOpen && /* @__PURE__ */ u3("div", { class: "ab-drop open", style: { top: drop.top, left: drop.left }, children: p3.items.map(([v3, text, style]) => /* @__PURE__ */ u3(
+            "button",
+            {
+              class: cx("ab-drop-item", value === v3 && "active"),
+              style,
+              onClick: () => {
+                onChange({ ...filters, [p3.id]: v3 });
+                setDrop(null);
+              },
+              children: text
+            },
+            String(v3)
+          )) })
+        ] }, p3.id);
+      }),
+      children
+    ] });
+  }
   function ResultsTable({ results }) {
     const [sort, setSort] = d2({ key: "date", dir: 1 });
     const [filters, setFilters] = d2({ cabin: null, stops: null, dow: null });
     const [page, setPage] = d2(0);
-    const [drop, setDrop] = d2(null);
-    const barRef = A2();
-    useOutsideClick(barRef, () => setDrop(null));
     if (!results.length) return null;
     const cols = CABIN_ORDER.filter((c3) => results.some((r3) => r3.cabins?.[c3] !== void 0));
     const rows = filterAndSort(results, filters, sort, cols);
@@ -4298,44 +4348,13 @@
       );
     }
     return /* @__PURE__ */ u3("div", { children: [
-      /* @__PURE__ */ u3("div", { class: "ab-flt-bar", ref: barRef, children: [
-        pills.map((p3) => {
-          const value = filters[p3.id], isOpen = drop?.id === p3.id;
-          return /* @__PURE__ */ u3("div", { class: "ab-pill", children: [
-            /* @__PURE__ */ u3("button", { class: cx("ab-pill-btn", value !== null && "active", isOpen && "open"), onClick: (e3) => {
-              if (isOpen) return setDrop(null);
-              const r3 = e3.currentTarget.getBoundingClientRect();
-              setDrop({ id: p3.id, top: r3.bottom + 6, left: r3.left });
-            }, children: [
-              p3.label,
-              value !== null && /* @__PURE__ */ u3(S, { children: [
-                ": ",
-                /* @__PURE__ */ u3("b", { children: p3.display })
-              ] }),
-              " ",
-              /* @__PURE__ */ u3("span", { class: "ab-pill-chevron", children: "\u25BE" })
-            ] }),
-            isOpen && /* @__PURE__ */ u3("div", { class: "ab-drop open", style: { top: drop.top, left: drop.left }, children: p3.items.map(([v3, text, style]) => /* @__PURE__ */ u3(
-              "button",
-              {
-                class: cx("ab-drop-item", value === v3 && "active"),
-                style,
-                onClick: () => {
-                  setFilters({ ...filters, [p3.id]: v3 });
-                  setDrop(null);
-                  setPage(0);
-                },
-                children: text
-              },
-              String(v3)
-            )) })
-          ] }, p3.id);
-        }),
-        (sort.key !== "date" || sort.dir !== 1) && /* @__PURE__ */ u3("button", { class: "ab-flt-btn", style: { marginLeft: "auto" }, onClick: () => {
-          setSort({ key: "date", dir: 1 });
-          setPage(0);
-        }, children: "\u21BA Reset sort" })
-      ] }),
+      /* @__PURE__ */ u3(FilterBar, { pills, filters, onChange: (f4) => {
+        setFilters(f4);
+        setPage(0);
+      }, children: (sort.key !== "date" || sort.dir !== 1) && /* @__PURE__ */ u3("button", { class: "ab-flt-btn", style: { marginLeft: "auto" }, onClick: () => {
+        setSort({ key: "date", dir: 1 });
+        setPage(0);
+      }, children: "\u21BA Reset sort" }) }),
       /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#999", marginBottom: 4 }, children: [
         rows.length,
         " / ",
@@ -4383,9 +4402,425 @@
     ] });
   }
 
+  // src/ui/searchRun.jsx
+  function useSearchRun(form) {
+    const [searching, setSearching] = d2(false);
+    const [btnLabel, setBtnLabel] = d2(null);
+    const [status, setStatus] = d2("");
+    const [progress, setProgress] = d2(null);
+    const [collapsed, setCollapsed] = d2(false);
+    const ctl = A2({ searching: false, stop: false, rerun: false }).current;
+    h2(() => {
+      if (!ctl.searching) return;
+      ctl.rerun = true;
+      ctl.stop = true;
+      setBtnLabel("Restarting\u2026");
+    }, [form]);
+    return {
+      ctl,
+      searching,
+      btnLabel,
+      status,
+      setStatus,
+      progress,
+      setProgress,
+      collapsed,
+      setCollapsed,
+      // Returns true when the click should stop the running search instead of starting one
+      stopIfRunning() {
+        if (!ctl.searching) return false;
+        ctl.stop = true;
+        ctl.rerun = false;
+        setBtnLabel("Stopping\u2026");
+        return true;
+      },
+      begin() {
+        ctl.searching = true;
+        ctl.stop = false;
+        ctl.t0 = Date.now();
+        setSearching(true);
+        setBtnLabel(null);
+        setProgress(0);
+        setCollapsed(true);
+      },
+      end() {
+        ctl.searching = false;
+        setSearching(false);
+        setBtnLabel(null);
+      },
+      // Wall-clock time since begin(), e.g. "8.4s" or "2m 05s"
+      elapsed() {
+        const sec = (Date.now() - ctl.t0) / 1e3;
+        return sec < 60 ? `${sec.toFixed(1)}s` : `${Math.floor(sec / 60)}m ${String(Math.floor(sec % 60)).padStart(2, "0")}s`;
+      }
+    };
+  }
+  function SearchSummary({ run, text }) {
+    return /* @__PURE__ */ u3("div", { class: "ab-summary", children: [
+      /* @__PURE__ */ u3("span", { children: text }),
+      /* @__PURE__ */ u3("button", { onClick: () => run.setCollapsed(false), children: "Edit" })
+    ] });
+  }
+  function SearchControls({ run, session, onSearch }) {
+    return /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3("button", { class: "ab-search-btn", disabled: !session.ready && !run.searching, onClick: onSearch, children: run.btnLabel ?? (run.searching ? "Stop" : "Search") }),
+      /* @__PURE__ */ u3("div", { class: "ab-status", children: run.status }),
+      run.progress !== null && /* @__PURE__ */ u3("div", { class: "ab-progress", children: /* @__PURE__ */ u3("div", { class: "ab-progress-bar", style: { width: `${run.progress}%` } }) })
+    ] });
+  }
+
+  // src/common/hotels.js
+  var HOTEL_COLORS = ["#0369a1", "#b45309", "#7c3aed", "#059669", "#be123c", "#374151"];
+  function lowestByDate(results) {
+    var _a;
+    const out = {};
+    for (const r3 of results) {
+      const day = out[_a = r3.date] ?? (out[_a] = {});
+      if (day[r3.hotel] == null || r3.points < day[r3.hotel]) day[r3.hotel] = r3.points;
+    }
+    return out;
+  }
+  function cheapestOnly(results) {
+    const best = /* @__PURE__ */ new Map();
+    for (const r3 of results) {
+      const key = `${r3.hotel}|${r3.date}`;
+      if (!best.has(key) || r3.points < best.get(key).points) best.set(key, r3);
+    }
+    return [...best.values()];
+  }
+  function parseHotelCodes(text) {
+    return [...new Set(String(text ?? "").split(/[\s,]+/).map((s3) => s3.trim().toUpperCase()).filter(Boolean))];
+  }
+
+  // src/ui/HotelResults.jsx
+  var PAGE_SIZE2 = 50;
+  var pad3 = (n2) => String(n2).padStart(2, "0");
+  var k4 = (points) => `${(points / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
+  var hotelColor = (hotels, code) => HOTEL_COLORS[hotels.indexOf(code) % HOTEL_COLORS.length];
+  function HotelCalendar({ results, hotels, fromMonth, toMonth, selected, onSelect }) {
+    const byDate = lowestByDate(results);
+    const multi = hotels.length > 1;
+    const months = [];
+    let [y3, m3] = fromMonth.split("-").map(Number);
+    const [ty, tm] = toMonth.split("-").map(Number);
+    for (; y3 < ty || y3 === ty && m3 <= tm; m3 > 11 ? (y3++, m3 = 1) : m3++) months.push([y3, m3]);
+    return /* @__PURE__ */ u3("div", { class: "ab-cal-months", children: months.map(([y4, m4]) => {
+      const firstDow = new Date(y4, m4 - 1, 1).getDay();
+      const daysInMonth = new Date(y4, m4, 0).getDate();
+      return /* @__PURE__ */ u3("div", { class: "ab-cal-month", children: [
+        /* @__PURE__ */ u3("div", { class: "ab-cal-month-name", children: [
+          MONTH_NAMES[m4 - 1],
+          " ",
+          y4
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "ab-cal-grid", children: [
+          DOW.map((d3) => /* @__PURE__ */ u3("div", { class: "ab-cal-dow", children: d3 }, d3)),
+          Array.from({ length: firstDow }, (_3, i3) => /* @__PURE__ */ u3("div", {}, `b${i3}`)),
+          Array.from({ length: daysInMonth }, (_3, i3) => {
+            const date = `${y4}-${pad3(m4)}-${pad3(i3 + 1)}`;
+            const avail = byDate[date];
+            if (!avail) return /* @__PURE__ */ u3("div", { class: "ab-cal-day", children: /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }) }, i3);
+            return /* @__PURE__ */ u3(
+              "div",
+              {
+                class: cx("ab-cal-day avail", selected === date && "sel"),
+                title: "Show this date only",
+                onClick: () => onSelect(selected === date ? null : date),
+                children: [
+                  /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }),
+                  hotels.filter((h3) => avail[h3] != null).map((h3) => /* @__PURE__ */ u3("span", { class: "ab-cal-m", style: { background: hotelColor(hotels, h3) }, children: [
+                    multi && `${h3} `,
+                    k4(avail[h3])
+                  ] }, h3))
+                ]
+              },
+              i3
+            );
+          })
+        ] })
+      ] }, `${y4}-${m4}`);
+    }) });
+  }
+  function HotelTable({ results, hotels, date, onClearDate }) {
+    const [sort, setSort] = d2({ key: "date", dir: 1 });
+    const [filters, setFilters] = d2({ hotel: null, dow: null });
+    const [cheapest, setCheapest] = d2(true);
+    const [page, setPage] = d2(0);
+    if (!results.length) return null;
+    const rows = (cheapest ? cheapestOnly(results) : results).filter((r3) => (!date || r3.date === date) && (!filters.hotel || r3.hotel === filters.hotel) && (filters.dow == null || (/* @__PURE__ */ new Date(r3.date + "T12:00:00")).getDay() === filters.dow));
+    const val = (r3) => sort.key === "points" ? r3.points : r3.date;
+    rows.sort((a3, b2) => {
+      const av = val(a3), bv = val(b2);
+      return av < bv ? -sort.dir : av > bv ? sort.dir : a3.points - b2.points;
+    });
+    const totalPages = Math.ceil(rows.length / PAGE_SIZE2);
+    const pg = Math.min(page, Math.max(0, totalPages - 1));
+    const multi = hotels.length > 1;
+    const hotelName = (code) => results.find((r3) => r3.hotel === code && r3.hotelName)?.hotelName ?? code;
+    const pills = [
+      multi && {
+        id: "hotel",
+        label: "Hotel",
+        display: filters.hotel,
+        items: [[null, "All hotels"], ...hotels.map((h3) => [h3, hotelName(h3), { color: hotelColor(hotels, h3) }])]
+      },
+      {
+        id: "dow",
+        label: "Day of week",
+        display: DOW_LABELS[filters.dow],
+        items: [[null, "Any day"], ...[1, 2, 3, 4, 5, 6, 0].map((n2) => [n2, DOW_LABELS[n2]])]
+      }
+    ].filter(Boolean);
+    function th(key, label) {
+      const active = sort.key === key;
+      return /* @__PURE__ */ u3(
+        "th",
+        {
+          style: { cursor: "pointer", userSelect: "none", color: active ? "var(--ab-color)" : void 0 },
+          onClick: () => {
+            setSort(active ? { key, dir: -sort.dir } : { key, dir: 1 });
+            setPage(0);
+          },
+          children: [
+            label,
+            " ",
+            /* @__PURE__ */ u3("span", { style: { fontSize: 9, color: active ? "var(--ab-color)" : "#aaa" }, children: active ? sort.dir === 1 ? "\u2191" : "\u2193" : "\u2195" })
+          ]
+        }
+      );
+    }
+    return /* @__PURE__ */ u3("div", { children: [
+      /* @__PURE__ */ u3(FilterBar, { pills, filters, onChange: (f4) => {
+        setFilters(f4);
+        setPage(0);
+      }, children: [
+        date && /* @__PURE__ */ u3("button", { class: "ab-flt-btn active", onClick: onClearDate, children: [
+          date,
+          " \u2715"
+        ] }),
+        /* @__PURE__ */ u3("button", { class: cx("ab-flt-btn", cheapest && "active"), onClick: () => {
+          setCheapest(!cheapest);
+          setPage(0);
+        }, children: "Cheapest room only" })
+      ] }),
+      /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#999", marginBottom: 4 }, children: [
+        rows.length,
+        " / ",
+        results.length,
+        " rate(s)"
+      ] }),
+      /* @__PURE__ */ u3("table", { class: "ab-tbl", children: [
+        /* @__PURE__ */ u3("thead", { children: /* @__PURE__ */ u3("tr", { children: [
+          th("date", "Date"),
+          multi && /* @__PURE__ */ u3("th", { children: "Hotel" }),
+          /* @__PURE__ */ u3("th", { children: "Room" }),
+          th("points", "Points"),
+          /* @__PURE__ */ u3("th", { children: "Left" }),
+          /* @__PURE__ */ u3("th", {})
+        ] }) }),
+        /* @__PURE__ */ u3("tbody", { children: rows.slice(pg * PAGE_SIZE2, (pg + 1) * PAGE_SIZE2).map((r3, i3) => /* @__PURE__ */ u3("tr", { children: [
+          /* @__PURE__ */ u3("td", { children: r3.date }),
+          multi && /* @__PURE__ */ u3("td", { class: "ab-route", style: { color: hotelColor(hotels, r3.hotel) }, title: r3.hotelName, children: r3.hotel }),
+          /* @__PURE__ */ u3("td", { style: { fontSize: 11, color: "#555" }, children: r3.room ?? "" }),
+          /* @__PURE__ */ u3("td", { class: "ab-cab-miles", children: r3.points.toLocaleString() }),
+          /* @__PURE__ */ u3("td", { style: { color: "#888" }, children: r3.roomsLeft ?? "" }),
+          /* @__PURE__ */ u3("td", { children: r3.bookUrl && /* @__PURE__ */ u3("a", { href: r3.bookUrl, target: "_blank", style: { color: "var(--ab-color)", fontSize: 11 }, children: "Book \u2197" }) })
+        ] }, i3)) })
+      ] }),
+      totalPages > 1 && /* @__PURE__ */ u3(Pagination, { page: pg, totalPages, total: rows.length, setPage })
+    ] });
+  }
+
+  // src/ui/hotelButtons.js
+  var BTN_ATTR = "data-award-buddy";
+  function watchHotelCards(cards, color, onPick) {
+    function inject() {
+      for (const card of document.querySelectorAll(cards.selector)) {
+        if (card.querySelector(`[${BTN_ATTR}]`)) continue;
+        const code = cards.code(card);
+        if (!code) continue;
+        const btn = document.createElement("button");
+        btn.setAttribute(BTN_ATTR, "");
+        btn.type = "button";
+        btn.textContent = "\u{1F3E8} Search in Award Buddy";
+        btn.style.cssText = `display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin-top:6px;height:36px;
+        background:${color};color:#fff;border:none;border-radius:4px;font:600 12px -apple-system,sans-serif;cursor:pointer;`;
+        btn.addEventListener("click", (e3) => {
+          e3.preventDefault();
+          e3.stopPropagation();
+          onPick(code, cards.name?.(card)?.replace(/\s+/g, " ").trim());
+        });
+        (cards.anchor?.(card) ?? card).appendChild(btn);
+      }
+    }
+    inject();
+    const observer = new MutationObserver(inject);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }
+
+  // src/ui/HotelSearch.jsx
+  function monthISO(offset) {
+    const d3 = /* @__PURE__ */ new Date();
+    d3.setDate(1);
+    d3.setMonth(d3.getMonth() + offset);
+    return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
+  }
+  var storeKey = (program2) => `award-buddy:${program2.id}`;
+  function initialForm(program2) {
+    let saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(storeKey(program2))) || {};
+    } catch {
+    }
+    const current = program2.currentHotel?.();
+    const hotels = typeof saved.hotels === "string" ? saved.hotels : "";
+    return {
+      // On a hotel page with nothing saved, start with that hotel
+      hotels: hotels || current || "",
+      fromMonth: monthISO(0),
+      toMonth: monthISO(2),
+      names: saved.names && typeof saved.names === "object" ? saved.names : {}
+      // code → hotel name, from the site's cards
+    };
+  }
+  function HotelSearch({ program: program2, session, openPanel }) {
+    const [form, setForm] = d2(() => initialForm(program2));
+    const set = (patch) => setForm((f4) => ({ ...f4, ...patch }));
+    h2(() => {
+      const { hotels: hotels2, names } = form;
+      try {
+        localStorage.setItem(storeKey(program2), JSON.stringify({ hotels: hotels2, names }));
+      } catch {
+      }
+    }, [form]);
+    const run = useSearchRun(form);
+    const { ctl, setStatus, setProgress } = run;
+    h2(() => program2.hotelCards && watchHotelCards(program2.hotelCards, program2.color, (code, name) => {
+      setForm((f4) => {
+        const codes2 = parseHotelCodes(f4.hotels);
+        return {
+          ...f4,
+          hotels: codes2.includes(code) ? f4.hotels : [...codes2, code].join(", "),
+          names: name ? { ...f4.names, [code]: name } : f4.names
+        };
+      });
+      run.setCollapsed(false);
+      openPanel();
+    }), []);
+    const [results, setResults] = d2([]);
+    const [shown, setShown] = d2(null);
+    const [date, setDate] = d2(null);
+    const [noResults, setNoResults] = d2(false);
+    const latest = A2();
+    latest.current = form;
+    const hotels = parseHotelCodes(form.hotels);
+    const spans = form.fromMonth && form.toMonth ? monthSpans(form.fromMonth, form.toMonth) : [];
+    const current = program2.currentHotel?.();
+    async function search() {
+      if (run.stopIfRunning()) return;
+      const f4 = latest.current;
+      const codes2 = parseHotelCodes(f4.hotels);
+      const spans2 = monthSpans(f4.fromMonth, f4.toMonth);
+      if (!codes2.length || !spans2.length) {
+        setStatus("\u26A0 Fill in all fields");
+        return;
+      }
+      run.begin();
+      setNoResults(false);
+      setResults([]);
+      setDate(null);
+      setStatus("");
+      setShown({ hotels: codes2, fromMonth: f4.fromMonth, toMonth: f4.toMonth });
+      const total = spans2.length * codes2.length;
+      let done = 0, failed = 0;
+      const all = [];
+      const tasks = spans2.flatMap(({ start, end }) => codes2.map((hotel) => async () => {
+        if (ctl.stop) return;
+        let result;
+        try {
+          result = await program2.onHotelSearch({ hotel, start, end });
+        } catch {
+          failed++;
+        }
+        if (result === "SESSION_EXPIRED") {
+          ctl.stop = true;
+          setStatus(program2.expiredMessage ?? "\u26A0 Session expired \u2014 refresh the page and try again");
+          return;
+        }
+        done++;
+        setProgress(done / total * 100);
+        setStatus(`${done} / ${total} done`);
+        all.push(...(result || []).map((r3) => ({ hotelName: f4.names[r3.hotel], ...r3 })));
+        setResults([...all]);
+      }));
+      await runPool(tasks, CONCURRENCY);
+      run.end();
+      if (ctl.rerun) {
+        ctl.rerun = false;
+        search();
+        return;
+      }
+      if (!ctl.stop) {
+        setProgress(null);
+        const failNote = failed ? ` ${failed} request(s) failed.` : "";
+        setStatus(`Done in ${run.elapsed()}. Found ${all.length} rate(s) across ${total} request(s).${failNote}`);
+        if (!all.length) setNoResults(true);
+      } else if (all.length) setStatus((s3) => `${s3} (${all.length} found so far)`);
+    }
+    const summary2 = [
+      hotels.join(", ") || "?",
+      `${form.fromMonth} \u2013 ${form.toMonth}`
+    ].join(" \xB7 ");
+    return /* @__PURE__ */ u3(S, { children: [
+      run.collapsed ? /* @__PURE__ */ u3(SearchSummary, { run, text: summary2 }) : /* @__PURE__ */ u3(S, { children: [
+        /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: [
+            "Hotel codes (comma separated)",
+            current && !hotels.includes(current) && /* @__PURE__ */ u3("button", { class: "ab-link-btn", onClick: () => set({ hotels: [...hotels, current].join(", ") }), children: [
+              "+ Add this hotel (",
+              current,
+              ")"
+            ] })
+          ] }),
+          /* @__PURE__ */ u3(
+            "input",
+            {
+              type: "text",
+              placeholder: program2.hotelPlaceholder ?? "Hotel codes",
+              value: form.hotels,
+              onInput: (e3) => set({ hotels: e3.currentTarget.value })
+            }
+          )
+        ] }) }),
+        /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
+          /* @__PURE__ */ u3(MonthRangePicker, { from: form.fromMonth, to: form.toMonth, onChange: (fromMonth, toMonth) => set({ fromMonth, toMonth }) })
+        ] }) }),
+        /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#888", marginBottom: 6, minHeight: 14 }, children: hotels.length > 0 && spans.length > 0 && `~${hotels.length * spans.length} request(s) (${hotels.length} hotel(s) \xD7 ${spans.length} month(s))` })
+      ] }),
+      /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
+      /* @__PURE__ */ u3("div", { children: [
+        shown && results.length > 0 && /* @__PURE__ */ u3(
+          HotelCalendar,
+          {
+            results,
+            hotels: shown.hotels,
+            fromMonth: shown.fromMonth,
+            toMonth: shown.toMonth,
+            selected: date,
+            onSelect: setDate
+          }
+        ),
+        /* @__PURE__ */ u3(HotelTable, { results, hotels: shown?.hotels ?? [], date, onClearDate: () => setDate(null) }),
+        noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
+      ] })
+    ] });
+  }
+
   // src/ui/App.jsx
   var codes = (v3) => Array.isArray(v3) ? v3 : v3.split(",").map((s3) => s3.trim().toUpperCase()).filter(Boolean);
-  function monthISO(offset) {
+  function monthISO2(offset) {
     const d3 = /* @__PURE__ */ new Date();
     d3.setDate(1);
     d3.setMonth(d3.getMonth() + offset);
@@ -4402,24 +4837,24 @@
       return [fd.key, fd.type === "airports" ? v3 : fd.type === "numbers" ? parseNumberList(v3) : v3.trim() ? [v3.trim()] : []];
     })));
   }
-  var storeKey = (program2) => `award-buddy:${program2.id}`;
+  var storeKey2 = (program2) => `award-buddy:${program2.id}`;
   function loadSaved(program2) {
     try {
-      return JSON.parse(localStorage.getItem(storeKey(program2))) || {};
+      return JSON.parse(localStorage.getItem(storeKey2(program2))) || {};
     } catch {
       return {};
     }
   }
   var sameShape = (v3, fallback) => v3 != null && typeof v3 === typeof fallback && Array.isArray(v3) === Array.isArray(fallback) ? v3 : fallback;
-  function initialForm(program2) {
+  function initialForm2(program2) {
     const saved = loadSaved(program2);
     return {
       origins: sameShape(saved.origins, program2.airports ? [] : ""),
       dests: sameShape(saved.dests, program2.airports ? [] : "NRT"),
       start: null,
       end: null,
-      fromMonth: monthISO(0),
-      toMonth: monthISO(2),
+      fromMonth: monthISO2(0),
+      toMonth: monthISO2(2),
       carrier: program2.carriers?.some((c3) => c3.code === saved.carrier) ? saved.carrier : program2.carriers?.[0]?.code,
       options: saved.options && typeof saved.options === "object" ? saved.options : {},
       cabins: Array.isArray(saved.cabins) ? saved.cabins.filter((c3) => program2.cabins.includes(c3)) : []
@@ -4464,11 +4899,9 @@
     }, []);
     return session;
   }
-  function App({ program: program2 }) {
-    const [open, setOpen] = d2(false);
-    const [expanded, setExpanded] = d2(false);
+  function FlightSearch({ program: program2, session }) {
     const [calMode, setCalMode] = d2(false);
-    const [form, setForm] = d2(() => initialForm(program2));
+    const [form, setForm] = d2(() => initialForm2(program2));
     const set = (patch) => setForm((f4) => ({ ...f4, ...patch }));
     const airports = program2.airportsFor?.(form.carrier) ?? program2.airports;
     const hasCalendar = !!program2.onCalendarSearch && (program2.calendarFor?.(form.carrier) ?? true);
@@ -4478,54 +4911,19 @@
     h2(() => {
       const { origins, dests, cabins, carrier, options } = form;
       try {
-        localStorage.setItem(storeKey(program2), JSON.stringify({ origins, dests, cabins, carrier, options }));
+        localStorage.setItem(storeKey2(program2), JSON.stringify({ origins, dests, cabins, carrier, options }));
       } catch {
       }
     }, [form]);
-    const [collapsed, setCollapsed] = d2(false);
-    const session = useSession(program2);
-    const [searching, setSearching] = d2(false);
-    const [btnLabel, setBtnLabel] = d2(null);
-    const [status, setStatus] = d2("");
-    const [progress, setProgress] = d2(null);
+    const run = useSearchRun(form);
+    const { ctl, setStatus, setProgress } = run;
     const [results, setResults] = d2([]);
     const [cal, setCal] = d2(null);
     const [noResults, setNoResults] = d2(false);
     const latest = A2();
     latest.current = { form, calMode };
-    const ctl = A2({ searching: false, stop: false, rerun: false }).current;
-    h2(() => {
-      if (!ctl.searching) return;
-      ctl.rerun = true;
-      ctl.stop = true;
-      setBtnLabel("Restarting\u2026");
-    }, [form]);
-    function begin() {
-      ctl.searching = true;
-      ctl.stop = false;
-      ctl.t0 = Date.now();
-      setSearching(true);
-      setBtnLabel(null);
-      setProgress(0);
-      setNoResults(false);
-      setCollapsed(true);
-    }
-    function elapsed() {
-      const sec = (Date.now() - ctl.t0) / 1e3;
-      return sec < 60 ? `${sec.toFixed(1)}s` : `${Math.floor(sec / 60)}m ${String(Math.floor(sec % 60)).padStart(2, "0")}s`;
-    }
-    function end() {
-      ctl.searching = false;
-      setSearching(false);
-      setBtnLabel(null);
-    }
     async function search() {
-      if (ctl.searching) {
-        ctl.stop = true;
-        ctl.rerun = false;
-        setBtnLabel("Stopping\u2026");
-        return;
-      }
+      if (run.stopIfRunning()) return;
       const { form: f4, calMode: calMode2 } = latest.current;
       const origins = codes(f4.origins), dests = codes(f4.dests);
       const cabinFilter = [...f4.cabins];
@@ -4535,7 +4933,8 @@
           setStatus("\u26A0 Fill in all fields");
           return;
         }
-        begin();
+        run.begin();
+        setNoResults(false);
         setResults([]);
         setStatus("Fetching calendar\u2026");
         const merged = {};
@@ -4562,14 +4961,14 @@
             const result = await program2.onCalendarSearch(o3, d3, cabinFilter, fromMonth, toMonth, onProgress);
             if (result === "SESSION_EXPIRED") {
               setStatus(program2.expiredMessage ?? "\u26A0 Session expired \u2014 navigate to the award booking page to refresh");
-              end();
+              run.end();
               return;
             }
           }
         }
-        end();
+        run.end();
         setProgress(null);
-        setStatus(`Done in ${elapsed()}. ${found()} date(s) with availability.`);
+        setStatus(`Done in ${run.elapsed()}. ${found()} date(s) with availability.`);
         if (ctl.rerun) {
           ctl.rerun = false;
           search();
@@ -4584,7 +4983,8 @@
       }
       const dates = getDates(from, to);
       const total = origins.length * dests.length * dates.length * optionSets.length;
-      begin();
+      run.begin();
+      setNoResults(false);
       setCal(null);
       setResults([]);
       setStatus("");
@@ -4605,7 +5005,7 @@
         setResults([...all]);
       }))));
       await runPool(tasks, CONCURRENCY);
-      end();
+      run.end();
       if (ctl.rerun) {
         ctl.rerun = false;
         search();
@@ -4613,7 +5013,7 @@
       }
       if (!ctl.stop) {
         setProgress(null);
-        setStatus(`Done in ${elapsed()}. Found ${all.length} result(s) across ${total} searches.`);
+        setStatus(`Done in ${run.elapsed()}. Found ${all.length} result(s) across ${total} searches.`);
         if (!all.length) setNoResults(true);
       } else if (all.length) setStatus((s3) => `${s3} (${all.length} found so far)`);
     }
@@ -4623,12 +5023,74 @@
       airports ? /* @__PURE__ */ u3(AirportCombo, { airports, value: form[key], onChange: (v3) => set({ [key]: v3 }) }) : /* @__PURE__ */ u3("input", { type: "text", placeholder, value: form[key], onInput: (e3) => set({ [key]: e3.currentTarget.value }) })
     ] });
     return /* @__PURE__ */ u3(S, { children: [
+      run.collapsed ? /* @__PURE__ */ u3(SearchSummary, { run, text: summary(program2, form, calMode) }) : /* @__PURE__ */ u3(S, { children: [
+        program2.carriers && /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: program2.carrierLabel ?? "Carrier" }),
+          /* @__PURE__ */ u3("select", { value: form.carrier, onChange: (e3) => set({ carrier: e3.currentTarget.value }), children: program2.carriers.map((c3) => /* @__PURE__ */ u3("option", { value: c3.code, children: c3.name }, c3.code)) })
+        ] }) }),
+        optionFields(program2, form).length > 0 && /* @__PURE__ */ u3("div", { class: "ab-row", children: optionFields(program2, form).map((fd) => /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: fd.label }),
+          fd.type === "airports" ? /* @__PURE__ */ u3(AirportCombo, { airports, value: optionRaw(fd, form), onChange: (v3) => set({ options: { ...form.options, [fd.key]: v3 } }) }) : /* @__PURE__ */ u3(
+            "input",
+            {
+              type: "text",
+              placeholder: fd.placeholder,
+              value: optionRaw(fd, form),
+              onInput: (e3) => set({ options: { ...form.options, [fd.key]: e3.currentTarget.value } })
+            }
+          )
+        ] }, fd.key)) }),
+        hasCalendar && /* @__PURE__ */ u3("div", { class: "ab-mode-toggle", children: [
+          /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", !calMode && "active"), onClick: () => setCalMode(false), children: "Search" }),
+          /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", calMode && "active"), onClick: () => setCalMode(true), children: "Calendar" })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "ab-row", children: [
+          airportField("origins", "Origins", "e.g. TPE, TSA"),
+          airportField("dests", "Destinations", "e.g. NRT, HND")
+        ] }),
+        calMode ? /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
+          /* @__PURE__ */ u3(MonthRangePicker, { from: form.fromMonth, to: form.toMonth, onChange: (fromMonth, toMonth) => set({ fromMonth, toMonth }) })
+        ] }) }) : /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: "Dates" }),
+          /* @__PURE__ */ u3(DateRangePicker, { start: form.start, end: form.end, onChange: (start, end) => set({ start, end }) })
+        ] }) }),
+        /* @__PURE__ */ u3("div", { style: { marginBottom: 10 }, children: [
+          /* @__PURE__ */ u3("label", { style: { fontSize: 12, color: "#666", display: "block", marginBottom: 5 }, children: "Cabin (leave all off = any)" }),
+          /* @__PURE__ */ u3("div", { class: "ab-cabins", children: program2.cabins.map((c3) => /* @__PURE__ */ u3(
+            "button",
+            {
+              class: "ab-cabin-btn",
+              onClick: () => toggleCabin(c3),
+              style: form.cabins.includes(c3) ? { background: CABIN_COLORS[c3], color: "#fff", borderColor: "transparent" } : void 0,
+              children: CABIN_LABELS[c3]
+            },
+            c3
+          )) })
+        ] }),
+        /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#888", marginBottom: 6, minHeight: 14 }, children: requestHint(program2, form, calMode) })
+      ] }),
+      /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
+      /* @__PURE__ */ u3("div", { children: [
+        cal && /* @__PURE__ */ u3(CalendarView, { calData: cal.data, fromMonth: cal.fromMonth, toMonth: cal.toMonth }),
+        /* @__PURE__ */ u3(ResultsTable, { results: cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results }),
+        noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
+      ] })
+    ] });
+  }
+  function App({ program: program2 }) {
+    const [open, setOpen] = d2(false);
+    const [expanded, setExpanded] = d2(false);
+    const session = useSession(program2);
+    const Search = program2.kind === "hotel" ? HotelSearch : FlightSearch;
+    return /* @__PURE__ */ u3(S, { children: [
       /* @__PURE__ */ u3("style", { children: CSS }),
-      /* @__PURE__ */ u3("button", { id: "ab-fab", title: `Award Buddy \u2013 ${program2.name}`, onClick: () => setOpen(!open), children: "\u2708" }),
+      /* @__PURE__ */ u3("button", { id: "ab-fab", title: `Award Buddy \u2013 ${program2.name}`, onClick: () => setOpen(!open), children: program2.kind === "hotel" ? "\u{1F3E8}" : "\u2708" }),
       /* @__PURE__ */ u3("div", { id: "ab-panel", class: cx(!open && "hidden", expanded && "ab-expanded"), children: [
         /* @__PURE__ */ u3("div", { class: "ab-header", children: [
           /* @__PURE__ */ u3("span", { children: [
-            "\u2708 Award Buddy \u2013 ",
+            program2.kind === "hotel" ? "\u{1F3E8}" : "\u2708",
+            " Award Buddy \u2013 ",
             program2.name
           ] }),
           /* @__PURE__ */ u3("div", { style: { display: "flex", gap: 8, alignItems: "center" }, children: [
@@ -4644,66 +5106,7 @@
           " Waiting for session\u2026",
           program2.triggerSession ? /* @__PURE__ */ u3("button", { style: { marginLeft: 6, fontSize: 12 }, onClick: () => program2.triggerSession(), children: "Get session" }) : session.url && /* @__PURE__ */ u3("a", { href: session.url, target: "_blank", style: { color: "inherit", marginLeft: 6 }, children: "\u2192 Get session" })
         ] })),
-        /* @__PURE__ */ u3("div", { class: "ab-body", children: [
-          collapsed ? /* @__PURE__ */ u3("div", { class: "ab-summary", children: [
-            /* @__PURE__ */ u3("span", { children: summary(program2, form, calMode) }),
-            /* @__PURE__ */ u3("button", { onClick: () => setCollapsed(false), children: "Edit" })
-          ] }) : /* @__PURE__ */ u3(S, { children: [
-            program2.carriers && /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-              /* @__PURE__ */ u3("label", { children: program2.carrierLabel ?? "Carrier" }),
-              /* @__PURE__ */ u3("select", { value: form.carrier, onChange: (e3) => set({ carrier: e3.currentTarget.value }), children: program2.carriers.map((c3) => /* @__PURE__ */ u3("option", { value: c3.code, children: c3.name }, c3.code)) })
-            ] }) }),
-            optionFields(program2, form).length > 0 && /* @__PURE__ */ u3("div", { class: "ab-row", children: optionFields(program2, form).map((fd) => /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-              /* @__PURE__ */ u3("label", { children: fd.label }),
-              fd.type === "airports" ? /* @__PURE__ */ u3(AirportCombo, { airports, value: optionRaw(fd, form), onChange: (v3) => set({ options: { ...form.options, [fd.key]: v3 } }) }) : /* @__PURE__ */ u3(
-                "input",
-                {
-                  type: "text",
-                  placeholder: fd.placeholder,
-                  value: optionRaw(fd, form),
-                  onInput: (e3) => set({ options: { ...form.options, [fd.key]: e3.currentTarget.value } })
-                }
-              )
-            ] }, fd.key)) }),
-            hasCalendar && /* @__PURE__ */ u3("div", { class: "ab-mode-toggle", children: [
-              /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", !calMode && "active"), onClick: () => setCalMode(false), children: "Search" }),
-              /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", calMode && "active"), onClick: () => setCalMode(true), children: "Calendar" })
-            ] }),
-            /* @__PURE__ */ u3("div", { class: "ab-row", children: [
-              airportField("origins", "Origins", "e.g. TPE, TSA"),
-              airportField("dests", "Destinations", "e.g. NRT, HND")
-            ] }),
-            calMode ? /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-              /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
-              /* @__PURE__ */ u3(MonthRangePicker, { from: form.fromMonth, to: form.toMonth, onChange: (fromMonth, toMonth) => set({ fromMonth, toMonth }) })
-            ] }) }) : /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-              /* @__PURE__ */ u3("label", { children: "Dates" }),
-              /* @__PURE__ */ u3(DateRangePicker, { start: form.start, end: form.end, onChange: (start, end2) => set({ start, end: end2 }) })
-            ] }) }),
-            /* @__PURE__ */ u3("div", { style: { marginBottom: 10 }, children: [
-              /* @__PURE__ */ u3("label", { style: { fontSize: 12, color: "#666", display: "block", marginBottom: 5 }, children: "Cabin (leave all off = any)" }),
-              /* @__PURE__ */ u3("div", { class: "ab-cabins", children: program2.cabins.map((c3) => /* @__PURE__ */ u3(
-                "button",
-                {
-                  class: "ab-cabin-btn",
-                  onClick: () => toggleCabin(c3),
-                  style: form.cabins.includes(c3) ? { background: CABIN_COLORS[c3], color: "#fff", borderColor: "transparent" } : void 0,
-                  children: CABIN_LABELS[c3]
-                },
-                c3
-              )) })
-            ] }),
-            /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#888", marginBottom: 6, minHeight: 14 }, children: requestHint(program2, form, calMode) })
-          ] }),
-          /* @__PURE__ */ u3("button", { class: "ab-search-btn", disabled: !session.ready && !searching, onClick: search, children: btnLabel ?? (searching ? "Stop" : "Search") }),
-          /* @__PURE__ */ u3("div", { class: "ab-status", children: status }),
-          progress !== null && /* @__PURE__ */ u3("div", { class: "ab-progress", children: /* @__PURE__ */ u3("div", { class: "ab-progress-bar", style: { width: `${progress}%` } }) }),
-          /* @__PURE__ */ u3("div", { children: [
-            cal && /* @__PURE__ */ u3(CalendarView, { calData: cal.data, fromMonth: cal.fromMonth, toMonth: cal.toMonth }),
-            /* @__PURE__ */ u3(ResultsTable, { results: cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results }),
-            noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
-          ] })
-        ] })
+        /* @__PURE__ */ u3("div", { class: "ab-body", children: /* @__PURE__ */ u3(Search, { program: program2, session, openPanel: () => setOpen(true) }) })
       ] })
     ] });
   }
@@ -6107,7 +6510,7 @@
     if (Array.isArray(t3)) return t3.map(fbSortVars);
     if (t3 !== null && typeof t3 === "object") {
       const out = {};
-      for (const k4 of Object.keys(t3).sort((a3, b2) => a3.localeCompare(b2))) out[k4] = fbSortVars(t3[k4]);
+      for (const k5 of Object.keys(t3).sort((a3, b2) => a3.localeCompare(b2))) out[k5] = fbSortVars(t3[k5]);
       return out;
     }
     return t3;
@@ -6435,7 +6838,7 @@
           arr: new Date(seg.destinationDate).toISOString()
         }));
         const flightId = flight.id;
-        const assocKey = fareFamily ? `${fareFamily}_${flightId ?? fi}` : Object.keys(associations).find((k4) => k4.endsWith(`_${flightId ?? fi}`));
+        const assocKey = fareFamily ? `${fareFamily}_${flightId ?? fi}` : Object.keys(associations).find((k5) => k5.endsWith(`_${flightId ?? fi}`));
         const assoc = assocKey ? associations[assocKey] : void 0;
         if (!assoc) continue;
         const boundAssoc = assoc.boundAssociations?.[0];
@@ -6475,10 +6878,10 @@
       form.method = "POST";
       form.action = `${JAL_BASE}/availability${sid ? `;JAL_SESSION_ID=${sid}` : ""}`;
       form.target = frameName;
-      for (const [k4, v3] of Object.entries(params)) {
+      for (const [k5, v3] of Object.entries(params)) {
         const inp = document.createElement("input");
         inp.type = "hidden";
-        inp.name = k4;
+        inp.name = k5;
         inp.value = v3;
         form.appendChild(inp);
       }
