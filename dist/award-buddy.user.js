@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.2.0
-// @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG & Marriott hotels
+// @version      1.3.0
+// @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott & Hilton hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
 // @updateURL    https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js
@@ -21,6 +21,7 @@
 // @match        https://www.aa.com/*
 // @match        https://www.ihg.com/*
 // @match        https://www.marriott.com/*
+// @match        https://www.hilton.com/*
 // @grant        none
 // @run-at       document-start
 // ==/UserScript==
@@ -4847,6 +4848,7 @@
     const [shown, setShown] = d2(null);
     const [date, setDate] = d2(null);
     const [noResults, setNoResults] = d2(false);
+    const [rateType, setRateType] = d2(null);
     const latest = A2();
     latest.current = form;
     const hotels = form.hotels;
@@ -4902,6 +4904,9 @@
         if (!all.length) setNoResults(true);
       } else if (all.length) setStatus((s3) => `${s3} (${all.length} found so far)`);
     }
+    const rateTypes = ["Standard", "Premium"].filter((t3) => results.some((r3) => r3.rateType === t3));
+    const activeRateType = rateTypes.includes(rateType) ? rateType : null;
+    const visible = activeRateType ? results.filter((r3) => r3.rateType === activeRateType) : results;
     const summary2 = [
       hotels.map((c3) => names[c3] ?? c3).join(", ") || "?",
       `${form.fromMonth} \u2013 ${form.toMonth}`
@@ -4923,10 +4928,21 @@
       ] }),
       /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
       /* @__PURE__ */ u3("div", { children: [
+        rateTypes.length > 1 && /* @__PURE__ */ u3(FilterBar, { filters: { rateType: activeRateType }, onChange: (f4) => {
+          setRateType(f4.rateType);
+          setDate(null);
+        }, pills: [
+          {
+            id: "rateType",
+            label: "Reward",
+            display: activeRateType && `${activeRateType} only`,
+            items: [[null, "Standard & Premium"], ["Standard", "Standard only"], ["Premium", "Premium only"]]
+          }
+        ] }),
         shown && results.length > 0 && /* @__PURE__ */ u3(
           HotelCalendar,
           {
-            results,
+            results: visible,
             hotels: shown.hotels,
             names,
             fromMonth: shown.fromMonth,
@@ -4935,7 +4951,7 @@
             onSelect: setDate
           }
         ),
-        /* @__PURE__ */ u3(HotelTable, { results, hotels: shown?.hotels ?? [], names, date, onClearDate: () => setDate(null) }),
+        /* @__PURE__ */ u3(HotelTable, { results: visible, hotels: shown?.hotels ?? [], names, date, onClearDate: () => setDate(null) }),
         noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
       ] })
     ] });
@@ -8436,8 +8452,165 @@
     }
   };
 
+  // src/programs/hilton.js
+  var HILTON_GRAPHQL = "/graphql/customer";
+  var HILTON_QUERIES = {
+    hotel_shopAvailOptions_shopCalendarPropAvail: `query hotel_shopAvailOptions_shopCalendarPropAvail($arrivalDate: String!, $ctyhocn: String!, $language: String!, $guestLocationCountry: String, $numAdults: Int!, $numChildren: Int!, $numRooms: Int!, $displayCurrency: String, $lengthOfStay: Int!, $specialRates: ShopSpecialRateInput) {
+  hotel(ctyhocn: $ctyhocn, language: $language) {
+    ctyhocn
+    shopCalendarAvail(input: {guestLocationCountry: $guestLocationCountry, arrivalDate: $arrivalDate, displayCurrency: $displayCurrency, numAdults: $numAdults, numChildren: $numChildren, numRooms: $numRooms, lengthOfStay: $lengthOfStay, displayRateType: average, specialRates: $specialRates}) {
+      calendars { arrivalDate roomRate { dailyRmPointsRate numRoomsAvail ratePlan { ratePlanName } } }
+    }
+  }
+}`,
+    geocode_hotelSummaryOptions: `query geocode_hotelSummaryOptions($address: String, $distanceUnit: HotelDistanceUnit, $language: String!, $placeId: String, $queryLimit: Int!, $sessionToken: String) {
+  geocode(language: $language, address: $address, placeId: $placeId, sessionToken: $sessionToken) {
+    match { id type }
+    hotelSummaryOptions(distanceUnit: $distanceUnit, sortBy: distance) { hotels(first: $queryLimit) { ctyhocn name distance } }
+  }
+}`,
+    hotel: `query hotel($ctyhocn: String!, $language: String!) {
+  hotel(ctyhocn: $ctyhocn, language: $language) { ctyhocn name }
+}`
+  };
+  var HILTON_DELAY_MS = 600;
+  var NEARBY_MAX3 = 30;
+  var CODE_RE2 = /^[A-Z]{7}$/;
+  async function hiltonQuery(operationName, variables) {
+    const res = await fetch(`${HILTON_GRAPHQL}?appName=dx-res-ui&operationName=${operationName}&bl=en`, {
+      method: "POST",
+      headers: { accept: "*/*", "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ operationName, variables, query: HILTON_QUERIES[operationName] })
+    });
+    if (res.status === 403 || res.status === 429) return "SESSION_EXPIRED";
+    if (!res.ok) throw new Error(`Hilton ${res.status}`);
+    const data = await res.json();
+    if (data?.errors?.length && !data.data) throw new Error(`Hilton: ${data.errors[0].message}`);
+    return data;
+  }
+  function hiltonCalendarVariables({ hotel, start }) {
+    return {
+      arrivalDate: start,
+      ctyhocn: hotel,
+      language: "en",
+      guestLocationCountry: "US",
+      lengthOfStay: 1,
+      numAdults: 1,
+      numChildren: 0,
+      numRooms: 1,
+      displayCurrency: null,
+      specialRates: { hhonors: true }
+    };
+  }
+  var hiltonBookUrl = (hotel, date, nextDate) => `https://www.hilton.com/en/book/reservation/rooms/?ctyhocn=${hotel}&arrivalDate=${date}&departureDate=${nextDate}&room1NumAdults=1&redeemPts=true`;
+  var nextDay = (date) => {
+    const d3 = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+    d3.setUTCDate(d3.getUTCDate() + 1);
+    return d3.toISOString().slice(0, 10);
+  };
+  var rateTypeOf = (name) => /premium/i.test(name ?? "") ? "Premium" : /standard/i.test(name ?? "") ? "Standard" : void 0;
+  function hiltonParseCalendar(data, { hotel, start, end }) {
+    const results = [];
+    for (const day of data?.data?.hotel?.shopCalendarAvail?.calendars ?? []) {
+      const date = day?.arrivalDate;
+      const rate = day?.roomRate;
+      const points = rate?.dailyRmPointsRate;
+      if (!date || date < start || date > end || !(points > 0)) continue;
+      results.push({
+        date,
+        hotel,
+        points,
+        room: rate.ratePlan?.ratePlanName || void 0,
+        rateType: rateTypeOf(rate.ratePlan?.ratePlanName),
+        roomsLeft: rate.numRoomsAvail ?? void 0,
+        bookUrl: hiltonBookUrl(hotel, date, nextDay(date))
+      });
+    }
+    return results;
+  }
+  function hiltonHotelFromUrl(url) {
+    const u4 = new URL(url);
+    const code = u4.searchParams.get("ctyhocn") ?? u4.pathname.match(/\/hotels\/([a-z]{7})(?:-|\/|$)/i)?.[1];
+    return code && CODE_RE2.test(code.toUpperCase()) ? code.toUpperCase() : null;
+  }
+  function hiltonPageHotels(doc, url) {
+    const hotels = [];
+    for (const card of doc.querySelectorAll('li[data-testid^="hotel-card-"]')) {
+      const code = card.getAttribute("data-testid").slice("hotel-card-".length).toUpperCase();
+      if (!CODE_RE2.test(code) || hotels.some((h3) => h3.code === code)) continue;
+      hotels.push({ code, name: card.querySelector("h3")?.textContent.replace(/\s+/g, " ").trim() || void 0 });
+    }
+    const current = hiltonHotelFromUrl(url);
+    if (current && !hotels.some((h3) => h3.code === current)) hotels.unshift({ code: current });
+    return hotels;
+  }
+  function hiltonParseSuggestions(data) {
+    return (data?.predictions ?? []).filter((p3) => p3?.structured_formatting?.main_text).map((p3) => {
+      const label = p3.structured_formatting.main_text;
+      const code = p3.place_id?.match(/^dx-hotel::([a-z]{7})$/i)?.[1]?.toUpperCase();
+      return {
+        label,
+        sub: p3.type === "airport" ? ["Airport", p3.structured_formatting.secondary_text].filter(Boolean).join(" \xB7 ") : p3.structured_formatting.secondary_text || void 0,
+        ref: code ? { code, label } : { placeId: p3.place_id ?? null, address: p3.description ?? label, label }
+      };
+    });
+  }
+  function hiltonParseNearby(data) {
+    const hotels = (data?.data?.geocode?.hotelSummaryOptions?.hotels ?? []).filter((h3) => h3?.ctyhocn && CODE_RE2.test(h3.ctyhocn.toUpperCase())).sort((a3, b2) => (a3.distance ?? Infinity) - (b2.distance ?? Infinity));
+    return {
+      nearby: hotels.slice(0, NEARBY_MAX3).map((h3) => ({
+        code: h3.ctyhocn.toUpperCase(),
+        name: h3.name || void 0,
+        sub: h3.distance != null ? `${h3.distance.toFixed(1)} km` : void 0
+      }))
+    };
+  }
+  var hiltonProgram = {
+    id: "hilton",
+    kind: "hotel",
+    name: "Hilton",
+    color: "#104C97",
+    matches: ["www.hilton.com"],
+    requiresSession: false,
+    hotelPlaceholder: "Hotel name, city, airport or code",
+    expiredMessage: "\u26A0 Hilton blocked the request \u2014 refresh the page and try again",
+    currentHotel: () => hiltonHotelFromUrl(location.href),
+    isHotelCode: (text) => CODE_RE2.test(text),
+    pageHotels: () => hiltonPageHotels(document, location.href),
+    async suggestHotels(text) {
+      const res = await fetch(`/dx-customer/autocomplete?input=${encodeURIComponent(text)}&language=en`, {
+        headers: { "dx-map-session-token": crypto.randomUUID() },
+        credentials: "include"
+      });
+      return res.ok ? hiltonParseSuggestions(await res.json()) : [];
+    },
+    // A hotel suggestion already has its code; any other place lists what's around it
+    async hotelsAt(ref) {
+      if (ref.code) return { exact: { code: ref.code, name: ref.label }, nearby: [] };
+      const data = await hiltonQuery("geocode_hotelSummaryOptions", {
+        address: ref.address,
+        placeId: ref.placeId,
+        language: "en",
+        distanceUnit: "km",
+        queryLimit: NEARBY_MAX3
+      });
+      if (data === "SESSION_EXPIRED") throw new Error("Hilton blocked the request");
+      return hiltonParseNearby(data);
+    },
+    async hotelName(code) {
+      const data = await hiltonQuery("hotel", { ctyhocn: code, language: "en" });
+      return data === "SESSION_EXPIRED" ? null : data?.data?.hotel?.name ?? null;
+    },
+    async onHotelSearch(params) {
+      await sleep(HILTON_DELAY_MS);
+      const data = await hiltonQuery("hotel_shopAvailOptions_shopCalendarPropAvail", hiltonCalendarVariables(params));
+      return data === "SESSION_EXPIRED" ? data : hiltonParseCalendar(data, params);
+    }
+  };
+
   // src/entrypoint.js
-  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram];
+  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram];
   var program = ALL_PROGRAMS.find((p3) => p3.matchHost?.(location.hostname) ?? p3.matches.includes(location.hostname));
   if (program) {
     if (document.body) mountPanel(program);

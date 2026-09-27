@@ -165,3 +165,81 @@ test('Marriott: nearby hotels sorted by distance; a hotel suggestion on top of a
   assert.equal(marriottParseNearby(far, { destinationType: 'Hotel Name' }).exact, undefined)
   assert.deepEqual(marriottParseNearby(null, {}), { nearby: [] })
 })
+
+test('Hilton: calendar request for one hotel, parsed to one row per date within the span', async () => {
+  const { hiltonCalendarVariables, hiltonParseCalendar } = await import('../src/programs/hilton.js')
+  const vars = hiltonCalendarVariables({ hotel: 'TYOCICI', start: '2026-11-02', end: '2026-11-30' })
+  assert.equal(vars.ctyhocn, 'TYOCICI')
+  assert.equal(vars.arrivalDate, '2026-11-02')
+  assert.equal(vars.lengthOfStay, 1)
+  assert.deepEqual(vars.specialRates, { hhonors: true })
+  const day = (date, points, name, left) => ({ arrivalDate: date, roomRate: { dailyRmPointsRate: points, numRoomsAvail: left, ratePlan: { ratePlanName: name } } })
+  // The reply covers the whole month; dates before the span start are dropped
+  const data = { data: { hotel: { ctyhocn: 'TYOCICI', shopCalendarAvail: { calendars: [
+    day('2026-11-01', 576000, 'Premium Room Rewards', 22),
+    day('2026-11-02', 130000, 'Standard Room Reward', 22),
+    day('2026-11-03', null, null, 0),
+    { arrivalDate: '2026-11-04', roomRate: null },
+    day('2026-11-30', 543000, 'Premium Room Rewards', 18),
+  ] } } } }
+  const rows = hiltonParseCalendar(data, { hotel: 'TYOCICI', start: '2026-11-02', end: '2026-11-30' })
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room, r.roomsLeft, r.rateType]), [
+    ['2026-11-02', 'TYOCICI', 130000, 'Standard Room Reward', 22, 'Standard'],
+    ['2026-11-30', 'TYOCICI', 543000, 'Premium Room Rewards', 18, 'Premium'],
+  ])
+  assert.equal(rows[1].bookUrl, 'https://www.hilton.com/en/book/reservation/rooms/?ctyhocn=TYOCICI&arrivalDate=2026-11-30&departureDate=2026-12-01&room1NumAdults=1&redeemPts=true')
+  assert.deepEqual(hiltonParseCalendar(null, { hotel: 'TYOCICI', start: '2026-11-01', end: '2026-11-30' }), [])
+})
+
+test('Hilton: hotel code from hotel and booking URLs', async () => {
+  const { hiltonHotelFromUrl } = await import('../src/programs/hilton.js')
+  assert.equal(hiltonHotelFromUrl('https://www.hilton.com/en/hotels/tyocici-conrad-tokyo/'), 'TYOCICI')
+  assert.equal(hiltonHotelFromUrl('https://www.hilton.com/en/hotels/tyocici-conrad-tokyo/rooms/'), 'TYOCICI')
+  assert.equal(hiltonHotelFromUrl('https://www.hilton.com/en/book/reservation/rooms/?ctyhocn=TYOCICI&arrivalDate=2026-11-02'), 'TYOCICI')
+  assert.equal(hiltonHotelFromUrl('https://www.hilton.com/en/locations/japan/tokyo/'), null)
+  assert.equal(hiltonHotelFromUrl('https://www.hilton.com/en/'), null)
+})
+
+test('Hilton: hotels on a search results page, plus the hotel page the user is on', async () => {
+  const { hiltonPageHotels } = await import('../src/programs/hilton.js')
+  const card = (testid, name) => ({ getAttribute: k => k === 'data-testid' ? testid : null, querySelector: sel => sel === 'h3' ? { textContent: name } : null })
+  const doc = { querySelectorAll: () => [card('hotel-card-TYOHITW', ' Hilton\n Tokyo '), card('hotel-card-TYOCICI', 'Conrad Tokyo'), card('hotel-card-TYOCICI', 'Conrad Tokyo')] }
+  assert.deepEqual(hiltonPageHotels(doc, 'https://www.hilton.com/en/locations/japan/tokyo/'), [
+    { code: 'TYOHITW', name: 'Hilton Tokyo' },
+    { code: 'TYOCICI', name: 'Conrad Tokyo' },
+  ])
+  assert.deepEqual(hiltonPageHotels({ querySelectorAll: () => [] }, 'https://www.hilton.com/en/hotels/tyotohi-hilton-tokyo-odaiba/'), [{ code: 'TYOTOHI' }])
+})
+
+test('Hilton: autocomplete hotels carry their code; other places are looked up by id and text', async () => {
+  const { hiltonParseSuggestions } = await import('../src/programs/hilton.js')
+  const p = (place_id, type, main_text, secondary_text, description) => ({ place_id, type, description, structured_formatting: { main_text, secondary_text } })
+  const data = { status: 'OK', predictions: [
+    p('dx-hotel::tyocici', 'property', 'Conrad Tokyo', 'Tokyo, Japan', 'Conrad Tokyo, Tokyo, Japan'),
+    p(null, 'geocode', 'Tokyo', 'Japan', 'Tokyo, Japan'),
+    p('dx-airport::5627', 'airport', 'Haneda Airport', 'Tokyo, Japan', 'Haneda Airport, Tokyo, Japan'),
+    p('dx-poi::x', 'pointOfInterest', '', '', ''),
+  ] }
+  assert.deepEqual(hiltonParseSuggestions(data), [
+    { label: 'Conrad Tokyo', sub: 'Tokyo, Japan', ref: { code: 'TYOCICI', label: 'Conrad Tokyo' } },
+    { label: 'Tokyo', sub: 'Japan', ref: { placeId: null, address: 'Tokyo, Japan', label: 'Tokyo' } },
+    { label: 'Haneda Airport', sub: 'Airport · Tokyo, Japan', ref: { placeId: 'dx-airport::5627', address: 'Haneda Airport, Tokyo, Japan', label: 'Haneda Airport' } },
+  ])
+  assert.deepEqual(hiltonParseSuggestions(null), [])
+})
+
+test('Hilton: a hotel suggestion is that hotel; other places list nearby hotels by distance', async () => {
+  const { hiltonProgram, hiltonParseNearby } = await import('../src/programs/hilton.js')
+  assert.deepEqual(await hiltonProgram.hotelsAt({ code: 'TYOCICI', label: 'Conrad Tokyo' }), { exact: { code: 'TYOCICI', name: 'Conrad Tokyo' }, nearby: [] })
+  const h = (ctyhocn, name, distance) => ({ ctyhocn, name, distance })
+  const data = { data: { geocode: { match: { id: 'dx-airport::5627', type: 'airport' }, hotelSummaryOptions: { hotels: [
+    h('TYOARDI', 'DoubleTree by Hilton Tokyo Ariake', 9.441334),
+    h('TYOTOHI', 'Hilton Tokyo Odaiba', 8.630218),
+    h(null, 'No code', 1),
+  ] } } } }
+  assert.deepEqual(hiltonParseNearby(data), { nearby: [
+    { code: 'TYOTOHI', name: 'Hilton Tokyo Odaiba', sub: '8.6 km' },
+    { code: 'TYOARDI', name: 'DoubleTree by Hilton Tokyo Ariake', sub: '9.4 km' },
+  ] })
+  assert.deepEqual(hiltonParseNearby(null), { nearby: [] })
+})
