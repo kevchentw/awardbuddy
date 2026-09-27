@@ -42,7 +42,7 @@ test('IHG: parses reward offers only, one row per room type', async () => {
     ['2026-10-01', 'TPEKM', 61000, 'Double Superior', 9],
     ['2026-10-01', 'TPEKM', 74000, 'King Deluxe', 2],
   ])
-  assert.match(rows[0].bookUrl, /qDest=TPEKM&qCiD=2026-10-01&qCoD=2026-10-02&qAdlt=1/)
+  assert.equal(rows[0].bookUrl, undefined)  // IHG's room page can't be deep-linked
 })
 
 test('IHG: hotel code from hotel page URLs', async () => {

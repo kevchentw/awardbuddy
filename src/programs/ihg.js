@@ -31,15 +31,6 @@ export function ihgRoomLabel(code) {
   return `${BED_TYPE[code[0]] ?? code[0]} ${ROOM_CATEGORY[code.slice(1, 3)] ?? code.slice(1, 3)}`
 }
 
-export function ihgBookUrl(hotel, date) {
-  const params = new URLSearchParams({
-    qDest: hotel, qCiD: date, qCoD: addDays(date, 1), qAdlt: '1', qChld: '0', qRms: '1',
-    qWch: '3', qSmP: '1', setPMCookies: 'true', qSrt: 'sDD', qIta: '99801505', qSlnP: '', qSHp: '1',
-    qRtP: '6CBARC', srb_u: '1', qSHBrC: '6C',
-  })
-  return `https://www.ihg.com/hotels/us/en/find-hotels/hotel/rooms?${params}`
-}
-
 export function ihgBuildRequest({ hotel, start, end }) {
   return {
     hotelMnemonics: [hotel],
@@ -75,7 +66,6 @@ export function ihgParseCalendar(data) {
           date: day.start, hotel, points,
           room: ihgRoomLabel(inv?.inventoryTypeCode),
           roomsLeft: inv?.numberOfAvailableProducts,
-          bookUrl: ihgBookUrl(hotel, day.start),
         })
       }
     }

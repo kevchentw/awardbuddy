@@ -132,6 +132,9 @@ export const CSS = `
   .ab-hlist-name { flex: 1; }
   .ab-hlist-sub { font-size: 11px; color: #999; white-space: nowrap; }
   .ab-hlist-add { width: 100%; margin-top: 6px; padding: 6px; border: 1px solid var(--ab-color); border-radius: 6px; background: #fff; color: var(--ab-color); font-size: 12px; font-weight: 600; cursor: pointer; }
+  .ab-hotel-cell { font-size: 11px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+  .ab-hotel-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: #555; margin-bottom: 8px; }
+  .ab-hotel-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
   .ab-no-results { text-align: center; color: #999; font-size: 13px; padding: 20px 0; }
   .ab-mode-toggle { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
   .ab-mode-btn { flex: 1; padding: 5px; font-size: 12px; background: #fff; border: none; cursor: pointer; color: #666; }

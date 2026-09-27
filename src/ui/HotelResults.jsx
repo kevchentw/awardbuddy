@@ -11,7 +11,7 @@ const hotelColor = (hotels, code) => HOTEL_COLORS[hotels.indexOf(code) % HOTEL_C
 
 // Month grids with the lowest points per night per hotel on each date.
 // hotels: codes in search order (fixes each hotel's color); fromMonth/toMonth: "YYYY-MM"
-export function HotelCalendar({ results, hotels, fromMonth, toMonth, selected, onSelect }) {
+export function HotelCalendar({ results, hotels, names, fromMonth, toMonth, selected, onSelect }) {
   const byDate = lowestByDate(results)
   const multi = hotels.length > 1
   const months = []
@@ -21,6 +21,11 @@ export function HotelCalendar({ results, hotels, fromMonth, toMonth, selected, o
 
   return (
     <div class="ab-cal-months">
+      {multi && (
+        <div class="ab-hotel-legend">
+          {hotels.map(h => <span key={h}><i style={{ background: hotelColor(hotels, h) }} />{names[h] ?? h}</span>)}
+        </div>
+      )}
       {months.map(([y, m]) => {
         const firstDow = new Date(y, m - 1, 1).getDay()
         const daysInMonth = new Date(y, m, 0).getDate()
@@ -40,7 +45,7 @@ export function HotelCalendar({ results, hotels, fromMonth, toMonth, selected, o
                     <div class="ab-cal-day-num">{i + 1}</div>
                     {hotels.filter(h => avail[h] != null).map(h => (
                       <span class="ab-cal-m" key={h} style={{ background: hotelColor(hotels, h) }}>
-                        {multi && `${h} `}{k(avail[h])}
+                        {k(avail[h])}
                       </span>
                     ))}
                   </div>
@@ -55,7 +60,7 @@ export function HotelCalendar({ results, hotels, fromMonth, toMonth, selected, o
 }
 
 // Sortable, filterable list of every reward rate found
-export function HotelTable({ results, hotels, date, onClearDate }) {
+export function HotelTable({ results, hotels, names, date, onClearDate }) {
   const [sort, setSort] = useState({ key: 'date', dir: 1 })
   const [filters, setFilters] = useState({ hotel: null, dow: null })
   const [cheapest, setCheapest] = useState(true)
@@ -74,10 +79,11 @@ export function HotelTable({ results, hotels, date, onClearDate }) {
   const totalPages = Math.ceil(rows.length / PAGE_SIZE)
   const pg = Math.min(page, Math.max(0, totalPages - 1))
   const multi = hotels.length > 1
-  const hotelName = code => results.find(r => r.hotel === code && r.hotelName)?.hotelName ?? code
+  const hasBook = results.some(r => r.bookUrl)
+  const hotelName = code => names[code] ?? code
 
   const pills = [
-    multi && { id: 'hotel', label: 'Hotel', display: filters.hotel,
+    multi && { id: 'hotel', label: 'Hotel', display: filters.hotel && hotelName(filters.hotel),
       items: [[null, 'All hotels'], ...hotels.map(h => [h, hotelName(h), { color: hotelColor(hotels, h) }])] },
     { id: 'dow', label: 'Day of week', display: DOW_LABELS[filters.dow],
       items: [[null, 'Any day'], ...[1, 2, 3, 4, 5, 6, 0].map(n => [n, DOW_LABELS[n]])] },
@@ -107,17 +113,17 @@ export function HotelTable({ results, hotels, date, onClearDate }) {
           <th>Room</th>
           {th('points', 'Points')}
           <th>Left</th>
-          <th />
+          {hasBook && <th />}
         </tr></thead>
         <tbody>
           {rows.slice(pg * PAGE_SIZE, (pg + 1) * PAGE_SIZE).map((r, i) => (
             <tr key={i}>
               <td>{r.date}</td>
-              {multi && <td class="ab-route" style={{ color: hotelColor(hotels, r.hotel) }} title={r.hotelName}>{r.hotel}</td>}
+              {multi && <td class="ab-hotel-cell" style={{ color: hotelColor(hotels, r.hotel) }} title={`${hotelName(r.hotel)} (${r.hotel})`}>{hotelName(r.hotel)}</td>}
               <td style={{ fontSize: 11, color: '#555' }}>{r.room ?? ''}</td>
               <td class="ab-cab-miles">{r.points.toLocaleString()}</td>
               <td style={{ color: '#888' }}>{r.roomsLeft ?? ''}</td>
-              <td>{r.bookUrl && <a href={r.bookUrl} target="_blank" style={{ color: 'var(--ab-color)', fontSize: 11 }}>Book ↗</a>}</td>
+              {hasBook && <td>{r.bookUrl && <a href={r.bookUrl} target="_blank" style={{ color: 'var(--ab-color)', fontSize: 11 }}>Book ↗</a>}</td>}
             </tr>
           ))}
         </tbody>

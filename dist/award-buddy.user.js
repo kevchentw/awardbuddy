@@ -3901,6 +3901,9 @@
   .ab-hlist-name { flex: 1; }
   .ab-hlist-sub { font-size: 11px; color: #999; white-space: nowrap; }
   .ab-hlist-add { width: 100%; margin-top: 6px; padding: 6px; border: 1px solid var(--ab-color); border-radius: 6px; background: #fff; color: var(--ab-color); font-size: 12px; font-weight: 600; cursor: pointer; }
+  .ab-hotel-cell { font-size: 11px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+  .ab-hotel-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: #555; margin-bottom: 8px; }
+  .ab-hotel-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
   .ab-no-results { text-align: center; color: #999; font-size: 13px; padding: 20px 0; }
   .ab-mode-toggle { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
   .ab-mode-btn { flex: 1; padding: 5px; font-size: 12px; background: #fff; border: none; cursor: pointer; color: #666; }
@@ -4508,51 +4511,54 @@
   var pad3 = (n2) => String(n2).padStart(2, "0");
   var k4 = (points) => `${(points / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
   var hotelColor = (hotels, code) => HOTEL_COLORS[hotels.indexOf(code) % HOTEL_COLORS.length];
-  function HotelCalendar({ results, hotels, fromMonth, toMonth, selected, onSelect }) {
+  function HotelCalendar({ results, hotels, names, fromMonth, toMonth, selected, onSelect }) {
     const byDate = lowestByDate(results);
     const multi = hotels.length > 1;
     const months = [];
     let [y3, m3] = fromMonth.split("-").map(Number);
     const [ty, tm] = toMonth.split("-").map(Number);
     for (; y3 < ty || y3 === ty && m3 <= tm; m3 > 11 ? (y3++, m3 = 1) : m3++) months.push([y3, m3]);
-    return /* @__PURE__ */ u3("div", { class: "ab-cal-months", children: months.map(([y4, m4]) => {
-      const firstDow = new Date(y4, m4 - 1, 1).getDay();
-      const daysInMonth = new Date(y4, m4, 0).getDate();
-      return /* @__PURE__ */ u3("div", { class: "ab-cal-month", children: [
-        /* @__PURE__ */ u3("div", { class: "ab-cal-month-name", children: [
-          MONTH_NAMES[m4 - 1],
-          " ",
-          y4
-        ] }),
-        /* @__PURE__ */ u3("div", { class: "ab-cal-grid", children: [
-          DOW.map((d3) => /* @__PURE__ */ u3("div", { class: "ab-cal-dow", children: d3 }, d3)),
-          Array.from({ length: firstDow }, (_3, i3) => /* @__PURE__ */ u3("div", {}, `b${i3}`)),
-          Array.from({ length: daysInMonth }, (_3, i3) => {
-            const date = `${y4}-${pad3(m4)}-${pad3(i3 + 1)}`;
-            const avail = byDate[date];
-            if (!avail) return /* @__PURE__ */ u3("div", { class: "ab-cal-day", children: /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }) }, i3);
-            return /* @__PURE__ */ u3(
-              "div",
-              {
-                class: cx("ab-cal-day avail", selected === date && "sel"),
-                title: "Show this date only",
-                onClick: () => onSelect(selected === date ? null : date),
-                children: [
-                  /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }),
-                  hotels.filter((h3) => avail[h3] != null).map((h3) => /* @__PURE__ */ u3("span", { class: "ab-cal-m", style: { background: hotelColor(hotels, h3) }, children: [
-                    multi && `${h3} `,
-                    k4(avail[h3])
-                  ] }, h3))
-                ]
-              },
-              i3
-            );
-          })
-        ] })
-      ] }, `${y4}-${m4}`);
-    }) });
+    return /* @__PURE__ */ u3("div", { class: "ab-cal-months", children: [
+      multi && /* @__PURE__ */ u3("div", { class: "ab-hotel-legend", children: hotels.map((h3) => /* @__PURE__ */ u3("span", { children: [
+        /* @__PURE__ */ u3("i", { style: { background: hotelColor(hotels, h3) } }),
+        names[h3] ?? h3
+      ] }, h3)) }),
+      months.map(([y4, m4]) => {
+        const firstDow = new Date(y4, m4 - 1, 1).getDay();
+        const daysInMonth = new Date(y4, m4, 0).getDate();
+        return /* @__PURE__ */ u3("div", { class: "ab-cal-month", children: [
+          /* @__PURE__ */ u3("div", { class: "ab-cal-month-name", children: [
+            MONTH_NAMES[m4 - 1],
+            " ",
+            y4
+          ] }),
+          /* @__PURE__ */ u3("div", { class: "ab-cal-grid", children: [
+            DOW.map((d3) => /* @__PURE__ */ u3("div", { class: "ab-cal-dow", children: d3 }, d3)),
+            Array.from({ length: firstDow }, (_3, i3) => /* @__PURE__ */ u3("div", {}, `b${i3}`)),
+            Array.from({ length: daysInMonth }, (_3, i3) => {
+              const date = `${y4}-${pad3(m4)}-${pad3(i3 + 1)}`;
+              const avail = byDate[date];
+              if (!avail) return /* @__PURE__ */ u3("div", { class: "ab-cal-day", children: /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }) }, i3);
+              return /* @__PURE__ */ u3(
+                "div",
+                {
+                  class: cx("ab-cal-day avail", selected === date && "sel"),
+                  title: "Show this date only",
+                  onClick: () => onSelect(selected === date ? null : date),
+                  children: [
+                    /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }),
+                    hotels.filter((h3) => avail[h3] != null).map((h3) => /* @__PURE__ */ u3("span", { class: "ab-cal-m", style: { background: hotelColor(hotels, h3) }, children: k4(avail[h3]) }, h3))
+                  ]
+                },
+                i3
+              );
+            })
+          ] })
+        ] }, `${y4}-${m4}`);
+      })
+    ] });
   }
-  function HotelTable({ results, hotels, date, onClearDate }) {
+  function HotelTable({ results, hotels, names, date, onClearDate }) {
     const [sort, setSort] = d2({ key: "date", dir: 1 });
     const [filters, setFilters] = d2({ hotel: null, dow: null });
     const [cheapest, setCheapest] = d2(true);
@@ -4567,12 +4573,13 @@
     const totalPages = Math.ceil(rows.length / PAGE_SIZE2);
     const pg = Math.min(page, Math.max(0, totalPages - 1));
     const multi = hotels.length > 1;
-    const hotelName = (code) => results.find((r3) => r3.hotel === code && r3.hotelName)?.hotelName ?? code;
+    const hasBook = results.some((r3) => r3.bookUrl);
+    const hotelName = (code) => names[code] ?? code;
     const pills = [
       multi && {
         id: "hotel",
         label: "Hotel",
-        display: filters.hotel,
+        display: filters.hotel && hotelName(filters.hotel),
         items: [[null, "All hotels"], ...hotels.map((h3) => [h3, hotelName(h3), { color: hotelColor(hotels, h3) }])]
       },
       {
@@ -4627,15 +4634,15 @@
           /* @__PURE__ */ u3("th", { children: "Room" }),
           th("points", "Points"),
           /* @__PURE__ */ u3("th", { children: "Left" }),
-          /* @__PURE__ */ u3("th", {})
+          hasBook && /* @__PURE__ */ u3("th", {})
         ] }) }),
         /* @__PURE__ */ u3("tbody", { children: rows.slice(pg * PAGE_SIZE2, (pg + 1) * PAGE_SIZE2).map((r3, i3) => /* @__PURE__ */ u3("tr", { children: [
           /* @__PURE__ */ u3("td", { children: r3.date }),
-          multi && /* @__PURE__ */ u3("td", { class: "ab-route", style: { color: hotelColor(hotels, r3.hotel) }, title: r3.hotelName, children: r3.hotel }),
+          multi && /* @__PURE__ */ u3("td", { class: "ab-hotel-cell", style: { color: hotelColor(hotels, r3.hotel) }, title: `${hotelName(r3.hotel)} (${r3.hotel})`, children: hotelName(r3.hotel) }),
           /* @__PURE__ */ u3("td", { style: { fontSize: 11, color: "#555" }, children: r3.room ?? "" }),
           /* @__PURE__ */ u3("td", { class: "ab-cab-miles", children: r3.points.toLocaleString() }),
           /* @__PURE__ */ u3("td", { style: { color: "#888" }, children: r3.roomsLeft ?? "" }),
-          /* @__PURE__ */ u3("td", { children: r3.bookUrl && /* @__PURE__ */ u3("a", { href: r3.bookUrl, target: "_blank", style: { color: "var(--ab-color)", fontSize: 11 }, children: "Book \u2197" }) })
+          hasBook && /* @__PURE__ */ u3("td", { children: r3.bookUrl && /* @__PURE__ */ u3("a", { href: r3.bookUrl, target: "_blank", style: { color: "var(--ab-color)", fontSize: 11 }, children: "Book \u2197" }) })
         ] }, i3)) })
       ] }),
       totalPages > 1 && /* @__PURE__ */ u3(Pagination, { page: pg, totalPages, total: rows.length, setPage })
@@ -4805,21 +4812,34 @@
       // On a hotel page with nothing saved, start with that hotel
       hotels: hotels.length ? hotels : current ? [current] : [],
       fromMonth: monthISO(0),
-      toMonth: monthISO(2),
-      names: saved.names && typeof saved.names === "object" ? saved.names : {}
-      // code → hotel name, from the site's cards
+      toMonth: monthISO(2)
     };
+  }
+  function initialNames(program2) {
+    try {
+      const n2 = JSON.parse(localStorage.getItem(storeKey(program2)))?.names;
+      return n2 && typeof n2 === "object" ? n2 : {};
+    } catch {
+      return {};
+    }
   }
   function HotelSearch({ program: program2, session }) {
     const [form, setForm] = d2(() => initialForm(program2));
     const set = (patch) => setForm((f4) => ({ ...f4, ...patch }));
+    const [names, setNames] = d2(() => initialNames(program2));
     h2(() => {
-      const { hotels: hotels2, names } = form;
       try {
-        localStorage.setItem(storeKey(program2), JSON.stringify({ hotels: hotels2, names }));
+        localStorage.setItem(storeKey(program2), JSON.stringify({ hotels: form.hotels, names }));
       } catch {
       }
-    }, [form]);
+    }, [form, names]);
+    h2(() => {
+      if (!program2.hotelName) return;
+      for (const code of form.hotels.filter((c3) => !names[c3])) {
+        program2.hotelName(code).then((name) => name && setNames((n2) => ({ ...n2, [code]: name })), () => {
+        });
+      }
+    }, [form.hotels]);
     const run = useSearchRun(form);
     const { ctl, setStatus, setProgress } = run;
     const [results, setResults] = d2([]);
@@ -4864,7 +4884,7 @@
         done++;
         setProgress(done / total * 100);
         setStatus(`${done} / ${total} done`);
-        all.push(...(result || []).map((r3) => ({ hotelName: f4.names[r3.hotel], ...r3 })));
+        all.push(...result || []);
         setResults([...all]);
       }));
       await runPool(tasks, CONCURRENCY);
@@ -4882,14 +4902,17 @@
       } else if (all.length) setStatus((s3) => `${s3} (${all.length} found so far)`);
     }
     const summary2 = [
-      hotels.map((c3) => form.names[c3] ?? c3).join(", ") || "?",
+      hotels.map((c3) => names[c3] ?? c3).join(", ") || "?",
       `${form.fromMonth} \u2013 ${form.toMonth}`
     ].join(" \xB7 ");
     return /* @__PURE__ */ u3(S, { children: [
       run.collapsed ? /* @__PURE__ */ u3(SearchSummary, { run, text: summary2 }) : /* @__PURE__ */ u3(S, { children: [
         /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
           /* @__PURE__ */ u3("label", { children: "Hotels" }),
-          /* @__PURE__ */ u3(HotelPicker, { program: program2, value: form.hotels, names: form.names, onChange: (hotels2, names) => set({ hotels: hotels2, names }) })
+          /* @__PURE__ */ u3(HotelPicker, { program: program2, value: form.hotels, names, onChange: (hotels2, n2) => {
+            set({ hotels: hotels2 });
+            setNames(n2);
+          } })
         ] }) }),
         /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
           /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
@@ -4904,13 +4927,14 @@
           {
             results,
             hotels: shown.hotels,
+            names,
             fromMonth: shown.fromMonth,
             toMonth: shown.toMonth,
             selected: date,
             onSelect: setDate
           }
         ),
-        /* @__PURE__ */ u3(HotelTable, { results, hotels: shown?.hotels ?? [], date, onClearDate: () => setDate(null) }),
+        /* @__PURE__ */ u3(HotelTable, { results, hotels: shown?.hotels ?? [], names, date, onClearDate: () => setDate(null) }),
         noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
       ] })
     ] });
@@ -8112,27 +8136,6 @@
     if (!code || code.length < 3) return code;
     return `${BED_TYPE[code[0]] ?? code[0]} ${ROOM_CATEGORY[code.slice(1, 3)] ?? code.slice(1, 3)}`;
   }
-  function ihgBookUrl(hotel, date) {
-    const params = new URLSearchParams({
-      qDest: hotel,
-      qCiD: date,
-      qCoD: addDays(date, 1),
-      qAdlt: "1",
-      qChld: "0",
-      qRms: "1",
-      qWch: "3",
-      qSmP: "1",
-      setPMCookies: "true",
-      qSrt: "sDD",
-      qIta: "99801505",
-      qSlnP: "",
-      qSHp: "1",
-      qRtP: "6CBARC",
-      srb_u: "1",
-      qSHBrC: "6C"
-    });
-    return `https://www.ihg.com/hotels/us/en/find-hotels/hotel/rooms?${params}`;
-  }
   function ihgBuildRequest({ hotel, start, end }) {
     return {
       hotelMnemonics: [hotel],
@@ -8167,8 +8170,7 @@
             hotel,
             points,
             room: ihgRoomLabel(inv?.inventoryTypeCode),
-            roomsLeft: inv?.numberOfAvailableProducts,
-            bookUrl: ihgBookUrl(hotel, day.start)
+            roomsLeft: inv?.numberOfAvailableProducts
           });
         }
       }

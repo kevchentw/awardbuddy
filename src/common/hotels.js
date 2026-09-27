@@ -1,6 +1,7 @@
 // Hotel award results shared by every hotel program.
 // A result is one bookable reward-night rate (one room type) for one hotel and date:
-//   { date: 'YYYY-MM-DD', hotel: code, hotelName?, points (for that one night), room?, roomsLeft?, bookUrl? }
+//   { date: 'YYYY-MM-DD', hotel: code, points (for that one night), room?, roomsLeft?, bookUrl? }
+// Hotel names live separately (code → name) since they come from the picker, not the search
 
 // Colors for telling hotels apart in the calendar; wraps around past the last one
 export const HOTEL_COLORS = ['#0369a1', '#b45309', '#7c3aed', '#059669', '#be123c', '#374151']

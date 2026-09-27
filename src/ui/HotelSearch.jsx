@@ -32,17 +32,27 @@ function initialForm(program) {
     // On a hotel page with nothing saved, start with that hotel
     hotels: hotels.length ? hotels : current ? [current] : [],
     fromMonth: monthISO(0), toMonth: monthISO(2),
-    names: saved.names && typeof saved.names === 'object' ? saved.names : {},  // code → hotel name, from the site's cards
   }
+}
+function initialNames(program) {
+  try { const n = JSON.parse(localStorage.getItem(storeKey(program)))?.names; return n && typeof n === 'object' ? n : {} } catch { return {} }
 }
 
 export function HotelSearch({ program, session }) {
   const [form, setForm] = useState(() => initialForm(program))
   const set = patch => setForm(f => ({ ...f, ...patch }))
+  // code → hotel name; kept out of form so a name arriving mid-search doesn't restart it
+  const [names, setNames] = useState(() => initialNames(program))
   useEffect(() => {
-    const { hotels, names } = form
-    try { localStorage.setItem(storeKey(program), JSON.stringify({ hotels, names })) } catch {}
-  }, [form])
+    try { localStorage.setItem(storeKey(program), JSON.stringify({ hotels: form.hotels, names })) } catch {}
+  }, [form, names])
+  // Look up names for hotels added by code (or saved before names existed)
+  useEffect(() => {
+    if (!program.hotelName) return
+    for (const code of form.hotels.filter(c => !names[c])) {
+      program.hotelName(code).then(name => name && setNames(n => ({ ...n, [code]: name })), () => {})
+    }
+  }, [form.hotels])
 
   const run = useSearchRun(form)
   const { ctl, setStatus, setProgress } = run
@@ -84,7 +94,7 @@ export function HotelSearch({ program, session }) {
       done++
       setProgress(done / total * 100)
       setStatus(`${done} / ${total} done`)
-      all.push(...(result || []).map(r => ({ hotelName: f.names[r.hotel], ...r })))
+      all.push(...(result || []))
       setResults([...all])
     }))
 
@@ -101,7 +111,7 @@ export function HotelSearch({ program, session }) {
   }
 
   const summary = [
-    hotels.map(c => form.names[c] ?? c).join(', ') || '?',
+    hotels.map(c => names[c] ?? c).join(', ') || '?',
     `${form.fromMonth} – ${form.toMonth}`,
   ].join(' · ')
 
@@ -111,7 +121,7 @@ export function HotelSearch({ program, session }) {
       <div class="ab-row">
         <div class="ab-field">
           <label>Hotels</label>
-          <HotelPicker program={program} value={form.hotels} names={form.names} onChange={(hotels, names) => set({ hotels, names })} />
+          <HotelPicker program={program} value={form.hotels} names={names} onChange={(hotels, n) => { set({ hotels }); setNames(n) }} />
         </div>
       </div>
       <div class="ab-row">
@@ -124,9 +134,9 @@ export function HotelSearch({ program, session }) {
       </>}
       <SearchControls run={run} session={session} onSearch={search} />
       <div>
-        {shown && results.length > 0 && <HotelCalendar results={results} hotels={shown.hotels} fromMonth={shown.fromMonth} toMonth={shown.toMonth}
+        {shown && results.length > 0 && <HotelCalendar results={results} hotels={shown.hotels} names={names} fromMonth={shown.fromMonth} toMonth={shown.toMonth}
           selected={date} onSelect={setDate} />}
-        <HotelTable results={results} hotels={shown?.hotels ?? []} date={date} onClearDate={() => setDate(null)} />
+        <HotelTable results={results} hotels={shown?.hotels ?? []} names={names} date={date} onClearDate={() => setDate(null)} />
         {noResults && <div class="ab-no-results">No award availability found.</div>}
       </div>
     </>
