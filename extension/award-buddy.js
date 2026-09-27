@@ -4532,7 +4532,7 @@
       })
     ] });
   }
-  function HotelTable({ results, hotels, names, date, onClearDate }) {
+  function HotelTable({ results, hotels, names, date, onClearDate, sharedPills = [], shared = {}, onSharedChange }) {
     const [sort, setSort] = d2({ key: "date", dir: 1 });
     const [filters, setFilters] = d2({ hotel: null, dow: null });
     const [cheapest, setCheapest] = d2(true);
@@ -4550,6 +4550,7 @@
     const hasBook = results.some((r3) => r3.bookUrl);
     const hotelName = (code) => names[code] ?? code;
     const pills = [
+      ...sharedPills,
       multi && {
         id: "hotel",
         label: "Hotel",
@@ -4582,8 +4583,10 @@
       );
     }
     return /* @__PURE__ */ u3("div", { children: [
-      /* @__PURE__ */ u3(FilterBar, { pills, filters, onChange: (f4) => {
-        setFilters(f4);
+      /* @__PURE__ */ u3(FilterBar, { pills, filters: { ...shared, ...filters }, onChange: (f4) => {
+        const own = { hotel: f4.hotel, dow: f4.dow };
+        if (sharedPills.some((p3) => f4[p3.id] !== shared[p3.id])) onSharedChange(f4);
+        else setFilters(own);
         setPage(0);
       }, children: [
         date && /* @__PURE__ */ u3("button", { class: "ab-flt-btn active", onClick: onClearDate, children: [
@@ -4821,6 +4824,7 @@
     const [date, setDate] = d2(null);
     const [noResults, setNoResults] = d2(false);
     const [rateType, setRateType] = d2(null);
+    const [roomType, setRoomType] = d2(null);
     const latest = A2();
     latest.current = form;
     const hotels = form.hotels;
@@ -4878,7 +4882,25 @@
     }
     const rateTypes = ["Standard", "Premium"].filter((t3) => results.some((r3) => r3.rateType === t3));
     const activeRateType = rateTypes.includes(rateType) ? rateType : null;
-    const visible = activeRateType ? results.filter((r3) => r3.rateType === activeRateType) : results;
+    const lowest = {};
+    for (const r3 of results) if (r3.roomType && (!activeRateType || r3.rateType === activeRateType) && !(lowest[r3.roomType] <= r3.points)) lowest[r3.roomType] = r3.points;
+    const roomTypes = Object.keys(lowest).sort((a3, b2) => lowest[a3] - lowest[b2]);
+    const activeRoomType = roomTypes.includes(roomType) ? roomType : null;
+    const visible = results.filter((r3) => (!activeRateType || r3.rateType === activeRateType) && (!activeRoomType || r3.roomType === activeRoomType));
+    const pills = [
+      rateTypes.length > 1 && {
+        id: "rateType",
+        label: "Reward",
+        display: activeRateType && `${activeRateType} only`,
+        items: [[null, "Standard & Premium"], ["Standard", "Standard only"], ["Premium", "Premium only"]]
+      },
+      (roomTypes.length > 1 || activeRoomType) && {
+        id: "roomType",
+        label: "Room",
+        display: activeRoomType,
+        items: [[null, "All rooms"], ...roomTypes.map((t3) => [t3, t3])]
+      }
+    ].filter(Boolean);
     const summary2 = [
       hotels.map((c3) => names[c3] ?? c3).join(", ") || "?",
       `${form.fromMonth} \u2013 ${form.toMonth}`
@@ -4900,17 +4922,6 @@
       ] }),
       /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
       /* @__PURE__ */ u3("div", { children: [
-        rateTypes.length > 1 && /* @__PURE__ */ u3(FilterBar, { filters: { rateType: activeRateType }, onChange: (f4) => {
-          setRateType(f4.rateType);
-          setDate(null);
-        }, pills: [
-          {
-            id: "rateType",
-            label: "Reward",
-            display: activeRateType && `${activeRateType} only`,
-            items: [[null, "Standard & Premium"], ["Standard", "Standard only"], ["Premium", "Premium only"]]
-          }
-        ] }),
         shown && results.length > 0 && /* @__PURE__ */ u3(
           HotelCalendar,
           {
@@ -4923,7 +4934,23 @@
             onSelect: setDate
           }
         ),
-        /* @__PURE__ */ u3(HotelTable, { results: visible, hotels: shown?.hotels ?? [], names, date, onClearDate: () => setDate(null) }),
+        /* @__PURE__ */ u3(
+          HotelTable,
+          {
+            results: visible,
+            hotels: shown?.hotels ?? [],
+            names,
+            date,
+            onClearDate: () => setDate(null),
+            sharedPills: pills,
+            shared: { rateType: activeRateType, roomType: activeRoomType },
+            onSharedChange: (f4) => {
+              setRateType(f4.rateType);
+              setRoomType(f4.roomType);
+              setDate(null);
+            }
+          }
+        ),
         noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
       ] })
     ] });
@@ -8581,8 +8608,164 @@
     }
   };
 
+  // src/programs/hyatt.js
+  var HYATT_DELAY_MS = 600;
+  var NEARBY_RADIUS_KM = 80;
+  var NEARBY_MAX4 = 30;
+  var CODE_RE3 = /^[A-Z0-9]{5}$/;
+  var ROOM_TYPES = {
+    STANDARD_ROOM: "Standard Room",
+    CLUB: "Club Access",
+    STANDARD_SUITE: "Standard Suite",
+    PREMIUM_SUITE: "Premium Suite"
+  };
+  var PEAK_LEVELS = {
+    SUPER_OFF_PEAK: "Super off-peak",
+    OFF_PEAK: "Off-peak",
+    STANDARD: "Standard",
+    PEAK: "Peak",
+    SUPER_PEAK: "Super peak"
+  };
+  async function hyattGet(path) {
+    const res = await fetch(path, { headers: { accept: "application/json" }, credentials: "include", redirect: "manual" });
+    if (res.type === "opaqueredirect" || res.status === 403 || res.status === 429) return "SESSION_EXPIRED";
+    if (!res.ok) throw new Error(`Hyatt ${res.status}`);
+    return res.json();
+  }
+  var hyattCalendarUrl = ({ hotel, start, end }) => `/explore-hotels/service/avail/days?spiritCode=${hotel.toLowerCase()}&startDate=${start}&endDate=${end}&numAdults=1&numChildren=0&roomQuantity=1&los=1&isMock=false`;
+  var hyattBookUrl = (hotel, date, nextDate) => `https://www.hyatt.com/shop/rooms/${hotel}?checkinDate=${date}&checkoutDate=${nextDate}&rooms=1&adults=1&kids=0&rateFilter=woh`;
+  var nextDay2 = (date) => {
+    const d3 = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+    d3.setUTCDate(d3.getUTCDate() + 1);
+    return d3.toISOString().slice(0, 10);
+  };
+  function hyattParseCalendar(data, { hotel, start, end }) {
+    const results = [];
+    for (const [date, rooms] of Object.entries(data?.days ?? {})) {
+      if (date < start || date > end) continue;
+      for (const [type, rate] of Object.entries(rooms ?? {})) {
+        const points = rate?.pointsValue?.[0];
+        if (!(points > 0)) continue;
+        const level = PEAK_LEVELS[rate.pointsLevel];
+        const room = ROOM_TYPES[type] ?? type;
+        results.push({ date, hotel, points, room: level ? `${room} \xB7 ${level}` : room, roomType: room, bookUrl: hyattBookUrl(hotel, date, nextDay2(date)) });
+      }
+    }
+    return results.sort((a3, b2) => a3.date.localeCompare(b2.date) || a3.points - b2.points);
+  }
+  function hyattHotelFromUrl(url) {
+    const u4 = new URL(url);
+    const code = u4.searchParams.get("spiritCode") ?? u4.pathname.match(/^\/shop\/(?:rooms\/)?([a-z0-9]{5})(?:\/|$)/i)?.[1] ?? u4.pathname.match(/^\/[a-z-]+\/(?:[a-z]{2}-[A-Z]{2}\/)?([a-z0-9]{5})-[a-z0-9-]+\/?/i)?.[1];
+    return code && CODE_RE3.test(code.toUpperCase()) ? code.toUpperCase() : null;
+  }
+  function hyattPageHotels(doc, url) {
+    const hotels = [];
+    for (const card of doc.querySelectorAll('div[data-js="hotel-card"][data-spirit-code]')) {
+      const raw = card.getAttribute("data-spirit-code");
+      const code = raw.toUpperCase();
+      if (!CODE_RE3.test(code) || hotels.some((h3) => h3.code === code)) continue;
+      const name = card.querySelector(`[id="map-result-card-title-${raw}"]`)?.textContent.replace(/\s+/g, " ").trim();
+      hotels.push({ code, name: name || void 0 });
+    }
+    const current = hyattHotelFromUrl(url);
+    if (current && !hotels.some((h3) => h3.code === current)) hotels.unshift({ code: current });
+    return hotels;
+  }
+  function hyattParseSuggestions(data) {
+    const hotels = (data?.properties ?? []).filter((p3) => p3?.spiritCode && CODE_RE3.test(p3.spiritCode.toUpperCase())).map((p3) => {
+      const code = p3.spiritCode.toUpperCase();
+      return { label: p3.label, sub: code, ref: { code, label: p3.label } };
+    });
+    const cities = (data?.cities ?? []).filter((c3) => c3?.label).map((c3) => ({
+      label: c3.city || c3.label,
+      sub: [c3.province, c3.country].filter(Boolean).join(", ") || void 0,
+      ref: { place: c3.label, label: c3.label }
+    }));
+    const places = (data?.suggestions ?? []).filter((s3) => s3?.label).map((s3) => ({
+      label: s3.label,
+      sub: s3.types?.includes("airport") ? "Airport" : void 0,
+      ref: { place: s3.label, label: s3.label }
+    }));
+    return [...cities, ...places, ...hotels];
+  }
+  function hyattParseCenter(html) {
+    const cp = String(html ?? "").replace(/\\"/g, '"').match(/"centerPoint":\{[^}]*\}/)?.[0];
+    const lat = +cp?.match(/"latitude":(-?[\d.]+)/)?.[1];
+    const lon = +cp?.match(/"longitude":(-?[\d.]+)/)?.[1];
+    return Number.isFinite(lat) && Number.isFinite(lon) && cp ? { lat, lon } : null;
+  }
+  function hyattNearby(directory2, { lat, lon }) {
+    const rad = Math.PI / 180;
+    const km = (lat2, lon2) => {
+      const x2 = Math.sin((lat2 - lat) * rad / 2) ** 2 + Math.cos(lat * rad) * Math.cos(lat2 * rad) * Math.sin((lon2 - lon) * rad / 2) ** 2;
+      return 12742 * Math.asin(Math.sqrt(x2));
+    };
+    const hotels = [];
+    for (const h3 of Object.values(directory2 ?? {})) {
+      const g2 = h3?.location?.geolocation;
+      const code = h3?.spiritCode?.toUpperCase();
+      if (!code || !CODE_RE3.test(code) || g2?.latitude == null || g2?.longitude == null) continue;
+      if (h3.booking?.isExternal || h3.openStatus?.key === "NOT_BOOKABLE" || h3.openStatus === "NOT_BOOKABLE") continue;
+      const d3 = km(g2.latitude, g2.longitude);
+      if (d3 <= NEARBY_RADIUS_KM) hotels.push({ code, name: h3.name || void 0, d: d3, category: h3.awardCategory?.label });
+    }
+    hotels.sort((a3, b2) => a3.d - b2.d);
+    return hotels.slice(0, NEARBY_MAX4).map((h3) => ({
+      code: h3.code,
+      name: h3.name,
+      sub: [`${h3.d.toFixed(1)} km`, h3.category && `Category ${h3.category}`].filter(Boolean).join(" \xB7 ")
+    }));
+  }
+  var directory;
+  function hyattDirectory() {
+    directory ?? (directory = hyattGet("/explore-hotels/service/hotels").then((d3) => {
+      if (d3 === "SESSION_EXPIRED" || !d3 || typeof d3 !== "object") throw new Error("Hyatt blocked the request");
+      return d3;
+    }));
+    return directory.catch((err) => {
+      directory = void 0;
+      throw err;
+    });
+  }
+  var hyattProgram = {
+    id: "hyatt",
+    kind: "hotel",
+    name: "Hyatt",
+    color: "#0D2D52",
+    matches: ["www.hyatt.com"],
+    requiresSession: false,
+    hotelPlaceholder: "Hotel name, city, airport or code",
+    expiredMessage: "\u26A0 Hyatt blocked the request \u2014 refresh the page and try again",
+    currentHotel: () => hyattHotelFromUrl(location.href),
+    isHotelCode: (text) => CODE_RE3.test(text),
+    pageHotels: () => hyattPageHotels(document, location.href),
+    async suggestHotels(text) {
+      const res = await fetch(`/quickbook/autocomplete?query=${encodeURIComponent(text)}&locale=en-US&includeGoogleSuggestions=true`, { credentials: "include" });
+      return res.ok ? hyattParseSuggestions(await res.json()) : [];
+    },
+    // A hotel suggestion already has its code; any other place lists the hotels around it
+    async hotelsAt(ref) {
+      if (ref.code) return { exact: { code: ref.code, name: ref.label }, nearby: [] };
+      const [res, dir] = await Promise.all([
+        fetch(`/search/hotels/en-US/${encodeURIComponent(ref.place)}`, { credentials: "include" }),
+        hyattDirectory()
+      ]);
+      if (!res.ok) throw new Error(`Hyatt ${res.status}`);
+      const center = hyattParseCenter(await res.text());
+      return { nearby: center ? hyattNearby(dir, center) : [] };
+    },
+    async hotelName(code) {
+      return (await hyattDirectory())[code.toLowerCase()]?.name ?? null;
+    },
+    async onHotelSearch(params) {
+      await sleep(HYATT_DELAY_MS);
+      const data = await hyattGet(hyattCalendarUrl(params));
+      return data === "SESSION_EXPIRED" ? data : hyattParseCalendar(data, params);
+    }
+  };
+
   // src/entrypoint.js
-  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram];
+  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram];
   var program = ALL_PROGRAMS.find((p3) => p3.matchHost?.(location.hostname) ?? p3.matches.includes(location.hostname));
   if (program) {
     if (document.body) mountPanel(program);

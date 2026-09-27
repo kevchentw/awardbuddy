@@ -243,3 +243,90 @@ test('Hilton: a hotel suggestion is that hotel; other places list nearby hotels 
   ] })
   assert.deepEqual(hiltonParseNearby(null), { nearby: [] })
 })
+
+test('Hyatt: calendar URL and one row per date and room type, within the span', async () => {
+  const { hyattCalendarUrl, hyattParseCalendar } = await import('../src/programs/hyatt.js')
+  assert.equal(hyattCalendarUrl({ hotel: 'TYOPH', start: '2026-11-02', end: '2026-11-30' }),
+    '/explore-hotels/service/avail/days?spiritCode=tyoph&startDate=2026-11-02&endDate=2026-11-30&numAdults=1&numChildren=0&roomQuantity=1&los=1&isMock=false')
+  const data = { days: {
+    '2026-11-03': { STANDARD_ROOM: { pointsValue: [55000], pointsLevel: 'STANDARD', rate: null }, PREMIUM_SUITE: { pointsValue: [110000], pointsLevel: 'STANDARD' } },
+    '2026-11-02': { STANDARD_ROOM: { pointsValue: [45000], pointsLevel: 'OFF_PEAK', rate: null } },
+    '2026-11-04': {},
+    '2026-11-05': null,
+    '2026-11-06': { CLUB: { pointsValue: [], pointsLevel: 'PEAK' }, NEW_TYPE: { pointsValue: [70000] } },
+    '2026-12-01': { STANDARD_ROOM: { pointsValue: [45000], pointsLevel: 'OFF_PEAK' } },
+  } }
+  const rows = hyattParseCalendar(data, { hotel: 'TYOPH', start: '2026-11-02', end: '2026-11-30' })
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room, r.roomType]), [
+    ['2026-11-02', 'TYOPH', 45000, 'Standard Room · Off-peak', 'Standard Room'],
+    ['2026-11-03', 'TYOPH', 55000, 'Standard Room · Standard', 'Standard Room'],
+    ['2026-11-03', 'TYOPH', 110000, 'Premium Suite · Standard', 'Premium Suite'],
+    ['2026-11-06', 'TYOPH', 70000, 'NEW_TYPE', 'NEW_TYPE'],
+  ])
+  assert.equal(rows[0].bookUrl, 'https://www.hyatt.com/shop/rooms/TYOPH?checkinDate=2026-11-02&checkoutDate=2026-11-03&rooms=1&adults=1&kids=0&rateFilter=woh')
+  assert.deepEqual(hyattParseCalendar({ days: {}, responseInfo: {} }, { hotel: 'ZZZZZ', start: '2026-11-01', end: '2026-11-30' }), [])
+  assert.deepEqual(hyattParseCalendar(null, { hotel: 'TYOPH', start: '2026-11-01', end: '2026-11-30' }), [])
+})
+
+test('Hyatt: hotel code from hotel, booking and explore URLs', async () => {
+  const { hyattHotelFromUrl } = await import('../src/programs/hyatt.js')
+  assert.equal(hyattHotelFromUrl('https://www.hyatt.com/park-hyatt/en-US/tyoph-park-hyatt-tokyo'), 'TYOPH')
+  assert.equal(hyattHotelFromUrl('https://www.hyatt.com/park-hyatt/en-US/tyoph-park-hyatt-tokyo/rooms'), 'TYOPH')
+  assert.equal(hyattHotelFromUrl('https://www.hyatt.com/mr-and-mrs-smith/m0296-zaborin'), 'M0296')
+  assert.equal(hyattHotelFromUrl('https://www.hyatt.com/shop/rooms/tyoph?checkinDate=2026-11-02'), 'TYOPH')
+  assert.equal(hyattHotelFromUrl('https://www.hyatt.com/explore-hotels/rate-calendar?spiritCode=tyoph'), 'TYOPH')
+  assert.equal(hyattHotelFromUrl('https://www.hyatt.com/search/hotels/en-US/Tokyo%2C%20Japan'), null)
+  assert.equal(hyattHotelFromUrl('https://www.hyatt.com/loyalty/en-US'), null)
+})
+
+test('Hyatt: hotels on a search results page, plus the hotel page the user is on', async () => {
+  const { hyattPageHotels } = await import('../src/programs/hyatt.js')
+  const card = (code, name) => ({ getAttribute: k => k === 'data-spirit-code' ? code : null,
+    querySelector: sel => sel === `[id="map-result-card-title-${code}"]` ? { textContent: name } : null })
+  const doc = { querySelectorAll: () => [card('tyoph', ' Park Hyatt\n Tokyo '), card('tyogh', 'Grand Hyatt Tokyo'), card('tyogh', 'Grand Hyatt Tokyo')] }
+  assert.deepEqual(hyattPageHotels(doc, 'https://www.hyatt.com/search/hotels/en-US/Tokyo%2C%20Japan'), [
+    { code: 'TYOPH', name: 'Park Hyatt Tokyo' },
+    { code: 'TYOGH', name: 'Grand Hyatt Tokyo' },
+  ])
+  assert.deepEqual(hyattPageHotels({ querySelectorAll: () => [] }, 'https://www.hyatt.com/andaz/en-US/tyoaz-andaz-tokyo-toranomon-hills'), [{ code: 'TYOAZ' }])
+})
+
+test('Hyatt: autocomplete hotels carry their code; cities and places are found by label', async () => {
+  const { hyattParseSuggestions } = await import('../src/programs/hyatt.js')
+  const data = {
+    properties: [{ label: 'Park Hyatt Tokyo', spiritCode: 'tyoph', location: { lat: 35.68, lon: 139.69 } }, { label: 'No code' }],
+    cities: [{ label: 'Tokyo, Japan', city: 'Tokyo', province: null, country: 'Japan' }],
+    provinces: [], countries: [],
+    suggestions: [{ label: 'Narita International Airport', types: ['airport'] }, { label: 'Tokyo Tower', types: ['point_of_interest'] }],
+  }
+  assert.deepEqual(hyattParseSuggestions(data), [
+    { label: 'Tokyo', sub: 'Japan', ref: { place: 'Tokyo, Japan', label: 'Tokyo, Japan' } },
+    { label: 'Narita International Airport', sub: 'Airport', ref: { place: 'Narita International Airport', label: 'Narita International Airport' } },
+    { label: 'Tokyo Tower', sub: undefined, ref: { place: 'Tokyo Tower', label: 'Tokyo Tower' } },
+    { label: 'Park Hyatt Tokyo', sub: 'TYOPH', ref: { code: 'TYOPH', label: 'Park Hyatt Tokyo' } },
+  ])
+  assert.deepEqual(hyattParseSuggestions(null), [])
+})
+
+test('Hyatt: a place is geocoded by the search page; nearby bookable hotels come from the directory', async () => {
+  const { hyattProgram, hyattParseCenter, hyattNearby } = await import('../src/programs/hyatt.js')
+  assert.deepEqual(await hyattProgram.hotelsAt({ code: 'TYOPH', label: 'Park Hyatt Tokyo' }), { exact: { code: 'TYOPH', name: 'Park Hyatt Tokyo' }, nearby: [] })
+  const html = 'self.__next_f.push([1,"14:[\\"$\\",\\"$L1f\\",null,{\\"hotelData\\":{\\"centerPoint\\":{\\"id\\":\\"ChIJ\\",\\"latitude\\":35.7719867,\\"longitude\\":140.3928501,\\"name\\":\\"Narita International Airport\\"}}}'
+  const center = hyattParseCenter(html)
+  assert.deepEqual(center, { lat: 35.7719867, lon: 140.3928501 })
+  assert.equal(hyattParseCenter('<html></html>'), null)
+  const h = (spiritCode, name, latitude, longitude, extra = {}) => ({ spiritCode, name, awardCategory: { label: '4' }, location: { geolocation: { latitude, longitude } }, openStatus: { key: 'FULLY_BOOKABLE' }, booking: { isExternal: false }, ...extra })
+  const dir = {
+    tyoph: h('tyoph', 'Park Hyatt Tokyo', 35.68564, 139.690808),
+    nrtzt: h('nrtzt', 'Hyatt Regency Tokyo Bay', 35.6668, 140.0127),
+    nycph: h('nycph', 'Park Hyatt New York', 40.765, -73.979),
+    tyoxx: h('tyoxx', 'Closed', 35.77, 140.39, { openStatus: { key: 'NOT_BOOKABLE' } }),
+    tyoex: h('tyoex', 'External', 35.77, 140.39, { booking: { isExternal: true } }),
+    nogeo: { spiritCode: 'nogeo', name: 'No location', location: {} },
+  }
+  assert.deepEqual(hyattNearby(dir, center), [
+    { code: 'NRTZT', name: 'Hyatt Regency Tokyo Bay', sub: '36.3 km · Category 4' },
+    { code: 'TYOPH', name: 'Park Hyatt Tokyo', sub: '64.1 km · Category 4' },
+  ])
+  assert.deepEqual(hyattNearby(null, center), [])
+})

@@ -59,8 +59,10 @@ export function HotelCalendar({ results, hotels, names, fromMonth, toMonth, sele
   )
 }
 
-// Sortable, filterable list of every reward rate found
-export function HotelTable({ results, hotels, names, date, onClearDate }) {
+// Sortable, filterable list of every reward rate found.
+// sharedPills / shared / onSharedChange: filters kept by the caller (they narrow the calendar too),
+// shown first in the same filter bar
+export function HotelTable({ results, hotels, names, date, onClearDate, sharedPills = [], shared = {}, onSharedChange }) {
   const [sort, setSort] = useState({ key: 'date', dir: 1 })
   const [filters, setFilters] = useState({ hotel: null, dow: null })
   const [cheapest, setCheapest] = useState(true)
@@ -83,6 +85,7 @@ export function HotelTable({ results, hotels, names, date, onClearDate }) {
   const hotelName = code => names[code] ?? code
 
   const pills = [
+    ...sharedPills,
     multi && { id: 'hotel', label: 'Hotel', display: filters.hotel && hotelName(filters.hotel),
       items: [[null, 'All hotels'], ...hotels.map(h => [h, hotelName(h), { color: hotelColor(hotels, h) }])] },
     { id: 'dow', label: 'Day of week', display: DOW_LABELS[filters.dow],
@@ -101,7 +104,12 @@ export function HotelTable({ results, hotels, names, date, onClearDate }) {
 
   return (
     <div>
-      <FilterBar pills={pills} filters={filters} onChange={f => { setFilters(f); setPage(0) }}>
+      <FilterBar pills={pills} filters={{ ...shared, ...filters }} onChange={f => {
+        const own = { hotel: f.hotel, dow: f.dow }
+        if (sharedPills.some(p => f[p.id] !== shared[p.id])) onSharedChange(f)
+        else setFilters(own)
+        setPage(0)
+      }}>
         {date && <button class="ab-flt-btn active" onClick={onClearDate}>{date} ✕</button>}
         <button class={cx('ab-flt-btn', cheapest && 'active')} onClick={() => { setCheapest(!cheapest); setPage(0) }}>Cheapest room only</button>
       </FilterBar>
