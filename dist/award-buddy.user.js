@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.0.0
+// @version      1.1.0
 // @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines & IHG hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
