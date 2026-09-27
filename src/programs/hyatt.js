@@ -63,7 +63,7 @@ export function hyattParseCalendar(data, { hotel, start, end }) {
       if (!(points > 0)) continue
       const level = PEAK_LEVELS[rate.pointsLevel]
       const room = ROOM_TYPES[type] ?? type
-      results.push({ date, hotel, points, room: level ? `${room} · ${level}` : room, bookUrl: hyattBookUrl(hotel, date, nextDay(date)) })
+      results.push({ date, hotel, points, room: level ? `${room} · ${level}` : room, roomType: room, bookUrl: hyattBookUrl(hotel, date, nextDay(date)) })
     }
   }
   return results.sort((a, b) => a.date.localeCompare(b.date) || a.points - b.points)

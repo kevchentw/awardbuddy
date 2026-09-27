@@ -257,11 +257,11 @@ test('Hyatt: calendar URL and one row per date and room type, within the span', 
     '2026-12-01': { STANDARD_ROOM: { pointsValue: [45000], pointsLevel: 'OFF_PEAK' } },
   } }
   const rows = hyattParseCalendar(data, { hotel: 'TYOPH', start: '2026-11-02', end: '2026-11-30' })
-  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room]), [
-    ['2026-11-02', 'TYOPH', 45000, 'Standard Room · Off-peak'],
-    ['2026-11-03', 'TYOPH', 55000, 'Standard Room · Standard'],
-    ['2026-11-03', 'TYOPH', 110000, 'Premium Suite · Standard'],
-    ['2026-11-06', 'TYOPH', 70000, 'NEW_TYPE'],
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room, r.roomType]), [
+    ['2026-11-02', 'TYOPH', 45000, 'Standard Room · Off-peak', 'Standard Room'],
+    ['2026-11-03', 'TYOPH', 55000, 'Standard Room · Standard', 'Standard Room'],
+    ['2026-11-03', 'TYOPH', 110000, 'Premium Suite · Standard', 'Premium Suite'],
+    ['2026-11-06', 'TYOPH', 70000, 'NEW_TYPE', 'NEW_TYPE'],
   ])
   assert.equal(rows[0].bookUrl, 'https://www.hyatt.com/shop/rooms/TYOPH?checkinDate=2026-11-02&checkoutDate=2026-11-03&rooms=1&adults=1&kids=0&rateFilter=woh')
   assert.deepEqual(hyattParseCalendar({ days: {}, responseInfo: {} }, { hotel: 'ZZZZZ', start: '2026-11-01', end: '2026-11-30' }), [])

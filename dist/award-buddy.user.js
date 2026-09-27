@@ -4850,6 +4850,7 @@
     const [date, setDate] = d2(null);
     const [noResults, setNoResults] = d2(false);
     const [rateType, setRateType] = d2(null);
+    const [roomType, setRoomType] = d2(null);
     const latest = A2();
     latest.current = form;
     const hotels = form.hotels;
@@ -4907,7 +4908,25 @@
     }
     const rateTypes = ["Standard", "Premium"].filter((t3) => results.some((r3) => r3.rateType === t3));
     const activeRateType = rateTypes.includes(rateType) ? rateType : null;
-    const visible = activeRateType ? results.filter((r3) => r3.rateType === activeRateType) : results;
+    const lowest = {};
+    for (const r3 of results) if (r3.roomType && !(lowest[r3.roomType] <= r3.points)) lowest[r3.roomType] = r3.points;
+    const roomTypes = Object.keys(lowest).sort((a3, b2) => lowest[a3] - lowest[b2]);
+    const activeRoomType = roomTypes.includes(roomType) ? roomType : null;
+    const visible = results.filter((r3) => (!activeRateType || r3.rateType === activeRateType) && (!activeRoomType || r3.roomType === activeRoomType));
+    const pills = [
+      rateTypes.length > 1 && {
+        id: "rateType",
+        label: "Reward",
+        display: activeRateType && `${activeRateType} only`,
+        items: [[null, "Standard & Premium"], ["Standard", "Standard only"], ["Premium", "Premium only"]]
+      },
+      roomTypes.length > 1 && {
+        id: "roomType",
+        label: "Room",
+        display: activeRoomType,
+        items: [[null, "All rooms"], ...roomTypes.map((t3) => [t3, t3])]
+      }
+    ].filter(Boolean);
     const summary2 = [
       hotels.map((c3) => names[c3] ?? c3).join(", ") || "?",
       `${form.fromMonth} \u2013 ${form.toMonth}`
@@ -4929,17 +4948,18 @@
       ] }),
       /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
       /* @__PURE__ */ u3("div", { children: [
-        rateTypes.length > 1 && /* @__PURE__ */ u3(FilterBar, { filters: { rateType: activeRateType }, onChange: (f4) => {
-          setRateType(f4.rateType);
-          setDate(null);
-        }, pills: [
+        pills.length > 0 && /* @__PURE__ */ u3(
+          FilterBar,
           {
-            id: "rateType",
-            label: "Reward",
-            display: activeRateType && `${activeRateType} only`,
-            items: [[null, "Standard & Premium"], ["Standard", "Standard only"], ["Premium", "Premium only"]]
+            filters: { rateType: activeRateType, roomType: activeRoomType },
+            pills,
+            onChange: (f4) => {
+              setRateType(f4.rateType);
+              setRoomType(f4.roomType);
+              setDate(null);
+            }
           }
-        ] }),
+        ),
         shown && results.length > 0 && /* @__PURE__ */ u3(
           HotelCalendar,
           {
@@ -8650,7 +8670,7 @@
         if (!(points > 0)) continue;
         const level = PEAK_LEVELS[rate.pointsLevel];
         const room = ROOM_TYPES[type] ?? type;
-        results.push({ date, hotel, points, room: level ? `${room} \xB7 ${level}` : room, bookUrl: hyattBookUrl(hotel, date, nextDay2(date)) });
+        results.push({ date, hotel, points, room: level ? `${room} \xB7 ${level}` : room, roomType: room, bookUrl: hyattBookUrl(hotel, date, nextDay2(date)) });
       }
     }
     return results.sort((a3, b2) => a3.date.localeCompare(b2.date) || a3.points - b2.points);

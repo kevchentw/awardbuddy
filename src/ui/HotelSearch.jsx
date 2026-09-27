@@ -63,6 +63,7 @@ export function HotelSearch({ program, session }) {
   const [date, setDate] = useState(null)    // calendar day picked to narrow the table
   const [noResults, setNoResults] = useState(false)
   const [rateType, setRateType] = useState(null)  // 'Standard' / 'Premium' reward, for the calendar and table
+  const [roomType, setRoomType] = useState(null)  // room category (Hyatt: 'Standard Suite', …), likewise
   const latest = useRef()
   latest.current = form
 
@@ -115,7 +116,18 @@ export function HotelSearch({ program, session }) {
   // Reward types in the results (Hilton prices Standard and Premium); the filter only applies while they're there
   const rateTypes = ['Standard', 'Premium'].filter(t => results.some(r => r.rateType === t))
   const activeRateType = rateTypes.includes(rateType) ? rateType : null
-  const visible = activeRateType ? results.filter(r => r.rateType === activeRateType) : results
+  // Room categories in the results (Hyatt prices several), cheapest first; likewise only while there's a choice
+  const lowest = {}
+  for (const r of results) if (r.roomType && !(lowest[r.roomType] <= r.points)) lowest[r.roomType] = r.points
+  const roomTypes = Object.keys(lowest).sort((a, b) => lowest[a] - lowest[b])
+  const activeRoomType = roomTypes.includes(roomType) ? roomType : null
+  const visible = results.filter(r => (!activeRateType || r.rateType === activeRateType) && (!activeRoomType || r.roomType === activeRoomType))
+  const pills = [
+    rateTypes.length > 1 && { id: 'rateType', label: 'Reward', display: activeRateType && `${activeRateType} only`,
+      items: [[null, 'Standard & Premium'], ['Standard', 'Standard only'], ['Premium', 'Premium only']] },
+    roomTypes.length > 1 && { id: 'roomType', label: 'Room', display: activeRoomType,
+      items: [[null, 'All rooms'], ...roomTypes.map(t => [t, t])] },
+  ].filter(Boolean)
 
   const summary = [
     hotels.map(c => names[c] ?? c).join(', ') || '?',
@@ -141,11 +153,9 @@ export function HotelSearch({ program, session }) {
       </>}
       <SearchControls run={run} session={session} onSearch={search} />
       <div>
-        {rateTypes.length > 1 && (
-          <FilterBar filters={{ rateType: activeRateType }} onChange={f => { setRateType(f.rateType); setDate(null) }} pills={[
-            { id: 'rateType', label: 'Reward', display: activeRateType && `${activeRateType} only`,
-              items: [[null, 'Standard & Premium'], ['Standard', 'Standard only'], ['Premium', 'Premium only']] },
-          ]} />
+        {pills.length > 0 && (
+          <FilterBar filters={{ rateType: activeRateType, roomType: activeRoomType }} pills={pills}
+            onChange={f => { setRateType(f.rateType); setRoomType(f.roomType); setDate(null) }} />
         )}
         {shown && results.length > 0 && <HotelCalendar results={visible} hotels={shown.hotels} names={names} fromMonth={shown.fromMonth} toMonth={shown.toMonth}
           selected={date} onSelect={setDate} />}
