@@ -2,7 +2,7 @@
 
 <img src="assets/icons/icon-128.png" alt="" width="64" align="right">
 
-A search panel that sits on top of airline award booking sites and runs searches across several dates and airports at once. Pick origins, destinations, a date range and cabins, and Award Buddy runs every route × date combination through the airline's own site and puts the results in one sortable table.
+A search panel that sits on top of airline and hotel award booking sites and runs searches across several dates and airports (or hotels) at once. Pick origins, destinations, a date range and cabins, and Award Buddy runs every route × date combination through the airline's own site and puts the results in one sortable table.
 
 It runs in your browser on the airline's page, using your own session. There's no server, and it doesn't collect any data.
 
@@ -20,6 +20,14 @@ It runs in your browser on the airline's page, using your own session. There's n
 | Japan Airlines (JMB) | jal.co.jp | ✓ (JAL flights only) | Log in |
 | LifeMiles | lifemiles.com | | Log in |
 | Starlux Airlines (COSMILE) | starlux-airlines.com | ✓ | Log in |
+
+### Hotels
+
+| Program | Site | Session |
+|---|---|---|
+| IHG One Rewards | ihg.com | Not needed |
+
+Hotel search looks up the points per night for one or more hotels (IHG's five-letter code, such as `TPEKM`) across a range of months. It shows the lowest points per day on a calendar and every reward rate by room type in a table. On the site's search results, each hotel gets a **Search in Award Buddy** button that adds it to the panel. On a hotel's own page, its code is filled in for you.
 
 When a program needs a session and doesn't have one yet, the panel shows a **Get session** link that takes you to the right page.
 
@@ -48,7 +56,7 @@ The script updates itself from this repo.
 
 ## Usage
 
-1. Go to a supported airline site. A ✈ button appears in the corner of the page.
+1. Go to a supported airline or hotel site. A ✈ button appears in the corner of the page.
 2. Click it to open the panel. If it asks for a session, log in or follow the **Get session** link.
 3. Enter one or more origins and destinations, a date range, and optionally the cabins you want.
 4. Click **Search**. Results come in as each request finishes. You can sort by date, duration or miles, and filter by cabin, number of stops or day of week. Each row links to the airline's booking page for that flight.
@@ -77,7 +85,7 @@ The source is ES modules + [Preact](https://preactjs.com/), bundled with esbuild
 src/
   entrypoint.js       picks the program for the current hostname and mounts the panel
   common/             shared constants (cabins, airport list) and search helpers
-  programs/<id>.js    one module per airline: session handling, request building, response parsing
+  programs/<id>.js    one module per airline or hotel chain: session handling, request building, response parsing
   ui/                 Preact panel: form, date/month pickers, results table, calendar view
 build.cjs             builds the userscript, the unpacked extension and the store ZIP
 ```
@@ -87,6 +95,7 @@ build.cjs             builds the userscript, the unpacked extension and the stor
 Pull requests are welcome. New airlines, new search modes, fixes for sites that changed, and UI improvements are all useful.
 
 - **Add an airline:** write a module in `src/programs/` that exports a program object (`id`, `name`, `cabins`, `matches`, `onSearch`, plus `onCalendarSearch` and the session hooks if needed). Register it in `src/entrypoint.js` and add the site to `MATCHES` in `build.cjs`.
+- **Add a hotel chain:** write a module with `kind: 'hotel'` and `onHotelSearch({ hotel, start, end })`, which returns the reward-night rates for one hotel over one month. `src/programs/ihg.js` is an example, and the comment at the top of `src/ui/HotelSearch.jsx` lists the other fields.
 - **Add a search mode:** give the program `carriers` (shown as a dropdown) and, if the mode needs extra inputs, `optionsFor`. The Air Canada stopover mode in `src/programs/ac.js` is an example.
 - **Fix a broken program:** the comments at the top of each module explain how it gets a session and which endpoints it calls. That's usually where to start.
 

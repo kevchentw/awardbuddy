@@ -26,3 +26,30 @@ test('lowestByDate and cheapestOnly keep the lowest rate per hotel and date', ()
   assert.deepEqual(cheapestOnly(results).map(x => `${x.hotel} ${x.date} ${x.points}`),
     ['A 2026-10-01 30000', 'B 2026-10-01 50000', 'A 2026-10-02 45000'])
 })
+
+test('IHG: parses reward offers only, one row per room type', async () => {
+  const { ihgParseCalendar, ihgBuildRequest } = await import('../src/programs/ihg.js')
+  const body = ihgBuildRequest({ hotel: 'TPEKM', start: '2026-10-01', end: '2026-10-31' })
+  assert.deepEqual(body.hotelMnemonics, ['TPEKM'])
+  assert.equal(body.lengthOfStay, 1)
+  const data = { data: { hotels: [{ hotel: { hotelMnemonic: 'TPEKM' }, calendar: [{ start: '2026-10-01', offers: [
+    { ratePlanCode: 'IVANI', inventoryTypesAvailable: [{ inventoryTypeCode: 'CSPG', numberOfAvailableProducts: 9 }], checkInPoints: 61000, totalPoints: 61000 },
+    { ratePlanCode: 'IVANI', inventoryTypesAvailable: [{ inventoryTypeCode: 'KDXN', numberOfAvailableProducts: 2 }], checkInPoints: 74000, totalPoints: 74000 },
+    { ratePlanCode: 'IGCOR', inventoryTypesAvailable: [{ inventoryTypeCode: 'CSPG', numberOfAvailableProducts: 9 }], totalAmount: '10125' },
+  ] }] }] } }
+  const rows = ihgParseCalendar(data)
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room, r.roomsLeft]), [
+    ['2026-10-01', 'TPEKM', 61000, 'Double Superior', 9],
+    ['2026-10-01', 'TPEKM', 74000, 'King Deluxe', 2],
+  ])
+  assert.match(rows[0].bookUrl, /qDest=TPEKM&qCiD=2026-10-01&qCoD=2026-10-02&qAdlt=1/)
+})
+
+test('IHG: hotel code from hotel page URLs', async () => {
+  const { ihgHotelFromUrl } = await import('../src/programs/ihg.js')
+  assert.equal(ihgHotelFromUrl('https://www.ihg.com/holidayinnexpress/hotels/us/en/taipei/tpekm/hoteldetail'), 'TPEKM')
+  assert.equal(ihgHotelFromUrl('https://www.ihg.com/intercontinental/hotels/us/en/tokyo/tyoic/hoteldetail/rooms'), 'TYOIC')
+  assert.equal(ihgHotelFromUrl('https://www.ihg.com/hotels/us/en/find-hotels/hotel/rooms?qDest=TPEKM&qCiD=2026-10-01'), 'TPEKM')
+  assert.equal(ihgHotelFromUrl('https://www.ihg.com/hotels/us/en/find-hotels/hotel-search?qDest=Taipei'), null)
+  assert.equal(ihgHotelFromUrl('https://www.ihg.com/hotels/us/en/reservation'), null)
+})

@@ -9,7 +9,7 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "description": "Multi-date × multi-airport award search overlay on airline award booking sites",
+  "description": "Multi-date × multi-airport award search overlay on airline and hotel award booking sites",
   "content_scripts": [
     {
       "matches": [
@@ -24,7 +24,8 @@
         "https://*.jal.co.jp/*",
         "https://*.ana.co.jp/*",
         "https://www.aircanada.com/*",
-        "https://www.aa.com/*"
+        "https://www.aa.com/*",
+        "https://www.ihg.com/*"
       ],
       "js": [
         "award-buddy.js"
