@@ -2,7 +2,7 @@
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
 // @version      1.0.0
-// @description  Multi-date × multi-airport award search overlay — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada & American Airlines, plus IHG hotels
+// @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines & IHG hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
 // @updateURL    https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js

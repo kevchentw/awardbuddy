@@ -9,7 +9,7 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "description": "Multi-date × multi-airport award search overlay on airline and hotel award booking sites",
+  "description": "Search award flights and hotel reward nights across many dates at once, right on the airline and hotel sites",
   "content_scripts": [
     {
       "matches": [

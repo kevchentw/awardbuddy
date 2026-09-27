@@ -13,7 +13,7 @@ const VERSION = require('./package.json').version
 const REPO_URL = 'https://github.com/kevchentw/awardbuddy'
 // Tampermonkey checks this for a higher @version to auto-update
 const USERSCRIPT_URL = 'https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js'
-const DESCRIPTION = 'Multi-date × multi-airport award search overlay — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada & American Airlines, plus IHG hotels'
+const DESCRIPTION = 'Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines & IHG hotels'
 const ICON_SIZES = [16, 32, 48, 128]  // assets/icons/icon-<size>.png, shared with ../award-buddy
 const MATCHES = [
   'https://www.alaskaair.com/*',
@@ -54,7 +54,7 @@ const MANIFEST = {
   version: VERSION,
   homepage_url: REPO_URL,
   icons: Object.fromEntries(ICON_SIZES.map(s => [s, `icons/icon-${s}.png`])),
-  description: 'Multi-date × multi-airport award search overlay on airline and hotel award booking sites',  // ≤ 132 chars
+  description: 'Search award flights and hotel reward nights across many dates at once, right on the airline and hotel sites',  // ≤ 132 chars
   content_scripts: [{
     matches: MATCHES,
     js: ['award-buddy.js'],
