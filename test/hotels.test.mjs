@@ -395,3 +395,78 @@ test('Choice: autocomplete places, and the hotels around one (exact when it sits
   ] })
   assert.deepEqual(choiceNearby(null, kanda), { nearby: [] })
 })
+
+test('I Prefer: calendar URL and one row per bookable night, within the span', async () => {
+  const { ipreferCalendarUrl, ipreferParseCalendar } = await import('../src/programs/iprefer.js')
+  assert.equal(ipreferCalendarUrl('PARHD'), 'https://ptgapis.com/rate-calendar/v2?propertyCode=PARHD&adults=1&children=0&rateCode=IPPOINTS')
+  const night = (points, more) => ({ is_available: true, has_inventory: true, allows_check_in: true, allows_check_out: true, rate: 0, tax: 0, points, ...more })
+  const data = { currency_code: 'USD', count: 6, results: {
+    '2026-11-03': night(100000), '2026-11-02': night(75000), '2026-11-04': night(100000, { has_inventory: false }),
+    '2026-11-05': night(0), '2026-11-06': night(100000, { allows_check_in: false }), '2026-12-01': night(100000),
+  } }
+  const span = { hotel: 'PARHD', start: '2026-11-02', end: '2026-11-30' }
+  const rows = ipreferParseCalendar(data, span, '/hotels/france/lhotel-du-collectionneur-paris')
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points]), [['2026-11-02', 'PARHD', 75000], ['2026-11-03', 'PARHD', 100000]])
+  assert.equal(rows[0].bookUrl, 'https://iprefer.com/hotels/france/lhotel-du-collectionneur-paris?arrivalDate=2026-11-02&departureDate=2026-11-03&rateType=RN')
+  assert.equal(ipreferParseCalendar(data, span)[0].bookUrl, undefined)
+  // No reward nights (or an unknown code) comes back as results: []
+  assert.deepEqual(ipreferParseCalendar({ currency_code: 'USD', count: 0, results: [] }, span), [])
+  assert.deepEqual(ipreferParseCalendar(null, span), [])
+})
+
+const ipreferDirectoryData = { success: true, count: 5, properties: {
+  843: { field_item_code: 'PARHD', field_display_title: 'L’Hôtel du Collectionneur Paris', field_address: { locality: 'Paris' }, field_geolocation: { lat: '48.876981', lng: '2.306973' }, field_state_name: null, field_country_name: 'France', field_i_prefer_book_with_points: '1', entity_url: '/hotels/france/lhotel-du-collectionneur-paris' },
+  900: { field_item_code: 'PARNA', field_display_title: 'Hotel Napoleon', field_address: { locality: 'Paris' }, field_geolocation: { lat: '48.874', lng: '2.296' }, field_country_name: 'France', field_i_prefer_book_with_points: '1', entity_url: '/hotels/france/hotel-napoleon' },
+  901: { field_item_code: 'CDGVE', field_display_title: 'Versailles Palace', field_address: { locality: 'Versailles' }, field_geolocation: { lat: '48.8049', lng: '2.1204' }, field_country_name: 'France', field_i_prefer_book_with_points: '1' },
+  902: { field_item_code: 'PARXX', field_display_title: 'Cash Only Paris', field_address: { locality: 'Paris' }, field_geolocation: { lat: '48.87', lng: '2.30' }, field_country_name: 'France', field_i_prefer_book_with_points: '0' },
+  903: { field_item_code: 'BILNH', field_display_title: 'Northern Hotel', field_address: { locality: 'Billings' }, field_geolocation: { lat: '45.78', lng: '-108.50' }, field_state_name: 'Montana', field_country_name: 'United States', field_i_prefer_book_with_points: '1' },
+  904: { field_item_code: 'bad!', field_display_title: 'Broken' },
+} }
+
+test('I Prefer: directory, and text search over points-bookable hotels, cities, states and countries', async () => {
+  const { ipreferParseDirectory, ipreferSuggest } = await import('../src/programs/iprefer.js')
+  const dir = ipreferParseDirectory(ipreferDirectoryData)
+  assert.deepEqual(dir.map(h => h.code), ['PARHD', 'PARNA', 'CDGVE', 'PARXX', 'BILNH'])
+  assert.deepEqual(dir[0], { code: 'PARHD', name: 'L’Hôtel du Collectionneur Paris', city: 'Paris', state: undefined, country: 'France', lat: 48.876981, lng: 2.306973, path: '/hotels/france/lhotel-du-collectionneur-paris', points: true })
+  assert.deepEqual(ipreferSuggest(dir, 'par'), [
+    { label: 'Paris', sub: 'France', ref: { city: 'Paris', country: 'France', label: 'Paris' } },
+    { label: 'L’Hôtel du Collectionneur Paris', sub: 'Paris, France', ref: { code: 'PARHD', label: 'L’Hôtel du Collectionneur Paris' } },
+  ])
+  // Accents and punctuation don't matter; matches start at a word
+  assert.deepEqual(ipreferSuggest(dir, 'hotel du').map(s => s.ref.code), ['PARHD'])
+  assert.deepEqual(ipreferSuggest(dir, 'aris'), [])
+  assert.deepEqual(ipreferSuggest(dir, 'montana'), [{ label: 'Montana', sub: 'United States', ref: { state: 'Montana', label: 'Montana' } }])
+  assert.deepEqual(ipreferSuggest(dir, 'fra').map(s => s.label), ['France'])
+  assert.deepEqual(ipreferSuggest(dir, 'bilnh').map(s => s.ref.code), ['BILNH'])
+  assert.deepEqual(ipreferSuggest(dir, '  '), [])
+})
+
+test('I Prefer: a hotel suggestion is that hotel; a city lists hotels around it, a country its hotels by name', async () => {
+  const { ipreferParseDirectory, ipreferHotelsAt } = await import('../src/programs/iprefer.js')
+  const dir = ipreferParseDirectory(ipreferDirectoryData)
+  assert.deepEqual(ipreferHotelsAt(null, { code: 'PARHD', label: 'L’Hôtel' }), { exact: { code: 'PARHD', name: 'L’Hôtel' }, nearby: [] })
+  const paris = ipreferHotelsAt(dir, { city: 'Paris', country: 'France', label: 'Paris' })
+  assert.deepEqual(paris.nearby.map(h => h.code), ['PARHD', 'PARNA', 'CDGVE'])
+  assert.match(paris.nearby[2].sub, /^Versailles · \d+\.\d km$/)
+  assert.deepEqual(ipreferHotelsAt(dir, { country: 'France', label: 'France' }).nearby.map(h => [h.code, h.sub]),
+    [['PARNA', 'Paris'], ['PARHD', 'Paris'], ['CDGVE', 'Versailles']])
+  assert.deepEqual(ipreferHotelsAt(dir, { state: 'Montana', label: 'Montana' }).nearby.map(h => h.code), ['BILNH'])
+  assert.deepEqual(ipreferHotelsAt(dir, { city: 'Nowhere', country: 'France' }), { nearby: [] })
+})
+
+test('I Prefer: hotel code from a hotel page, and hotels on a search results page matched by name', async () => {
+  const { ipreferHotelFromPage, ipreferPageHotels, ipreferParseDirectory } = await import('../src/programs/iprefer.js')
+  const html = String.raw`self.__next_f.push([1,"{\"similar\":{\"title\":\"PARNA - Hotel Napoleon\",\"entityUrl\":{\"path\":\"/hotels/france/hotel-napoleon\"}},\"property\":{\"nid\":843,\"title\":\"PARHD - L’Hotel du Collectionneur Paris\",\"entityUrl\":{\"path\":\"/hotels/france/lhotel-du-collectionneur-paris\",\"__typename\":\"EntityCanonicalUrl\"}}"])`
+  assert.equal(ipreferHotelFromPage(html, 'https://iprefer.com/hotels/france/lhotel-du-collectionneur-paris?arrivalDate=2026-11-10'), 'PARHD')
+  assert.equal(ipreferHotelFromPage(html, 'https://iprefer.com/hotels/france/hotel-napoleon/'), 'PARNA')
+  assert.equal(ipreferHotelFromPage(html, 'https://iprefer.com/hotels/france/other-hotel'), null)
+  assert.equal(ipreferHotelFromPage(html, 'https://iprefer.com/search?rateType=IPPOINTS'), null)
+  const dir = ipreferParseDirectory(ipreferDirectoryData)
+  const el = textContent => ({ textContent })
+  const doc = { querySelectorAll: () => [el('Hotel\n  Napoleon'), el("L'Hotel du Collectionneur Paris"), el('Hotel Napoleon'), el('Not in directory')] }
+  assert.deepEqual(ipreferPageHotels(doc, dir, null), [
+    { code: 'PARNA', name: 'Hotel Napoleon' },
+    { code: 'PARHD', name: 'L’Hôtel du Collectionneur Paris' },
+  ])
+  assert.deepEqual(ipreferPageHotels({ querySelectorAll: () => [] }, dir, 'BILNH'), [{ code: 'BILNH' }])
+})

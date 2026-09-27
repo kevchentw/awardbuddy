@@ -4670,6 +4670,15 @@
       };
       for (let n2 = 0; n2 < 4; n2++) next();
     }
+    async function showPageHotels() {
+      const title = "Hotels on this page";
+      setList({ title, hotels: [], loading: true });
+      try {
+        showList(title, await program2.pageHotels());
+      } catch {
+        setList({ title, hotels: [], error: true });
+      }
+    }
     async function choose(s3) {
       setOpen(false);
       setQuery("");
@@ -4740,7 +4749,7 @@
           ] }, i3)
         )) })
       ] }),
-      program2.pageHotels && !list && /* @__PURE__ */ u3("button", { class: "ab-link-btn", style: { margin: "4px 0 0" }, onClick: () => showList("Hotels on this page", program2.pageHotels()), children: "+ Pick from hotels on this page" }),
+      program2.pageHotels && !list && /* @__PURE__ */ u3("button", { class: "ab-link-btn", style: { margin: "4px 0 0" }, onClick: showPageHotels, children: "+ Pick from hotels on this page" }),
       list && /* @__PURE__ */ u3("div", { class: "ab-hlist", children: [
         /* @__PURE__ */ u3("div", { class: "ab-hlist-head", children: [
           /* @__PURE__ */ u3("b", { children: list.title }),
@@ -8413,10 +8422,10 @@
       ref: { placeId: n2.placeId, label: n2.primaryDescription }
     }));
   }
-  function marriottParseNearby(data, place) {
+  function marriottParseNearby(data, place2) {
     const hotels = (data?.data?.search?.properties?.searchByGeolocation?.edges ?? []).filter((e3) => e3?.node?.id && CODE_RE.test(e3.node.id.toUpperCase())).map((e3) => ({ code: e3.node.id.toUpperCase(), name: e3.node.basicInformation?.name || void 0, distance: e3.distance })).sort((a3, b2) => (a3.distance ?? Infinity) - (b2.distance ?? Infinity));
     const first = hotels[0];
-    if (first && place?.destinationType === "Hotel Name" && first.distance < SAME_PLACE_M) {
+    if (first && place2?.destinationType === "Hotel Name" && first.distance < SAME_PLACE_M) {
       return { exact: { code: first.code, name: first.name }, nearby: [] };
     }
     return {
@@ -8446,8 +8455,8 @@
     async hotelsAt(ref) {
       const details = await marriottQuery("phoenixShopSuggestedPlacesDetailsQuery", { placeId: ref.placeId });
       if (details === "SESSION_EXPIRED") throw new Error("Marriott blocked the request");
-      const place = details?.data?.suggestedPlaceDetails;
-      const { latitude, longitude } = place?.location ?? {};
+      const place2 = details?.data?.suggestedPlaceDetails;
+      const { latitude, longitude } = place2?.location ?? {};
       if (latitude == null || longitude == null) return { nearby: [] };
       const data = await marriottQuery("phoenixShopSearchPropertiesByGeoLocation", {
         search: { latitude, longitude, distance: NEARBY_RADIUS_M },
@@ -8455,7 +8464,7 @@
         offset: 0
       });
       if (data === "SESSION_EXPIRED") throw new Error("Marriott blocked the request");
-      return marriottParseNearby(data, place);
+      return marriottParseNearby(data, place2);
     },
     async hotelName(code) {
       const data = await marriottQuery("phoenixShopPropertyInfoCall", { propertyId: code });
@@ -8711,14 +8720,14 @@
     const lon = +cp?.match(/"longitude":(-?[\d.]+)/)?.[1];
     return Number.isFinite(lat) && Number.isFinite(lon) && cp ? { lat, lon } : null;
   }
-  function hyattNearby(directory2, { lat, lon }) {
+  function hyattNearby(directory3, { lat, lon }) {
     const rad = Math.PI / 180;
     const km = (lat2, lon2) => {
       const x2 = Math.sin((lat2 - lat) * rad / 2) ** 2 + Math.cos(lat * rad) * Math.cos(lat2 * rad) * Math.sin((lon2 - lon) * rad / 2) ** 2;
       return 12742 * Math.asin(Math.sqrt(x2));
     };
     const hotels = [];
-    for (const h3 of Object.values(directory2 ?? {})) {
+    for (const h3 of Object.values(directory3 ?? {})) {
       const g2 = h3?.location?.geolocation;
       const code = h3?.spiritCode?.toUpperCase();
       if (!code || !CODE_RE3.test(code) || g2?.latitude == null || g2?.longitude == null) continue;
@@ -8877,8 +8886,8 @@
       };
     });
   }
-  function choiceNearby(hotels, place) {
-    const { latitude: lat, longitude: lon } = place;
+  function choiceNearby(hotels, place2) {
+    const { latitude: lat, longitude: lon } = place2;
     const rad = Math.PI / 180;
     const km = (lat2, lon2) => {
       const x2 = Math.sin((lat2 - lat) * rad / 2) ** 2 + Math.cos(lat * rad) * Math.cos(lat2 * rad) * Math.sin((lon2 - lon) * rad / 2) ** 2;
@@ -8894,7 +8903,7 @@
     }
     list.sort((a3, b2) => a3.d - b2.d);
     const first = list[0];
-    if (first && place.placeType !== "Airport" && first.d < SAME_PLACE_KM2) return { exact: { code: first.code, name: first.name }, nearby: [] };
+    if (first && place2.placeType !== "Airport" && first.d < SAME_PLACE_KM2) return { exact: { code: first.code, name: first.name }, nearby: [] };
     return { nearby: list.slice(0, NEARBY_MAX5).map((h3) => ({ code: h3.code, name: h3.name, sub: `${h3.d.toFixed(1)} km` })) };
   }
   var choiceProgram = {
@@ -8916,11 +8925,11 @@
     async hotelsAt(ref) {
       const poi = await choiceQuery("SearchPoisByPlaceId", { placeId: ref.placeId });
       if (poi === "SESSION_EXPIRED") throw new Error("Choice blocked the request");
-      const place = poi?.data?.searchPoisByPlaceId?.[0];
-      if (place?.latitude == null || place?.longitude == null) return { nearby: [] };
-      const data = await choiceQuery("SearchHotelsByGeoLocation", { latitude: place.latitude, longitude: place.longitude, radius: NEARBY_RADIUS_MI2 });
+      const place2 = poi?.data?.searchPoisByPlaceId?.[0];
+      if (place2?.latitude == null || place2?.longitude == null) return { nearby: [] };
+      const data = await choiceQuery("SearchHotelsByGeoLocation", { latitude: place2.latitude, longitude: place2.longitude, radius: NEARBY_RADIUS_MI2 });
       if (data === "SESSION_EXPIRED") throw new Error("Choice blocked the request");
-      return choiceNearby(data?.data?.searchHotelsByGeoLocation, place);
+      return choiceNearby(data?.data?.searchHotelsByGeoLocation, place2);
     },
     async hotelName(code) {
       const data = await choiceQuery("FetchHotelSummary", { hotelIds: [code] });
@@ -8933,8 +8942,186 @@
     }
   };
 
+  // src/programs/iprefer.js
+  var PTG_API = "https://ptgapis.com";
+  var IPREFER_DELAY_MS = 600;
+  var CALENDAR_TTL_MS = 30 * 60 * 1e3;
+  var NEARBY_RADIUS_KM2 = 80;
+  var NEARBY_MAX6 = 30;
+  var REGION_MAX = 100;
+  var SUGGEST_MAX = 8;
+  var REWARD_RATE_CODE = "IPPOINTS";
+  var DIRECTORY_FIELDS = {
+    field_item_code: {},
+    field_display_title: {},
+    field_address: { type: "address", fields: { locality: {} } },
+    field_geolocation: { type: "geolocation", fields: { lat: {}, lng: {} } },
+    field_state_name: {},
+    field_country_name: {},
+    field_i_prefer_book_with_points: {},
+    entity_url: {}
+  };
+  var CODE_RE5 = /^[A-Z0-9]{5}$/;
+  var ipreferCalendarUrl = (hotel) => `${PTG_API}/rate-calendar/v2?propertyCode=${hotel}&adults=1&children=0&rateCode=${REWARD_RATE_CODE}`;
+  var ipreferBookUrl = (path, date, nextDate) => `https://iprefer.com${path}?arrivalDate=${date}&departureDate=${nextDate}&rateType=RN`;
+  var nextDay4 = (date) => {
+    const d3 = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+    d3.setUTCDate(d3.getUTCDate() + 1);
+    return d3.toISOString().slice(0, 10);
+  };
+  function ipreferParseCalendar(data, { hotel, start, end }, path) {
+    const results = [];
+    const days = data?.results;
+    if (!days || typeof days !== "object" || Array.isArray(days)) return results;
+    for (const [date, night] of Object.entries(days)) {
+      if (date < start || date > end || !night?.is_available || !night.has_inventory || !night.allows_check_in) continue;
+      const points = Number(night.points);
+      if (!(points > 0)) continue;
+      results.push({ date, hotel, points, bookUrl: path ? ipreferBookUrl(path, date, nextDay4(date)) : void 0 });
+    }
+    return results.sort((a3, b2) => a3.date.localeCompare(b2.date));
+  }
+  function ipreferParseDirectory(data) {
+    const hotels = [];
+    for (const p3 of Object.values(data?.properties ?? {})) {
+      const code = p3?.field_item_code?.toUpperCase();
+      if (!code || !CODE_RE5.test(code)) continue;
+      const lat = parseFloat(p3.field_geolocation?.lat), lng = parseFloat(p3.field_geolocation?.lng);
+      hotels.push({
+        code,
+        name: p3.field_display_title || void 0,
+        city: p3.field_address?.locality || void 0,
+        state: p3.field_state_name || void 0,
+        country: p3.field_country_name || void 0,
+        lat: Number.isFinite(lat) ? lat : void 0,
+        lng: Number.isFinite(lng) ? lng : void 0,
+        path: p3.entity_url?.startsWith("/") ? p3.entity_url : void 0,
+        points: p3.field_i_prefer_book_with_points === "1"
+      });
+    }
+    return hotels;
+  }
+  var norm = (s3) => String(s3 ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  var wordMatch = (text, q2) => ` ${norm(text)}`.includes(` ${q2}`);
+  var place = (h3) => [h3.city, h3.state, h3.country].filter(Boolean).join(", ");
+  function ipreferSuggest(directory3, text) {
+    const q2 = norm(text);
+    if (!q2) return [];
+    const bookable = (directory3 ?? []).filter((h3) => h3.points);
+    const cities = /* @__PURE__ */ new Map(), regions = /* @__PURE__ */ new Map(), hotels = [];
+    for (const h3 of bookable) {
+      if (h3.city && wordMatch(h3.city, q2)) {
+        const key = `${h3.city}|${h3.country ?? ""}`;
+        if (!cities.has(key)) cities.set(key, { label: h3.city, sub: [h3.state, h3.country].filter(Boolean).join(", ") || void 0, ref: { city: h3.city, country: h3.country, label: h3.city } });
+      }
+      for (const [field, other] of [["state", "country"], ["country", null]]) {
+        if (!h3[field] || !wordMatch(h3[field], q2)) continue;
+        const key = `${field}|${h3[field]}`;
+        if (!regions.has(key)) regions.set(key, { label: h3[field], sub: other && h3[other] || void 0, ref: { [field]: h3[field], label: h3[field] } });
+      }
+      if (h3.code === text.trim().toUpperCase() || wordMatch(h3.name, q2)) hotels.push({ label: h3.name ?? h3.code, sub: place(h3) || h3.code, ref: { code: h3.code, label: h3.name } });
+    }
+    return [...cities.values(), ...regions.values(), ...hotels].slice(0, SUGGEST_MAX);
+  }
+  function ipreferHotelsAt(directory3, ref) {
+    if (ref.code) return { exact: { code: ref.code, name: ref.label }, nearby: [] };
+    const bookable = (directory3 ?? []).filter((h3) => h3.points);
+    if (ref.state || ref.country && !ref.city) {
+      const inRegion = bookable.filter((h3) => ref.state ? h3.state === ref.state : h3.country === ref.country).sort((a3, b2) => (a3.name ?? a3.code).localeCompare(b2.name ?? b2.code));
+      return { nearby: inRegion.slice(0, REGION_MAX).map((h3) => ({ code: h3.code, name: h3.name, sub: [h3.city, h3.state].filter(Boolean).join(", ") || void 0 })) };
+    }
+    const inCity = bookable.filter((h3) => h3.city === ref.city && h3.country === ref.country && h3.lat != null);
+    if (!inCity.length) return { nearby: [] };
+    const lat = inCity.reduce((s3, h3) => s3 + h3.lat, 0) / inCity.length;
+    const lng = inCity.reduce((s3, h3) => s3 + h3.lng, 0) / inCity.length;
+    const rad = Math.PI / 180;
+    const km = (h3) => {
+      const x2 = Math.sin((h3.lat - lat) * rad / 2) ** 2 + Math.cos(lat * rad) * Math.cos(h3.lat * rad) * Math.sin((h3.lng - lng) * rad / 2) ** 2;
+      return 12742 * Math.asin(Math.sqrt(x2));
+    };
+    const near = bookable.filter((h3) => h3.lat != null && h3.lng != null).map((h3) => ({ h: h3, d: km(h3) })).filter(({ h: h3, d: d3 }) => d3 <= NEARBY_RADIUS_KM2 || inCity.includes(h3)).sort((a3, b2) => a3.d - b2.d);
+    return { nearby: near.slice(0, NEARBY_MAX6).map(({ h: h3, d: d3 }) => ({ code: h3.code, name: h3.name, sub: [h3.city, `${d3.toFixed(1)} km`].filter(Boolean).join(" \xB7 ") })) };
+  }
+  function ipreferHotelFromPage(html, url) {
+    const path = new URL(url).pathname.replace(/\/$/, "");
+    if (!/^\/hotels\/[^/]+\/[^/]+$/.test(path)) return null;
+    const text = String(html ?? "").replace(/\\"/g, '"');
+    const esc = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const code = text.match(new RegExp(`"title":"([A-Za-z0-9]{5}) - [^"]*","entityUrl":\\{"path":"${esc}"`))?.[1]?.toUpperCase();
+    return code && CODE_RE5.test(code) ? code : null;
+  }
+  function ipreferPageHotels(doc, directory3, current) {
+    const byName = new Map((directory3 ?? []).map((h3) => [norm(h3.name), h3]));
+    const hotels = [];
+    for (const el of doc.querySelectorAll(".property-card__title, .marker-popup__header")) {
+      const h3 = byName.get(norm(el.textContent));
+      if (h3 && !hotels.some((x2) => x2.code === h3.code)) hotels.push({ code: h3.code, name: h3.name });
+    }
+    if (current && !hotels.some((h3) => h3.code === current)) hotels.unshift({ code: current });
+    return hotels;
+  }
+  var directory2;
+  function ipreferDirectory() {
+    directory2 ?? (directory2 = fetch(`${PTG_API}/property-search/v1?site=IPrefer`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify(DIRECTORY_FIELDS)
+    }).then(async (res) => {
+      if (!res.ok) throw new Error(`I Prefer ${res.status}`);
+      const hotels = ipreferParseDirectory(await res.json());
+      if (!hotels.length) throw new Error("I Prefer: no hotels");
+      return hotels;
+    }));
+    return directory2.catch((err) => {
+      directory2 = void 0;
+      throw err;
+    });
+  }
+  var calendarCache = /* @__PURE__ */ new Map();
+  function ipreferCalendar(hotel) {
+    const hit = calendarCache.get(hotel);
+    if (hit && Date.now() - hit.at < CALENDAR_TTL_MS) return hit.data;
+    const data = sleep(IPREFER_DELAY_MS).then(() => fetch(ipreferCalendarUrl(hotel), { headers: { accept: "application/json" } })).then((res) => {
+      if (res.status === 403 || res.status === 429) return "SESSION_EXPIRED";
+      if (!res.ok) throw new Error(`I Prefer ${res.status}`);
+      return res.json();
+    });
+    calendarCache.set(hotel, { at: Date.now(), data });
+    data.then((d3) => {
+      if (d3 === "SESSION_EXPIRED") calendarCache.delete(hotel);
+    }, () => calendarCache.delete(hotel));
+    return data;
+  }
+  var currentHotel = () => ipreferHotelFromPage(document.documentElement.innerHTML, location.href);
+  var ipreferProgram = {
+    id: "iprefer",
+    kind: "hotel",
+    name: "I Prefer",
+    color: "#1B2A3A",
+    matches: ["iprefer.com"],
+    requiresSession: false,
+    hotelPlaceholder: "Hotel name, city, country or code",
+    expiredMessage: "\u26A0 I Prefer rejected the request \u2014 refresh the page and try again",
+    currentHotel,
+    isHotelCode: (text) => CODE_RE5.test(text),
+    pageHotels: async () => ipreferPageHotels(document, await ipreferDirectory(), currentHotel()),
+    async suggestHotels(text) {
+      return ipreferSuggest(await ipreferDirectory(), text);
+    },
+    async hotelsAt(ref) {
+      return ipreferHotelsAt(ref.code ? null : await ipreferDirectory(), ref);
+    },
+    async hotelName(code) {
+      return (await ipreferDirectory()).find((h3) => h3.code === code)?.name ?? null;
+    },
+    async onHotelSearch(params) {
+      const [data, dir] = await Promise.all([ipreferCalendar(params.hotel), ipreferDirectory().catch(() => [])]);
+      return data === "SESSION_EXPIRED" ? data : ipreferParseCalendar(data, params, dir.find((h3) => h3.code === params.hotel)?.path);
+    }
+  };
+
   // src/entrypoint.js
-  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram, choiceProgram];
+  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram, choiceProgram, ipreferProgram];
   var program = ALL_PROGRAMS.find((p3) => p3.matchHost?.(location.hostname) ?? p3.matches.includes(location.hostname));
   if (program) {
     if (document.body) mountPanel(program);
