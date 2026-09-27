@@ -6,7 +6,6 @@ import { useSearchRun, SearchSummary, SearchControls } from './searchRun.jsx'
 import { MonthRangePicker } from './Calendar.jsx'
 import { HotelCalendar, HotelTable } from './HotelResults.jsx'
 import { HotelPicker } from './HotelPicker.jsx'
-import { FilterBar } from './ResultsTable.jsx'
 
 // Hotel award search: points per night for hotel codes × check-in months, one request per hotel and month.
 // A hotel program ({ kind: 'hotel', ... }) provides:
@@ -116,16 +115,17 @@ export function HotelSearch({ program, session }) {
   // Reward types in the results (Hilton prices Standard and Premium); the filter only applies while they're there
   const rateTypes = ['Standard', 'Premium'].filter(t => results.some(r => r.rateType === t))
   const activeRateType = rateTypes.includes(rateType) ? rateType : null
-  // Room categories in the results (Hyatt prices several), cheapest first; likewise only while there's a choice
+  // Room categories in the results (Hyatt prices several), cheapest first; likewise only while there's a choice.
+  // Taken from the chosen reward type's rates so the two filters never leave nothing (and no filter bar) to show
   const lowest = {}
-  for (const r of results) if (r.roomType && !(lowest[r.roomType] <= r.points)) lowest[r.roomType] = r.points
+  for (const r of results) if (r.roomType && (!activeRateType || r.rateType === activeRateType) && !(lowest[r.roomType] <= r.points)) lowest[r.roomType] = r.points
   const roomTypes = Object.keys(lowest).sort((a, b) => lowest[a] - lowest[b])
   const activeRoomType = roomTypes.includes(roomType) ? roomType : null
   const visible = results.filter(r => (!activeRateType || r.rateType === activeRateType) && (!activeRoomType || r.roomType === activeRoomType))
   const pills = [
     rateTypes.length > 1 && { id: 'rateType', label: 'Reward', display: activeRateType && `${activeRateType} only`,
       items: [[null, 'Standard & Premium'], ['Standard', 'Standard only'], ['Premium', 'Premium only']] },
-    roomTypes.length > 1 && { id: 'roomType', label: 'Room', display: activeRoomType,
+    (roomTypes.length > 1 || activeRoomType) && { id: 'roomType', label: 'Room', display: activeRoomType,
       items: [[null, 'All rooms'], ...roomTypes.map(t => [t, t])] },
   ].filter(Boolean)
 
@@ -153,13 +153,11 @@ export function HotelSearch({ program, session }) {
       </>}
       <SearchControls run={run} session={session} onSearch={search} />
       <div>
-        {pills.length > 0 && (
-          <FilterBar filters={{ rateType: activeRateType, roomType: activeRoomType }} pills={pills}
-            onChange={f => { setRateType(f.rateType); setRoomType(f.roomType); setDate(null) }} />
-        )}
         {shown && results.length > 0 && <HotelCalendar results={visible} hotels={shown.hotels} names={names} fromMonth={shown.fromMonth} toMonth={shown.toMonth}
           selected={date} onSelect={setDate} />}
-        <HotelTable results={visible} hotels={shown?.hotels ?? []} names={names} date={date} onClearDate={() => setDate(null)} />
+        <HotelTable results={visible} hotels={shown?.hotels ?? []} names={names} date={date} onClearDate={() => setDate(null)}
+          sharedPills={pills} shared={{ rateType: activeRateType, roomType: activeRoomType }}
+          onSharedChange={f => { setRateType(f.rateType); setRoomType(f.roomType); setDate(null) }} />
         {noResults && <div class="ab-no-results">No award availability found.</div>}
       </div>
     </>

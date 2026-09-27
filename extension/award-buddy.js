@@ -4532,7 +4532,7 @@
       })
     ] });
   }
-  function HotelTable({ results, hotels, names, date, onClearDate }) {
+  function HotelTable({ results, hotels, names, date, onClearDate, sharedPills = [], shared = {}, onSharedChange }) {
     const [sort, setSort] = d2({ key: "date", dir: 1 });
     const [filters, setFilters] = d2({ hotel: null, dow: null });
     const [cheapest, setCheapest] = d2(true);
@@ -4550,6 +4550,7 @@
     const hasBook = results.some((r3) => r3.bookUrl);
     const hotelName = (code) => names[code] ?? code;
     const pills = [
+      ...sharedPills,
       multi && {
         id: "hotel",
         label: "Hotel",
@@ -4582,8 +4583,10 @@
       );
     }
     return /* @__PURE__ */ u3("div", { children: [
-      /* @__PURE__ */ u3(FilterBar, { pills, filters, onChange: (f4) => {
-        setFilters(f4);
+      /* @__PURE__ */ u3(FilterBar, { pills, filters: { ...shared, ...filters }, onChange: (f4) => {
+        const own = { hotel: f4.hotel, dow: f4.dow };
+        if (sharedPills.some((p3) => f4[p3.id] !== shared[p3.id])) onSharedChange(f4);
+        else setFilters(own);
         setPage(0);
       }, children: [
         date && /* @__PURE__ */ u3("button", { class: "ab-flt-btn active", onClick: onClearDate, children: [
@@ -4880,7 +4883,7 @@
     const rateTypes = ["Standard", "Premium"].filter((t3) => results.some((r3) => r3.rateType === t3));
     const activeRateType = rateTypes.includes(rateType) ? rateType : null;
     const lowest = {};
-    for (const r3 of results) if (r3.roomType && !(lowest[r3.roomType] <= r3.points)) lowest[r3.roomType] = r3.points;
+    for (const r3 of results) if (r3.roomType && (!activeRateType || r3.rateType === activeRateType) && !(lowest[r3.roomType] <= r3.points)) lowest[r3.roomType] = r3.points;
     const roomTypes = Object.keys(lowest).sort((a3, b2) => lowest[a3] - lowest[b2]);
     const activeRoomType = roomTypes.includes(roomType) ? roomType : null;
     const visible = results.filter((r3) => (!activeRateType || r3.rateType === activeRateType) && (!activeRoomType || r3.roomType === activeRoomType));
@@ -4891,7 +4894,7 @@
         display: activeRateType && `${activeRateType} only`,
         items: [[null, "Standard & Premium"], ["Standard", "Standard only"], ["Premium", "Premium only"]]
       },
-      roomTypes.length > 1 && {
+      (roomTypes.length > 1 || activeRoomType) && {
         id: "roomType",
         label: "Room",
         display: activeRoomType,
@@ -4919,18 +4922,6 @@
       ] }),
       /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
       /* @__PURE__ */ u3("div", { children: [
-        pills.length > 0 && /* @__PURE__ */ u3(
-          FilterBar,
-          {
-            filters: { rateType: activeRateType, roomType: activeRoomType },
-            pills,
-            onChange: (f4) => {
-              setRateType(f4.rateType);
-              setRoomType(f4.roomType);
-              setDate(null);
-            }
-          }
-        ),
         shown && results.length > 0 && /* @__PURE__ */ u3(
           HotelCalendar,
           {
@@ -4943,7 +4934,23 @@
             onSelect: setDate
           }
         ),
-        /* @__PURE__ */ u3(HotelTable, { results: visible, hotels: shown?.hotels ?? [], names, date, onClearDate: () => setDate(null) }),
+        /* @__PURE__ */ u3(
+          HotelTable,
+          {
+            results: visible,
+            hotels: shown?.hotels ?? [],
+            names,
+            date,
+            onClearDate: () => setDate(null),
+            sharedPills: pills,
+            shared: { rateType: activeRateType, roomType: activeRoomType },
+            onSharedChange: (f4) => {
+              setRateType(f4.rateType);
+              setRoomType(f4.roomType);
+              setDate(null);
+            }
+          }
+        ),
         noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
       ] })
     ] });
