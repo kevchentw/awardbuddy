@@ -78,3 +78,55 @@ test('IHG: nearby hotels sorted by distance; a suggestion on top of a hotel is t
   assert.deepEqual(ihgParseNearby(onHotel, { label: 'Kimpton Da An Hotel' }).exact, { code: 'TPEKM' })
   assert.equal(ihgParseNearby(onHotel, { label: 'TPE airport', airport: true }).exact, undefined)
 })
+
+test('Marriott: redemption calendar request for one hotel, parsed to one row per date', async () => {
+  const { marriottBuildRequest, marriottParseCalendar } = await import('../src/programs/marriott.js')
+  const body = marriottBuildRequest({ hotel: 'TPEDM', start: '2026-10-01', end: '2026-10-31' })
+  assert.deepEqual(body.variables.id, ['TPEDM'])
+  assert.equal(body.variables.search.propertyId, 'TPEDM')
+  assert.deepEqual(body.variables.search.options.rateRequestTypes, [{ type: 'REDEMPTION' }])
+  assert.equal(body.variables.search.options.startDate, '2026-10-01')
+  assert.equal(body.variables.search.options.endDate, '2026-10-31')
+  assert.match(body.query, /^query phoenixShopADFSearchProductsByProperty\(/)
+  const node = (date, points) => ({ node: { startDate: date, endDate: date, rateModes: { pointsPerQuantity: points == null ? null : { points }, sourceOfRate: 'DSP' } } })
+  const data = { data: { search: { calendarSearchByProperty: { edges: [node('2026-10-01', 134000), node('2026-10-02', null), node('2026-10-03', 118000)] } } } }
+  const rows = marriottParseCalendar(data, 'TPEDM')
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room]), [['2026-10-01', 'TPEDM', 134000, undefined], ['2026-10-03', 'TPEDM', 118000, undefined]])
+  assert.match(rows[0].bookUrl, /availabilityCalendar\.mi\?propertyCode=TPEDM/)
+  assert.deepEqual(marriottParseCalendar(null, 'TPEDM'), [])
+})
+
+test('Marriott: hotel code from hotel, rate list and rate calendar URLs', async () => {
+  const { marriottHotelFromUrl } = await import('../src/programs/marriott.js')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/en-us/hotels/tpedm-le-meridien-taipei/overview/'), 'TPEDM')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/hotels/travel/tyomy-sheraton-miyako-hotel-tokyo/'), 'TYOMY')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/search/availabilityCalendar.mi?isRateCalendar=true&propertyCode=ukyrz&isSearch=true'), 'UKYRZ')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/reservation/rateListMenu.mi?marshaCode=TPEDM'), 'TPEDM')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/search/findHotels.mi?destinationAddress.city=Tokyo'), null)
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/default.mi'), null)
+})
+
+test('Marriott: hotels on a search results page, plus the hotel page the user is on', async () => {
+  const { marriottPageHotels } = await import('../src/programs/marriott.js')
+  // Just enough of the DOM API for the selectors used
+  const el = (attrs, children = {}) => ({
+    getAttribute: k => attrs[k] ?? null,
+    querySelector: sel => children[sel] ?? null,
+    textContent: attrs.text,
+  })
+  const listCard = el({ 'data-marsha': 'TYOAK', 'data-property': JSON.stringify({ marshacode: 'TYOAK', hotelName: 'The Prince Sakura Tower Tokyo, Autograph Collection' }) })
+  const mapCard = el({}, {
+    'a[href*="propertyCode="]': el({ href: '/search/availabilityCalendar.mi?propertyCode=TYOMY&isSearch=true' }),
+    '.HotelCard__top-section_title': el({ text: '  Sheraton Miyako\n Hotel Tokyo ' }),
+  })
+  const doc = {
+    querySelectorAll: sel => sel.startsWith('.property-card') ? [listCard, listCard] : sel === '.HotelCardContainer' ? [mapCard] : [],
+    querySelector: sel => sel === '.hotel-name' ? el({ text: 'Le Méridien Taipei' }) : null,
+  }
+  assert.deepEqual(marriottPageHotels(doc, 'https://www.marriott.com/search/findHotels.mi'), [
+    { code: 'TYOAK', name: 'The Prince Sakura Tower Tokyo, Autograph Collection' },
+    { code: 'TYOMY', name: 'Sheraton Miyako Hotel Tokyo' },
+  ])
+  assert.deepEqual(marriottPageHotels({ querySelectorAll: () => [], querySelector: doc.querySelector }, 'https://www.marriott.com/reservation/rateListMenu.mi?marshaCode=TPEDM'),
+    [{ code: 'TPEDM', name: 'Le Méridien Taipei' }])
+})
