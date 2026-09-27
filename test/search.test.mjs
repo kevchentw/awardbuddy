@@ -45,6 +45,29 @@ test('EVA award chart prices by origin/destination zone', async () => {
   assert.equal(brAwardMiles('LAX', 'LHR', 'J'), 0)
 })
 
+test('EVA day headers parse with or without a period after the month', async () => {
+  const { brParseAriaDate } = await import('../src/programs/br.js')
+  assert.equal(brParseAriaDate('May 16, 2027Sunday'), '2027-05-16')
+  assert.equal(brParseAriaDate('Jul. 8, 2026Wednesday'), '2026-07-08')
+  assert.equal(brParseAriaDate('Sept. 3, 2026Thursday'), '2026-09-03')
+  assert.equal(brParseAriaDate('Previous Week'), null)
+})
+
+test('EVA week key groups dates into the Sun–Sat week the results page shows', async () => {
+  const { brWeekKey } = await import('../src/programs/br.js')
+  const k = d => brWeekKey('TPE', 'DFW', d, 'J')
+  assert.equal(k('2027-05-19'), 'TPE|DFW|J|2027-05-16')
+  assert.equal(k('2027-05-16'), k('2027-05-22'))
+  assert.notEqual(k('2027-05-22'), k('2027-05-23'))
+})
+
+test('EVA Akamai challenge / deny pages are recognised', async () => {
+  const { brIsBlockedPage } = await import('../src/programs/br.js')
+  assert.ok(brIsBlockedPage('<form name="sec_chlge_form"></form>'))
+  assert.ok(brIsBlockedPage('<html><head><title>Access Denied</title></head></html>'))
+  assert.ok(!brIsBlockedPage('<title>Award/Upgrade Availability - EVA Air</title>'))
+})
+
 test('JAL partner availability: cabin needs every segment, seats = tightest segment', async () => {
   const { jalParsePartnerAvailability } = await import('../src/programs/jal.js')
   const seg = (fl, o, d, dep, cabins) => ({
