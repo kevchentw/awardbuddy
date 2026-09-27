@@ -1,0 +1,15 @@
+{
+  "name": "awardbuddy",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.cjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  },
+  "dependencies": {
+    "preact": "^10.29.8"
+  },
+  "type": "module"
+}
