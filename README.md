@@ -43,9 +43,10 @@ When a program needs a session and doesn't have one yet, the panel shows a **Get
 
 ### Extra search modes
 
-Some programs have more to search than a plain one-way. These appear as a **Search mode** or carrier dropdown in the panel.
+Some programs have more to search than a plain one-way (or, for hotels, their own chain). These appear as a **Search mode** or carrier dropdown in the panel.
 
 - **Air Canada: one-way with stopover.** Enter one or more stopover cities and the length of stay (for example `3-5, 7` days). Every combination of stopover city × stay length is searched for each route and date.
+- **Choice: Preferred Hotels & Resorts.** Search the 300+ Preferred Hotels bookable with Choice Privileges points, from any page on choicehotels.com. Each night costs the hotel's flat points rate plus taxes and fees in cash (shown in the Room column). Searching needs no login, but booking does: click **Start booking** on Choice's [Preferred Hotels partner page](https://www.choicehotels.com/ascend/preferred-hotels-partner) while logged in, and the **Book** links then open the hotel on preferredhotels.com (pick the dates there).
 - **Japan Airlines: partner awards.** Search JMB partner award space for Alaska / Hawaiian, American, British Airways, Cathay Pacific, Fiji Airways, Finnair, Iberia, Malaysia Airlines, Oman Air, Qantas, Qatar Airways, Royal Air Maroc, Royal Jordanian, SriLankan, Air France, Bangkok Airways, Emirates, Garuda Indonesia, Korean Air and LATAM. The airport list changes to match the partner network. Calendar mode only covers JAL's own flights.
 - **LifeMiles: carrier filter.** Search all of Star Alliance, use Smart Search, or limit results to one airline: Thai, Avianca + Gol, Aegean, ANA, Lufthansa, Singapore Airlines or United.
 

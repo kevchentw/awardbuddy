@@ -4841,7 +4841,45 @@
       return {};
     }
   }
+  var modeKey = (program2) => `award-buddy:${program2.id}:mode`;
+  function initialMode(program2) {
+    let saved;
+    try {
+      saved = localStorage.getItem(modeKey(program2));
+    } catch {
+    }
+    return program2.modes.some((m3) => m3.code === saved) ? saved : program2.modes[0].code;
+  }
   function HotelSearch({ program: program2, session }) {
+    if (!program2.modes) return /* @__PURE__ */ u3(HotelSearchForm, { program: program2, session });
+    return /* @__PURE__ */ u3(HotelSearchModes, { program: program2, session });
+  }
+  function HotelSearchModes({ program: program2, session }) {
+    const [mode, setMode] = d2(() => initialMode(program2));
+    h2(() => {
+      try {
+        localStorage.setItem(modeKey(program2), mode);
+      } catch {
+      }
+    }, [mode]);
+    const active = program2.modes.find((m3) => m3.code === mode);
+    return /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+        /* @__PURE__ */ u3("label", { children: program2.modeLabel ?? "Search mode" }),
+        /* @__PURE__ */ u3("select", { value: mode, onChange: (e3) => setMode(e3.currentTarget.value), children: program2.modes.map((m3) => /* @__PURE__ */ u3("option", { value: m3.code, children: m3.name }, m3.code)) })
+      ] }) }),
+      active.tip && /* @__PURE__ */ u3("div", { class: "ab-tip", children: [
+        "\u{1F4A1} ",
+        active.tip,
+        active.tipLink && /* @__PURE__ */ u3(S, { children: [
+          " ",
+          /* @__PURE__ */ u3("a", { href: active.tipLink.url, target: "_blank", style: { color: "var(--ab-color)" }, children: active.tipLink.text })
+        ] })
+      ] }),
+      /* @__PURE__ */ u3(HotelSearchForm, { program: active.program, session }, active.code)
+    ] });
+  }
+  function HotelSearchForm({ program: program2, session }) {
     const [form, setForm] = d2(() => initialForm(program2));
     const set = (patch) => setForm((f4) => ({ ...f4, ...patch }));
     const [names, setNames] = d2(() => initialNames(program2));
@@ -8821,164 +8859,12 @@
     }
   };
 
-  // src/programs/choice.js
-  var CHOICE_GRAPHQL = "/dxapi/graphql";
-  var CHOICE_QUERIES = {
-    GetHotelCalendarRates: `query GetHotelCalendarRates($hotelCode: String!, $startDate: String!, $endDate: String!, $adults: Int!, $minors: Int!, $ratePlanCodes: [String!], $currencyCode: String!) {
-  getHotelAvailabilityCalendarRates(hotelCode: $hotelCode, startDate: $startDate, endDate: $endDate, adults: $adults, minors: $minors, ratePlanCodes: $ratePlanCodes, currencyCode: $currencyCode) {
-    calendarRates { startDate points availableForSale }
-  }
-}`,
-    SearchAutoSuggestions: `query SearchAutoSuggestions($searchTerm: String!, $limit: Int) {
-  searchPoisByTerm(searchTerm: $searchTerm, limit: $limit) { placeId placeType displayName }
-}`,
-    SearchPoisByPlaceId: `query SearchPoisByPlaceId($placeId: String!) {
-  searchPoisByPlaceId(placeId: $placeId) { placeType latitude longitude }
-}`,
-    SearchHotelsByGeoLocation: `query SearchHotelsByGeoLocation($latitude: Float!, $longitude: Float!, $radius: Int) {
-  searchHotelsByGeoLocation(latitude: $latitude, longitude: $longitude, radius: $radius) {
-    code details { name status geoLocation { latitude longitude } }
-  }
-}`,
-    FetchHotelSummary: `query FetchHotelSummary($hotelIds: [String!]!) {
-  fetchHotelSummary(hotelIds: $hotelIds) { code name }
-}`
-  };
-  var CHOICE_DELAY_MS = 600;
-  var NEARBY_RADIUS_MI2 = 30;
-  var NEARBY_MAX5 = 30;
-  var SAME_PLACE_KM2 = 0.15;
-  var REWARD_RATE_PLAN = "SRD";
-  var CODE_RE4 = /^[A-Z]{2}[A-Z0-9]{3}$/;
-  async function choiceQuery(operationName, variables) {
-    const res = await fetch(`${CHOICE_GRAPHQL}?q=${operationName}`, {
-      method: "POST",
-      headers: { accept: "*/*", "content-type": "application/json", "dxapi-context": "locale:en-us,platform:desktop,sitename:us" },
-      credentials: "include",
-      body: JSON.stringify({ operationName, variables, query: CHOICE_QUERIES[operationName] })
-    });
-    if (res.status === 403 || res.status === 429) return "SESSION_EXPIRED";
-    const data = await res.json().catch(() => null);
-    if (choiceUnknownHotel(data)) return data;
-    if (!res.ok) throw new Error(`Choice ${res.status}`);
-    if (data?.errors?.length && !data.data) throw new Error(`Choice: ${data.errors[0].message}`);
-    return data;
-  }
-  var choiceUnknownHotel = (data) => !!data?.errors?.some((e3) => /NONEXISTENT_HOTEL/.test(e3?.message));
-  function choiceCalendarVariables({ hotel, start, end }) {
-    return {
-      hotelCode: hotel,
-      startDate: start,
-      endDate: end,
-      adults: 1,
-      minors: 0,
-      ratePlanCodes: [REWARD_RATE_PLAN],
-      currencyCode: "HOTEL_DEFAULT_CURRENCY"
-    };
-  }
-  var choiceBookUrl = (hotel, date, nextDate) => `https://www.choicehotels.com/hotel/${hotel.toLowerCase()}?checkInDate=${date}&checkOutDate=${nextDate}&ratePlanCode=${REWARD_RATE_PLAN}`;
-  var nextDay3 = (date) => {
-    const d3 = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
-    d3.setUTCDate(d3.getUTCDate() + 1);
-    return d3.toISOString().slice(0, 10);
-  };
-  function choiceParseCalendar(data, { hotel, start, end }) {
-    const results = [];
-    for (const rate of data?.data?.getHotelAvailabilityCalendarRates?.calendarRates ?? []) {
-      const date = rate?.startDate;
-      if (!date || date < start || date > end || !rate.availableForSale || !(rate.points > 0)) continue;
-      results.push({ date, hotel, points: rate.points, bookUrl: choiceBookUrl(hotel, date, nextDay3(date)) });
-    }
-    return results.sort((a3, b2) => a3.date.localeCompare(b2.date));
-  }
-  function choiceHotelFromUrl(url) {
-    const u4 = new URL(url);
-    const code = u4.pathname.match(/\/(?:hotel|[a-z0-9-]+-hotels)\/([a-z0-9]{5})\/?$/i)?.[1]?.toUpperCase();
-    return code && CODE_RE4.test(code) ? code : null;
-  }
-  function choicePageHotels(doc, url) {
-    const hotels = [];
-    for (const el of doc.querySelectorAll('[id^="search-page-list-card-property-name_"]')) {
-      const code = el.id.split("_").pop().toUpperCase();
-      if (!CODE_RE4.test(code) || hotels.some((h3) => h3.code === code)) continue;
-      hotels.push({ code, name: el.textContent.replace(/\s+/g, " ").trim() || void 0 });
-    }
-    const current = choiceHotelFromUrl(url);
-    if (current && !hotels.some((h3) => h3.code === current)) hotels.unshift({ code: current });
-    return hotels;
-  }
-  function choiceParseSuggestions(data) {
-    return (data?.data?.searchPoisByTerm ?? []).filter((p3) => p3?.placeId && p3.displayName).map((p3) => {
-      const [label, ...rest] = p3.displayName.split(", ");
-      return {
-        label,
-        sub: [p3.placeType === "Airport" && "Airport", rest.join(", ")].filter(Boolean).join(" \xB7 ") || void 0,
-        ref: { placeId: p3.placeId, label: p3.displayName }
-      };
-    });
-  }
-  function choiceNearby(hotels, place2) {
-    const { latitude: lat, longitude: lon } = place2;
-    const rad = Math.PI / 180;
-    const km = (lat2, lon2) => {
-      const x2 = Math.sin((lat2 - lat) * rad / 2) ** 2 + Math.cos(lat * rad) * Math.cos(lat2 * rad) * Math.sin((lon2 - lon) * rad / 2) ** 2;
-      return 12742 * Math.asin(Math.sqrt(x2));
-    };
-    const list = [];
-    for (const h3 of hotels ?? []) {
-      const code = h3?.code?.toUpperCase();
-      const g2 = h3?.details?.geoLocation;
-      if (!code || !CODE_RE4.test(code) || g2?.latitude == null || g2?.longitude == null) continue;
-      if (h3.details.status && h3.details.status !== "ACTIVE") continue;
-      list.push({ code, name: h3.details.name || void 0, d: km(g2.latitude, g2.longitude) });
-    }
-    list.sort((a3, b2) => a3.d - b2.d);
-    const first = list[0];
-    if (first && place2.placeType !== "Airport" && first.d < SAME_PLACE_KM2) return { exact: { code: first.code, name: first.name }, nearby: [] };
-    return { nearby: list.slice(0, NEARBY_MAX5).map((h3) => ({ code: h3.code, name: h3.name, sub: `${h3.d.toFixed(1)} km` })) };
-  }
-  var choiceProgram = {
-    id: "choice",
-    kind: "hotel",
-    name: "Choice",
-    color: "#0070BA",
-    matches: ["www.choicehotels.com"],
-    requiresSession: false,
-    hotelPlaceholder: "Hotel name, city, airport or code",
-    expiredMessage: "\u26A0 Choice blocked the request \u2014 refresh the page and try again",
-    currentHotel: () => choiceHotelFromUrl(location.href),
-    isHotelCode: (text) => CODE_RE4.test(text),
-    pageHotels: () => choicePageHotels(document, location.href),
-    async suggestHotels(text) {
-      const data = await choiceQuery("SearchAutoSuggestions", { searchTerm: text, limit: 8 });
-      return data === "SESSION_EXPIRED" ? [] : choiceParseSuggestions(data);
-    },
-    async hotelsAt(ref) {
-      const poi = await choiceQuery("SearchPoisByPlaceId", { placeId: ref.placeId });
-      if (poi === "SESSION_EXPIRED") throw new Error("Choice blocked the request");
-      const place2 = poi?.data?.searchPoisByPlaceId?.[0];
-      if (place2?.latitude == null || place2?.longitude == null) return { nearby: [] };
-      const data = await choiceQuery("SearchHotelsByGeoLocation", { latitude: place2.latitude, longitude: place2.longitude, radius: NEARBY_RADIUS_MI2 });
-      if (data === "SESSION_EXPIRED") throw new Error("Choice blocked the request");
-      return choiceNearby(data?.data?.searchHotelsByGeoLocation, place2);
-    },
-    async hotelName(code) {
-      const data = await choiceQuery("FetchHotelSummary", { hotelIds: [code] });
-      return data === "SESSION_EXPIRED" ? null : data?.data?.fetchHotelSummary?.find((h3) => h3?.code?.toUpperCase() === code)?.name ?? null;
-    },
-    async onHotelSearch(params) {
-      await sleep(CHOICE_DELAY_MS);
-      const data = await choiceQuery("GetHotelCalendarRates", choiceCalendarVariables(params));
-      return data === "SESSION_EXPIRED" ? data : choiceParseCalendar(data, params);
-    }
-  };
-
   // src/programs/iprefer.js
   var PTG_API = "https://ptgapis.com";
   var IPREFER_DELAY_MS = 600;
   var CALENDAR_TTL_MS = 30 * 60 * 1e3;
   var NEARBY_RADIUS_KM2 = 80;
-  var NEARBY_MAX6 = 30;
+  var NEARBY_MAX5 = 30;
   var REGION_MAX = 100;
   var SUGGEST_MAX = 8;
   var REWARD_RATE_CODE = "IPPOINTS";
@@ -8990,12 +8876,15 @@
     field_state_name: {},
     field_country_name: {},
     field_i_prefer_book_with_points: {},
-    entity_url: {}
+    entity_url: {},
+    field_synxis_id: {},
+    participates_in_choice_points: {},
+    choice_points_value: {}
   };
-  var CODE_RE5 = /^[A-Z0-9]{5}$/;
+  var CODE_RE4 = /^[A-Z0-9]{5}$/;
   var ipreferCalendarUrl = (hotel) => `${PTG_API}/rate-calendar/v2?propertyCode=${hotel}&adults=1&children=0&rateCode=${REWARD_RATE_CODE}`;
   var ipreferBookUrl = (path, date, nextDate) => `https://iprefer.com${path}?arrivalDate=${date}&departureDate=${nextDate}&rateType=RN`;
-  var nextDay4 = (date) => {
+  var nextDay3 = (date) => {
     const d3 = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
     d3.setUTCDate(d3.getUTCDate() + 1);
     return d3.toISOString().slice(0, 10);
@@ -9008,7 +8897,7 @@
       if (date < start || date > end || !night?.is_available || !night.has_inventory || !night.allows_check_in) continue;
       const points = Number(night.points);
       if (!(points > 0)) continue;
-      results.push({ date, hotel, points, bookUrl: path ? ipreferBookUrl(path, date, nextDay4(date)) : void 0 });
+      results.push({ date, hotel, points, bookUrl: path ? ipreferBookUrl(path, date, nextDay3(date)) : void 0 });
     }
     return results.sort((a3, b2) => a3.date.localeCompare(b2.date));
   }
@@ -9016,7 +8905,7 @@
     const hotels = [];
     for (const p3 of Object.values(data?.properties ?? {})) {
       const code = p3?.field_item_code?.toUpperCase();
-      if (!code || !CODE_RE5.test(code)) continue;
+      if (!code || !CODE_RE4.test(code)) continue;
       const lat = parseFloat(p3.field_geolocation?.lat), lng = parseFloat(p3.field_geolocation?.lng);
       hotels.push({
         code,
@@ -9027,7 +8916,9 @@
         lat: Number.isFinite(lat) ? lat : void 0,
         lng: Number.isFinite(lng) ? lng : void 0,
         path: p3.entity_url?.startsWith("/") ? p3.entity_url : void 0,
-        points: p3.field_i_prefer_book_with_points === "1"
+        points: p3.field_i_prefer_book_with_points === "1",
+        synxisId: p3.field_synxis_id || void 0,
+        choicePoints: p3.participates_in_choice_points === "1" && Number(p3.choice_points_value) > 0 ? Number(p3.choice_points_value) : void 0
       });
     }
     return hotels;
@@ -9035,10 +8926,11 @@
   var norm = (s3) => String(s3 ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   var wordMatch = (text, q2) => ` ${norm(text)}`.includes(` ${q2}`);
   var place = (h3) => [h3.city, h3.state, h3.country].filter(Boolean).join(", ");
-  function ipreferSuggest(directory3, text) {
+  var bookableWithPoints = (h3) => h3.points;
+  function ipreferSuggest(directory3, text, bookableIf = bookableWithPoints) {
     const q2 = norm(text);
     if (!q2) return [];
-    const bookable = (directory3 ?? []).filter((h3) => h3.points);
+    const bookable = (directory3 ?? []).filter(bookableIf);
     const cities = /* @__PURE__ */ new Map(), regions = /* @__PURE__ */ new Map(), hotels = [];
     for (const h3 of bookable) {
       if (h3.city && wordMatch(h3.city, q2)) {
@@ -9054,9 +8946,9 @@
     }
     return [...cities.values(), ...regions.values(), ...hotels].slice(0, SUGGEST_MAX);
   }
-  function ipreferHotelsAt(directory3, ref) {
+  function ipreferHotelsAt(directory3, ref, bookableIf = bookableWithPoints) {
     if (ref.code) return { exact: { code: ref.code, name: ref.label }, nearby: [] };
-    const bookable = (directory3 ?? []).filter((h3) => h3.points);
+    const bookable = (directory3 ?? []).filter(bookableIf);
     if (ref.state || ref.country && !ref.city) {
       const inRegion = bookable.filter((h3) => ref.state ? h3.state === ref.state : h3.country === ref.country).sort((a3, b2) => (a3.name ?? a3.code).localeCompare(b2.name ?? b2.code));
       return { nearby: inRegion.slice(0, REGION_MAX).map((h3) => ({ code: h3.code, name: h3.name, sub: [h3.city, h3.state].filter(Boolean).join(", ") || void 0 })) };
@@ -9071,7 +8963,7 @@
       return 12742 * Math.asin(Math.sqrt(x2));
     };
     const near = bookable.filter((h3) => h3.lat != null && h3.lng != null).map((h3) => ({ h: h3, d: km(h3) })).filter(({ h: h3, d: d3 }) => d3 <= NEARBY_RADIUS_KM2 || inCity.includes(h3)).sort((a3, b2) => a3.d - b2.d);
-    return { nearby: near.slice(0, NEARBY_MAX6).map(({ h: h3, d: d3 }) => ({ code: h3.code, name: h3.name, sub: [h3.city, `${d3.toFixed(1)} km`].filter(Boolean).join(" \xB7 ") })) };
+    return { nearby: near.slice(0, NEARBY_MAX5).map(({ h: h3, d: d3 }) => ({ code: h3.code, name: h3.name, sub: [h3.city, `${d3.toFixed(1)} km`].filter(Boolean).join(" \xB7 ") })) };
   }
   function ipreferHotelFromPage(html, url) {
     const path = new URL(url).pathname.replace(/\/$/, "");
@@ -9079,7 +8971,7 @@
     const text = String(html ?? "").replace(/\\"/g, '"');
     const esc = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const code = text.match(new RegExp(`"title":"([A-Za-z0-9]{5}) - [^"]*","entityUrl":\\{"path":"${esc}"`))?.[1]?.toUpperCase();
-    return code && CODE_RE5.test(code) ? code : null;
+    return code && CODE_RE4.test(code) ? code : null;
   }
   function ipreferPageHotels(doc, directory3, current) {
     const byName = new Map((directory3 ?? []).map((h3) => [norm(h3.name), h3]));
@@ -9109,18 +9001,18 @@
     });
   }
   var calendarCache = /* @__PURE__ */ new Map();
-  function ipreferCalendar(hotel) {
-    const hit = calendarCache.get(hotel);
+  function ptgCalendar(url) {
+    const hit = calendarCache.get(url);
     if (hit && Date.now() - hit.at < CALENDAR_TTL_MS) return hit.data;
-    const data = sleep(IPREFER_DELAY_MS).then(() => fetch(ipreferCalendarUrl(hotel), { headers: { accept: "application/json" } })).then((res) => {
+    const data = sleep(IPREFER_DELAY_MS).then(() => fetch(url, { headers: { accept: "application/json" } })).then((res) => {
       if (res.status === 403 || res.status === 429) return "SESSION_EXPIRED";
       if (!res.ok) throw new Error(`I Prefer ${res.status}`);
       return res.json();
     });
-    calendarCache.set(hotel, { at: Date.now(), data });
+    calendarCache.set(url, { at: Date.now(), data });
     data.then((d3) => {
-      if (d3 === "SESSION_EXPIRED") calendarCache.delete(hotel);
-    }, () => calendarCache.delete(hotel));
+      if (d3 === "SESSION_EXPIRED") calendarCache.delete(url);
+    }, () => calendarCache.delete(url));
     return data;
   }
   var currentHotel = () => ipreferHotelFromPage(document.documentElement.innerHTML, location.href);
@@ -9134,7 +9026,7 @@
     hotelPlaceholder: "Hotel name, city, country or code",
     expiredMessage: "\u26A0 I Prefer rejected the request \u2014 refresh the page and try again",
     currentHotel,
-    isHotelCode: (text) => CODE_RE5.test(text),
+    isHotelCode: (text) => CODE_RE4.test(text),
     pageHotels: async () => ipreferPageHotels(document, await ipreferDirectory(), currentHotel()),
     async suggestHotels(text) {
       return ipreferSuggest(await ipreferDirectory(), text);
@@ -9146,9 +9038,220 @@
       return (await ipreferDirectory()).find((h3) => h3.code === code)?.name ?? null;
     },
     async onHotelSearch(params) {
-      const [data, dir] = await Promise.all([ipreferCalendar(params.hotel), ipreferDirectory().catch(() => [])]);
+      const [data, dir] = await Promise.all([ptgCalendar(ipreferCalendarUrl(params.hotel)), ipreferDirectory().catch(() => [])]);
       return data === "SESSION_EXPIRED" ? data : ipreferParseCalendar(data, params, dir.find((h3) => h3.code === params.hotel)?.path);
     }
+  };
+
+  // src/programs/preferred-choice.js
+  var PARTNER_PAGE_URL = "https://www.choicehotels.com/ascend/preferred-hotels-partner";
+  var preferredChoiceCalendarUrl = (hotel) => `${PTG_API}/rate-calendar/v2?propertyCode=${hotel}&program=CH&adults=1&children=0`;
+  var preferredChoiceBookUrl = (synxisId) => `https://preferredhotels.com/choicepoints/book/hotel/${synxisId}`;
+  var takesChoicePoints = (h3) => h3.choicePoints > 0;
+  function preferredChoiceParseCalendar(data, { hotel, start, end }, info) {
+    const results = [];
+    const days = data?.results;
+    if (!takesChoicePoints(info ?? {}) || !days || typeof days !== "object" || Array.isArray(days)) return results;
+    const currency = data.currency_code ?? "USD";
+    for (const [date, night] of Object.entries(days)) {
+      if (date < start || date > end || !night?.is_available || !night.has_inventory || !night.allows_check_in) continue;
+      const cash = Math.round((Number(night.tax) || 0) + (Number(night.fees) || 0));
+      results.push({
+        date,
+        hotel,
+        points: info.choicePoints,
+        room: cash > 0 ? `+ ${currency === "USD" ? `$${cash}` : `${cash} ${currency}`} taxes & fees` : void 0,
+        bookUrl: info.synxisId ? preferredChoiceBookUrl(info.synxisId) : void 0
+      });
+    }
+    return results.sort((a3, b2) => a3.date.localeCompare(b2.date));
+  }
+  var preferredChoiceProgram = {
+    id: "choice-preferred",
+    kind: "hotel",
+    name: "Preferred Hotels (Choice points)",
+    requiresSession: false,
+    hotelPlaceholder: "Hotel name, city, country or code",
+    expiredMessage: "\u26A0 Preferred Hotels rejected the request \u2014 refresh the page and try again",
+    isHotelCode: (text) => CODE_RE4.test(text),
+    async suggestHotels(text) {
+      return ipreferSuggest(await ipreferDirectory(), text, takesChoicePoints);
+    },
+    async hotelsAt(ref) {
+      return ipreferHotelsAt(ref.code ? null : await ipreferDirectory(), ref, takesChoicePoints);
+    },
+    async hotelName(code) {
+      return (await ipreferDirectory()).find((h3) => h3.code === code)?.name ?? null;
+    },
+    async onHotelSearch(params) {
+      const [data, dir] = await Promise.all([ptgCalendar(preferredChoiceCalendarUrl(params.hotel)), ipreferDirectory()]);
+      return data === "SESSION_EXPIRED" ? data : preferredChoiceParseCalendar(data, params, dir.find((h3) => h3.code === params.hotel));
+    }
+  };
+
+  // src/programs/choice.js
+  var CHOICE_GRAPHQL = "/dxapi/graphql";
+  var CHOICE_QUERIES = {
+    GetHotelCalendarRates: `query GetHotelCalendarRates($hotelCode: String!, $startDate: String!, $endDate: String!, $adults: Int!, $minors: Int!, $ratePlanCodes: [String!], $currencyCode: String!) {
+  getHotelAvailabilityCalendarRates(hotelCode: $hotelCode, startDate: $startDate, endDate: $endDate, adults: $adults, minors: $minors, ratePlanCodes: $ratePlanCodes, currencyCode: $currencyCode) {
+    calendarRates { startDate points availableForSale }
+  }
+}`,
+    SearchAutoSuggestions: `query SearchAutoSuggestions($searchTerm: String!, $limit: Int) {
+  searchPoisByTerm(searchTerm: $searchTerm, limit: $limit) { placeId placeType displayName }
+}`,
+    SearchPoisByPlaceId: `query SearchPoisByPlaceId($placeId: String!) {
+  searchPoisByPlaceId(placeId: $placeId) { placeType latitude longitude }
+}`,
+    SearchHotelsByGeoLocation: `query SearchHotelsByGeoLocation($latitude: Float!, $longitude: Float!, $radius: Int) {
+  searchHotelsByGeoLocation(latitude: $latitude, longitude: $longitude, radius: $radius) {
+    code details { name status geoLocation { latitude longitude } }
+  }
+}`,
+    FetchHotelSummary: `query FetchHotelSummary($hotelIds: [String!]!) {
+  fetchHotelSummary(hotelIds: $hotelIds) { code name }
+}`
+  };
+  var CHOICE_DELAY_MS = 600;
+  var NEARBY_RADIUS_MI2 = 30;
+  var NEARBY_MAX6 = 30;
+  var SAME_PLACE_KM2 = 0.15;
+  var REWARD_RATE_PLAN = "SRD";
+  var CODE_RE5 = /^[A-Z]{2}[A-Z0-9]{3}$/;
+  async function choiceQuery(operationName, variables) {
+    const res = await fetch(`${CHOICE_GRAPHQL}?q=${operationName}`, {
+      method: "POST",
+      headers: { accept: "*/*", "content-type": "application/json", "dxapi-context": "locale:en-us,platform:desktop,sitename:us" },
+      credentials: "include",
+      body: JSON.stringify({ operationName, variables, query: CHOICE_QUERIES[operationName] })
+    });
+    if (res.status === 403 || res.status === 429) return "SESSION_EXPIRED";
+    const data = await res.json().catch(() => null);
+    if (choiceUnknownHotel(data)) return data;
+    if (!res.ok) throw new Error(`Choice ${res.status}`);
+    if (data?.errors?.length && !data.data) throw new Error(`Choice: ${data.errors[0].message}`);
+    return data;
+  }
+  var choiceUnknownHotel = (data) => !!data?.errors?.some((e3) => /NONEXISTENT_HOTEL/.test(e3?.message));
+  function choiceCalendarVariables({ hotel, start, end }) {
+    return {
+      hotelCode: hotel,
+      startDate: start,
+      endDate: end,
+      adults: 1,
+      minors: 0,
+      ratePlanCodes: [REWARD_RATE_PLAN],
+      currencyCode: "HOTEL_DEFAULT_CURRENCY"
+    };
+  }
+  var choiceBookUrl = (hotel, date, nextDate) => `https://www.choicehotels.com/hotel/${hotel.toLowerCase()}?checkInDate=${date}&checkOutDate=${nextDate}&ratePlanCode=${REWARD_RATE_PLAN}`;
+  var nextDay4 = (date) => {
+    const d3 = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+    d3.setUTCDate(d3.getUTCDate() + 1);
+    return d3.toISOString().slice(0, 10);
+  };
+  function choiceParseCalendar(data, { hotel, start, end }) {
+    const results = [];
+    for (const rate of data?.data?.getHotelAvailabilityCalendarRates?.calendarRates ?? []) {
+      const date = rate?.startDate;
+      if (!date || date < start || date > end || !rate.availableForSale || !(rate.points > 0)) continue;
+      results.push({ date, hotel, points: rate.points, bookUrl: choiceBookUrl(hotel, date, nextDay4(date)) });
+    }
+    return results.sort((a3, b2) => a3.date.localeCompare(b2.date));
+  }
+  function choiceHotelFromUrl(url) {
+    const u4 = new URL(url);
+    const code = u4.pathname.match(/\/(?:hotel|[a-z0-9-]+-hotels)\/([a-z0-9]{5})\/?$/i)?.[1]?.toUpperCase();
+    return code && CODE_RE5.test(code) ? code : null;
+  }
+  function choicePageHotels(doc, url) {
+    const hotels = [];
+    for (const el of doc.querySelectorAll('[id^="search-page-list-card-property-name_"]')) {
+      const code = el.id.split("_").pop().toUpperCase();
+      if (!CODE_RE5.test(code) || hotels.some((h3) => h3.code === code)) continue;
+      hotels.push({ code, name: el.textContent.replace(/\s+/g, " ").trim() || void 0 });
+    }
+    const current = choiceHotelFromUrl(url);
+    if (current && !hotels.some((h3) => h3.code === current)) hotels.unshift({ code: current });
+    return hotels;
+  }
+  function choiceParseSuggestions(data) {
+    return (data?.data?.searchPoisByTerm ?? []).filter((p3) => p3?.placeId && p3.displayName).map((p3) => {
+      const [label, ...rest] = p3.displayName.split(", ");
+      return {
+        label,
+        sub: [p3.placeType === "Airport" && "Airport", rest.join(", ")].filter(Boolean).join(" \xB7 ") || void 0,
+        ref: { placeId: p3.placeId, label: p3.displayName }
+      };
+    });
+  }
+  function choiceNearby(hotels, place2) {
+    const { latitude: lat, longitude: lon } = place2;
+    const rad = Math.PI / 180;
+    const km = (lat2, lon2) => {
+      const x2 = Math.sin((lat2 - lat) * rad / 2) ** 2 + Math.cos(lat * rad) * Math.cos(lat2 * rad) * Math.sin((lon2 - lon) * rad / 2) ** 2;
+      return 12742 * Math.asin(Math.sqrt(x2));
+    };
+    const list = [];
+    for (const h3 of hotels ?? []) {
+      const code = h3?.code?.toUpperCase();
+      const g2 = h3?.details?.geoLocation;
+      if (!code || !CODE_RE5.test(code) || g2?.latitude == null || g2?.longitude == null) continue;
+      if (h3.details.status && h3.details.status !== "ACTIVE") continue;
+      list.push({ code, name: h3.details.name || void 0, d: km(g2.latitude, g2.longitude) });
+    }
+    list.sort((a3, b2) => a3.d - b2.d);
+    const first = list[0];
+    if (first && place2.placeType !== "Airport" && first.d < SAME_PLACE_KM2) return { exact: { code: first.code, name: first.name }, nearby: [] };
+    return { nearby: list.slice(0, NEARBY_MAX6).map((h3) => ({ code: h3.code, name: h3.name, sub: `${h3.d.toFixed(1)} km` })) };
+  }
+  var choiceHotelsProgram = {
+    id: "choice",
+    kind: "hotel",
+    name: "Choice",
+    color: "#0070BA",
+    matches: ["www.choicehotels.com"],
+    requiresSession: false,
+    hotelPlaceholder: "Hotel name, city, airport or code",
+    expiredMessage: "\u26A0 Choice blocked the request \u2014 refresh the page and try again",
+    currentHotel: () => choiceHotelFromUrl(location.href),
+    isHotelCode: (text) => CODE_RE5.test(text),
+    pageHotels: () => choicePageHotels(document, location.href),
+    async suggestHotels(text) {
+      const data = await choiceQuery("SearchAutoSuggestions", { searchTerm: text, limit: 8 });
+      return data === "SESSION_EXPIRED" ? [] : choiceParseSuggestions(data);
+    },
+    async hotelsAt(ref) {
+      const poi = await choiceQuery("SearchPoisByPlaceId", { placeId: ref.placeId });
+      if (poi === "SESSION_EXPIRED") throw new Error("Choice blocked the request");
+      const place2 = poi?.data?.searchPoisByPlaceId?.[0];
+      if (place2?.latitude == null || place2?.longitude == null) return { nearby: [] };
+      const data = await choiceQuery("SearchHotelsByGeoLocation", { latitude: place2.latitude, longitude: place2.longitude, radius: NEARBY_RADIUS_MI2 });
+      if (data === "SESSION_EXPIRED") throw new Error("Choice blocked the request");
+      return choiceNearby(data?.data?.searchHotelsByGeoLocation, place2);
+    },
+    async hotelName(code) {
+      const data = await choiceQuery("FetchHotelSummary", { hotelIds: [code] });
+      return data === "SESSION_EXPIRED" ? null : data?.data?.fetchHotelSummary?.find((h3) => h3?.code?.toUpperCase() === code)?.name ?? null;
+    },
+    async onHotelSearch(params) {
+      await sleep(CHOICE_DELAY_MS);
+      const data = await choiceQuery("GetHotelCalendarRates", choiceCalendarVariables(params));
+      return data === "SESSION_EXPIRED" ? data : choiceParseCalendar(data, params);
+    }
+  };
+  var choiceProgram = {
+    ...choiceHotelsProgram,
+    modes: [
+      { code: "choice", name: "Choice hotels", program: choiceHotelsProgram },
+      {
+        code: "preferred",
+        name: "Preferred Hotels & Resorts",
+        program: preferredChoiceProgram,
+        tip: "Booking needs your Choice Privileges login: click Start booking on the partner page first, then the Book links open the hotel on preferredhotels.com (pick the dates there).",
+        tipLink: { url: PARTNER_PAGE_URL, text: "Partner page \u2197" }
+      }
+    ]
   };
 
   // src/entrypoint.js

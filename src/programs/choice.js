@@ -1,4 +1,5 @@
 import { sleep } from '../common/search.js'
+import { preferredChoiceProgram, PARTNER_PAGE_URL } from './preferred-choice.js'
 
 // Choice Privileges – no login required.
 // Everything goes through the site's GraphQL endpoint (www.choicehotels.com/dxapi/graphql), which takes
@@ -13,6 +14,7 @@ import { sleep } from '../common/search.js'
 //                                      coordinates (its distanceFromOrigin isn't from that point)
 //   fetchHotelSummary                  hotel names by code
 // Kasada and Akamai guard www.choicehotels.com, so requests go out from the page with its cookies.
+// A second search mode covers Preferred Hotels & Resorts, bookable with Choice points (preferred-choice.js).
 
 const CHOICE_GRAPHQL = '/dxapi/graphql'
 const CHOICE_QUERIES = {
@@ -151,7 +153,7 @@ export function choiceNearby(hotels, place) {
   return { nearby: list.slice(0, NEARBY_MAX).map(h => ({ code: h.code, name: h.name, sub: `${h.d.toFixed(1)} km` })) }
 }
 
-export const choiceProgram = {
+const choiceHotelsProgram = {
   id: 'choice',
   kind: 'hotel',
   name: 'Choice',
@@ -190,4 +192,16 @@ export const choiceProgram = {
     const data = await choiceQuery('GetHotelCalendarRates', choiceCalendarVariables(params))
     return data === 'SESSION_EXPIRED' ? data : choiceParseCalendar(data, params)
   },
+}
+
+export const choiceProgram = {
+  ...choiceHotelsProgram,
+  modes: [
+    { code: 'choice', name: 'Choice hotels', program: choiceHotelsProgram },
+    {
+      code: 'preferred', name: 'Preferred Hotels & Resorts', program: preferredChoiceProgram,
+      tip: 'Booking needs your Choice Privileges login: click Start booking on the partner page first, then the Book links open the hotel on preferredhotels.com (pick the dates there).',
+      tipLink: { url: PARTNER_PAGE_URL, text: 'Partner page ↗' },
+    },
+  ],
 }

@@ -6,14 +6,16 @@ import { sleep } from '../common/search.js'
 //                                        every date it has (about 18 months) in one response; nights without
 //                                        reward rooms are left out, and a hotel without any comes back as []
 //   /property-search/v1?site=IPrefer     every I Prefer hotel (~700); the POST body picks the fields, so ours
-//                                        (code, name, city, country, coordinates, page path, points flag)
-//                                        is ~250 KB.
+//                                        (code, name, city, country, coordinates, page path, points flag,
+//                                        Choice points value) is ~300 KB.
 //                                        Fetched once and kept for names, text search and the hotels around
 //                                        a city (the site's own place search is Google Maps in the page)
+// The directory, text search and calendar cache are shared with the Choice program's Preferred Hotels
+// search mode (preferred-choice.js).
 // Hotel pages (/hotels/<country>/<slug>) and search result cards don't carry the code in a URL or
 // attribute: a hotel page's server-rendered data names it, and cards are matched to it by name.
 
-const PTG_API = 'https://ptgapis.com'
+export const PTG_API = 'https://ptgapis.com'
 const IPREFER_DELAY_MS = 600
 const CALENDAR_TTL_MS = 30 * 60 * 1000
 const NEARBY_RADIUS_KM = 80  // about 50 miles
@@ -30,10 +32,13 @@ const DIRECTORY_FIELDS = {
   field_country_name: {},
   field_i_prefer_book_with_points: {},
   entity_url: {},
+  field_synxis_id: {},
+  participates_in_choice_points: {},
+  choice_points_value: {},
 }
 
 // Property codes are 5 letters or digits, e.g. PARHD, TYOSE
-const CODE_RE = /^[A-Z0-9]{5}$/
+export const CODE_RE = /^[A-Z0-9]{5}$/
 
 export const ipreferCalendarUrl = hotel =>
   `${PTG_API}/rate-calendar/v2?propertyCode=${hotel}&adults=1&children=0&rateCode=${REWARD_RATE_CODE}`
@@ -63,7 +68,9 @@ export function ipreferParseCalendar(data, { hotel, start, end }, path) {
   return results.sort((a, b) => a.date.localeCompare(b.date))
 }
 
-// property-search answer → [{ code, name, city, state, country, lat, lng, path, points }]
+// property-search answer → [{ code, name, city, state, country, lat, lng, path, points, synxisId, choicePoints }]
+// points: bookable with I Prefer points; choicePoints: the flat Choice Privileges points per night, when the
+// hotel takes them
 export function ipreferParseDirectory(data) {
   const hotels = []
   for (const p of Object.values(data?.properties ?? {})) {
@@ -80,6 +87,8 @@ export function ipreferParseDirectory(data) {
       lng: Number.isFinite(lng) ? lng : undefined,
       path: p.entity_url?.startsWith('/') ? p.entity_url : undefined,
       points: p.field_i_prefer_book_with_points === '1',
+      synxisId: p.field_synxis_id || undefined,
+      choicePoints: p.participates_in_choice_points === '1' && Number(p.choice_points_value) > 0 ? Number(p.choice_points_value) : undefined,
     })
   }
   return hotels
@@ -92,12 +101,15 @@ const wordMatch = (text, q) => ` ${norm(text)}`.includes(` ${q}`)
 
 const place = h => [h.city, h.state, h.country].filter(Boolean).join(', ')
 
-// Text search over the directory's points-bookable hotels: cities, then states / countries, then hotels
+// I Prefer points; the Choice mode passes its own test
+const bookableWithPoints = h => h.points
+
+// Text search over the directory's bookable hotels: cities, then states / countries, then hotels
 // (by name or code)
-export function ipreferSuggest(directory, text) {
+export function ipreferSuggest(directory, text, bookableIf = bookableWithPoints) {
   const q = norm(text)
   if (!q) return []
-  const bookable = (directory ?? []).filter(h => h.points)
+  const bookable = (directory ?? []).filter(bookableIf)
   const cities = new Map(), regions = new Map(), hotels = []
   for (const h of bookable) {
     if (h.city && wordMatch(h.city, q)) {
@@ -116,9 +128,9 @@ export function ipreferSuggest(directory, text) {
 
 // The hotels for a picked suggestion: a hotel is that hotel; a city lists the hotels around it (from the
 // middle of that city's hotels), nearest first; a state or country lists its hotels by name
-export function ipreferHotelsAt(directory, ref) {
+export function ipreferHotelsAt(directory, ref, bookableIf = bookableWithPoints) {
   if (ref.code) return { exact: { code: ref.code, name: ref.label }, nearby: [] }
-  const bookable = (directory ?? []).filter(h => h.points)
+  const bookable = (directory ?? []).filter(bookableIf)
   if (ref.state || ref.country && !ref.city) {
     const inRegion = bookable.filter(h => ref.state ? h.state === ref.state : h.country === ref.country)
       .sort((a, b) => (a.name ?? a.code).localeCompare(b.name ?? b.code))
@@ -166,7 +178,7 @@ export function ipreferPageHotels(doc, directory, current) {
 
 // Every I Prefer hotel, fetched once per page (a failed fetch is retried next time)
 let directory
-function ipreferDirectory() {
+export function ipreferDirectory() {
   directory ??= fetch(`${PTG_API}/property-search/v1?site=IPrefer`, {
     method: 'POST',
     headers: { accept: 'application/json', 'content-type': 'text/plain;charset=UTF-8' },
@@ -180,20 +192,20 @@ function ipreferDirectory() {
   return directory.catch(err => { directory = undefined; throw err })
 }
 
-// One calendar request covers every month a search asks for, so it's kept (per hotel, for a while) and
+// One calendar request covers every month a search asks for, so it's kept (per URL, for a while) and
 // shared by the month-by-month searches. Failures aren't kept.
 const calendarCache = new Map()
-function ipreferCalendar(hotel) {
-  const hit = calendarCache.get(hotel)
+export function ptgCalendar(url) {
+  const hit = calendarCache.get(url)
   if (hit && Date.now() - hit.at < CALENDAR_TTL_MS) return hit.data
-  const data = sleep(IPREFER_DELAY_MS).then(() => fetch(ipreferCalendarUrl(hotel), { headers: { accept: 'application/json' } })).then(res => {
+  const data = sleep(IPREFER_DELAY_MS).then(() => fetch(url, { headers: { accept: 'application/json' } })).then(res => {
     // Not seen, but treated like the other chains' bot checks
     if (res.status === 403 || res.status === 429) return 'SESSION_EXPIRED'
     if (!res.ok) throw new Error(`I Prefer ${res.status}`)
     return res.json()
   })
-  calendarCache.set(hotel, { at: Date.now(), data })
-  data.then(d => { if (d === 'SESSION_EXPIRED') calendarCache.delete(hotel) }, () => calendarCache.delete(hotel))
+  calendarCache.set(url, { at: Date.now(), data })
+  data.then(d => { if (d === 'SESSION_EXPIRED') calendarCache.delete(url) }, () => calendarCache.delete(url))
   return data
 }
 
@@ -227,7 +239,7 @@ export const ipreferProgram = {
 
   async onHotelSearch(params) {
     // The booking link needs the hotel page's path; without the directory the rows just have no link
-    const [data, dir] = await Promise.all([ipreferCalendar(params.hotel), ipreferDirectory().catch(() => [])])
+    const [data, dir] = await Promise.all([ptgCalendar(ipreferCalendarUrl(params.hotel)), ipreferDirectory().catch(() => [])])
     return data === 'SESSION_EXPIRED' ? data : ipreferParseCalendar(data, params, dir.find(h => h.code === params.hotel)?.path)
   },
 }

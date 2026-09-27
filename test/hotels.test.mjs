@@ -415,10 +415,10 @@ test('I Prefer: calendar URL and one row per bookable night, within the span', a
 })
 
 const ipreferDirectoryData = { success: true, count: 5, properties: {
-  843: { field_item_code: 'PARHD', field_display_title: 'L’Hôtel du Collectionneur Paris', field_address: { locality: 'Paris' }, field_geolocation: { lat: '48.876981', lng: '2.306973' }, field_state_name: null, field_country_name: 'France', field_i_prefer_book_with_points: '1', entity_url: '/hotels/france/lhotel-du-collectionneur-paris' },
+  843: { field_item_code: 'PARHD', field_display_title: 'L’Hôtel du Collectionneur Paris', field_address: { locality: 'Paris' }, field_geolocation: { lat: '48.876981', lng: '2.306973' }, field_state_name: null, field_country_name: 'France', field_i_prefer_book_with_points: '1', entity_url: '/hotels/france/lhotel-du-collectionneur-paris', field_synxis_id: '58345', participates_in_choice_points: '1', choice_points_value: '60000' },
   900: { field_item_code: 'PARNA', field_display_title: 'Hotel Napoleon', field_address: { locality: 'Paris' }, field_geolocation: { lat: '48.874', lng: '2.296' }, field_country_name: 'France', field_i_prefer_book_with_points: '1', entity_url: '/hotels/france/hotel-napoleon' },
   901: { field_item_code: 'CDGVE', field_display_title: 'Versailles Palace', field_address: { locality: 'Versailles' }, field_geolocation: { lat: '48.8049', lng: '2.1204' }, field_country_name: 'France', field_i_prefer_book_with_points: '1' },
-  902: { field_item_code: 'PARXX', field_display_title: 'Cash Only Paris', field_address: { locality: 'Paris' }, field_geolocation: { lat: '48.87', lng: '2.30' }, field_country_name: 'France', field_i_prefer_book_with_points: '0' },
+  902: { field_item_code: 'PARXX', field_display_title: 'Cash Only Paris', field_address: { locality: 'Paris' }, field_geolocation: { lat: '48.87', lng: '2.30' }, field_country_name: 'France', field_i_prefer_book_with_points: '0', field_synxis_id: '1', participates_in_choice_points: '1', choice_points_value: '45000' },
   903: { field_item_code: 'BILNH', field_display_title: 'Northern Hotel', field_address: { locality: 'Billings' }, field_geolocation: { lat: '45.78', lng: '-108.50' }, field_state_name: 'Montana', field_country_name: 'United States', field_i_prefer_book_with_points: '1' },
   904: { field_item_code: 'bad!', field_display_title: 'Broken' },
 } }
@@ -427,7 +427,7 @@ test('I Prefer: directory, and text search over points-bookable hotels, cities, 
   const { ipreferParseDirectory, ipreferSuggest } = await import('../src/programs/iprefer.js')
   const dir = ipreferParseDirectory(ipreferDirectoryData)
   assert.deepEqual(dir.map(h => h.code), ['PARHD', 'PARNA', 'CDGVE', 'PARXX', 'BILNH'])
-  assert.deepEqual(dir[0], { code: 'PARHD', name: 'L’Hôtel du Collectionneur Paris', city: 'Paris', state: undefined, country: 'France', lat: 48.876981, lng: 2.306973, path: '/hotels/france/lhotel-du-collectionneur-paris', points: true })
+  assert.deepEqual(dir[0], { code: 'PARHD', name: 'L’Hôtel du Collectionneur Paris', city: 'Paris', state: undefined, country: 'France', lat: 48.876981, lng: 2.306973, path: '/hotels/france/lhotel-du-collectionneur-paris', points: true, synxisId: '58345', choicePoints: 60000 })
   assert.deepEqual(ipreferSuggest(dir, 'par'), [
     { label: 'Paris', sub: 'France', ref: { city: 'Paris', country: 'France', label: 'Paris' } },
     { label: 'L’Hôtel du Collectionneur Paris', sub: 'Paris, France', ref: { code: 'PARHD', label: 'L’Hôtel du Collectionneur Paris' } },
@@ -469,4 +469,47 @@ test('I Prefer: hotel code from a hotel page, and hotels on a search results pag
     { code: 'PARHD', name: 'L’Hôtel du Collectionneur Paris' },
   ])
   assert.deepEqual(ipreferPageHotels({ querySelectorAll: () => [] }, dir, 'BILNH'), [{ code: 'BILNH' }])
+})
+
+test('Preferred Hotels (Choice points): calendar URL, one row per bookable night at the flat Choice rate', async () => {
+  const { preferredChoiceCalendarUrl, preferredChoiceParseCalendar } = await import('../src/programs/preferred-choice.js')
+  assert.equal(preferredChoiceCalendarUrl('MLAIH'), 'https://ptgapis.com/rate-calendar/v2?propertyCode=MLAIH&program=CH&adults=1&children=0')
+  const night = (more) => ({ is_available: true, has_inventory: true, allows_check_in: true, allows_check_out: true, rate: 768, tax: 53, fees: 0, points: 0, ...more })
+  const data = { currency_code: 'USD', count: 5, results: {
+    '2026-11-03': night({ tax: 52.6, fees: 4 }), '2026-11-02': night(), '2026-11-04': night({ is_available: false }),
+    '2026-11-05': night({ has_inventory: false }), '2026-11-06': night({ tax: 0 }), '2026-12-01': night(),
+  } }
+  const span = { hotel: 'MLAIH', start: '2026-11-02', end: '2026-11-30' }
+  const info = { code: 'MLAIH', synxisId: '26919', choicePoints: 55000 }
+  const rows = preferredChoiceParseCalendar(data, span, info)
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room]), [
+    ['2026-11-02', 'MLAIH', 55000, '+ $53 taxes & fees'],
+    ['2026-11-03', 'MLAIH', 55000, '+ $57 taxes & fees'],
+    ['2026-11-06', 'MLAIH', 55000, undefined],
+  ])
+  assert.equal(rows[0].bookUrl, 'https://preferredhotels.com/choicepoints/book/hotel/26919')
+  assert.equal(preferredChoiceParseCalendar({ ...data, currency_code: 'EUR' }, span, info)[0].room, '+ 53 EUR taxes & fees')
+  // A hotel that doesn't take Choice points, no nights, or no answer: nothing
+  assert.deepEqual(preferredChoiceParseCalendar(data, span, { code: 'MLAIH' }), [])
+  assert.deepEqual(preferredChoiceParseCalendar(data, span, undefined), [])
+  assert.deepEqual(preferredChoiceParseCalendar({ currency_code: 'USD', count: 0, results: [] }, span, info), [])
+})
+
+test('Preferred Hotels (Choice points): search and lists keep hotels that take Choice points', async () => {
+  const { ipreferParseDirectory, ipreferSuggest, ipreferHotelsAt } = await import('../src/programs/iprefer.js')
+  const dir = ipreferParseDirectory(ipreferDirectoryData)
+  const choice = h => h.choicePoints > 0
+  assert.deepEqual(dir.filter(choice).map(h => [h.code, h.choicePoints]), [['PARHD', 60000], ['PARXX', 45000]])
+  // PARXX isn't bookable with I Prefer points but takes Choice points
+  assert.deepEqual(ipreferSuggest(dir, 'cash only').map(s => s.ref.code), [])
+  assert.deepEqual(ipreferSuggest(dir, 'cash only', choice).map(s => s.ref.code), ['PARXX'])
+  assert.deepEqual(ipreferHotelsAt(dir, { city: 'Paris', country: 'France' }, choice).nearby.map(h => h.code).sort(), ['PARHD', 'PARXX'])
+})
+
+test('Choice: the Preferred Hotels search mode is a hotel program of its own', async () => {
+  const { choiceProgram } = await import('../src/programs/choice.js')
+  assert.deepEqual(choiceProgram.modes.map(m => [m.code, m.program.id]), [['choice', 'choice'], ['preferred', 'choice-preferred']])
+  assert.equal(choiceProgram.modes[0].program.modes, undefined)
+  assert.ok(choiceProgram.modes[1].program.isHotelCode('PARHD'))
+  assert.equal(typeof choiceProgram.onHotelSearch, 'function')
 })
