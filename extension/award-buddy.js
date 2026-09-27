@@ -3878,6 +3878,7 @@
   .ab-hotel-cell { font-size: 11px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
   .ab-hotel-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: #555; margin-bottom: 8px; }
   .ab-hotel-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+  .ab-tip { font-size: 12px; color: #8a6d00; background: #fff8e1; border-radius: 6px; padding: 6px 8px; margin-bottom: 10px; }
   .ab-no-results { text-align: center; color: #999; font-size: 13px; padding: 20px 0; }
   .ab-mode-toggle { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
   .ab-mode-btn { flex: 1; padding: 5px; font-size: 12px; background: #fff; border: none; cursor: pointer; color: #666; }
@@ -5182,6 +5183,10 @@
           /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", !calMode && "active"), onClick: () => setCalMode(false), children: "Search" }),
           /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", calMode && "active"), onClick: () => setCalMode(true), children: "Calendar" })
         ] }),
+        hasCalendar && !calMode && program2.searchTip && /* @__PURE__ */ u3("div", { class: "ab-tip", children: [
+          "\u{1F4A1} ",
+          program2.searchTip
+        ] }),
         /* @__PURE__ */ u3("div", { class: "ab-row", children: [
           airportField("origins", "Origins", "e.g. TPE, TSA"),
           airportField("dests", "Destinations", "e.g. NRT, HND")
@@ -5241,7 +5246,8 @@
           " Session ready"
         ] }) : /* @__PURE__ */ u3("div", { class: "ab-session-bar waiting", children: [
           /* @__PURE__ */ u3("div", { class: "ab-dot" }),
-          " Waiting for session\u2026",
+          " ",
+          program2.sessionHint ?? "Waiting for session\u2026",
           program2.triggerSession ? /* @__PURE__ */ u3("button", { style: { marginLeft: 6, fontSize: 12 }, onClick: () => program2.triggerSession(), children: "Get session" }) : session.url && /* @__PURE__ */ u3("a", { href: session.url, target: "_blank", style: { color: "inherit", marginLeft: 6 }, children: "\u2192 Get session" })
         ] })),
         /* @__PURE__ */ u3("div", { class: "ab-body", children: /* @__PURE__ */ u3(Search, { program: program2, session }) })
@@ -5978,7 +5984,7 @@
 
   // src/programs/br.js
   var BR_SEARCH_URL = "https://booking.evaair.com/flyeva/EVA/B2C/plan-your-journey/award-upgrade-availability/award-upgrade-availability.aspx";
-  var BR_DELAY_MS = 700;
+  var BR_DELAY_MS = 15e3;
   var BR_CABIN_PARAM = { Y: "EY", N: "PE", J: "SD" };
   var BR_MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var BR_ZONE_OF = {
@@ -6023,6 +6029,11 @@
   }
   var brCaptured = { zipState: null };
   var brSessionCallback = null;
+  var brChallenged = false;
+  var brLastPostAt = Date.now();
+  var brHasManualSearch = () => !!document.querySelector('[aria-label][id*="_td_Day_"]');
+  var BR_CHALLENGE_MESSAGE = "\u26A0 EVA bot check \u2014 run one search on the EVA page by hand, then search again";
+  var brIsBlockedPage = (html) => html.includes("sec_chlge_form") || /<title>\s*(Challenge Validation|Access Denied)\s*<\/title>/i.test(html);
   function brExtractZipState(html) {
     const m3 = html.match(/id="__ZIPSTATE"[^>]*value="([^"]+)"/);
     return m3 ? m3[1] : null;
@@ -6048,12 +6059,14 @@
       return false;
     }
   }
-  function brFormatAriaDate(date) {
-    const [y3, m3, d3] = date.split("-");
-    return `${BR_MONTH_ABBR[+m3 - 1]}. ${+d3}, ${y3}`;
+  function brParseAriaDate(label) {
+    const dm = label.match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d+),\s+(\d{4})/);
+    const mon = dm ? BR_MONTH_ABBR.indexOf(dm[1]) : -1;
+    if (mon === -1) return null;
+    return `${dm[3]}-${String(mon + 1).padStart(2, "0")}-${String(+dm[2]).padStart(2, "0")}`;
   }
   function brBuildBody(origin, destination, date, cabinParam, zipState) {
-    const fmtDate = date.replace(/-/g, "/");
+    const fmtDate = date;
     return new URLSearchParams({
       __EVENTTARGET: "",
       __EVENTARGUMENT: "",
@@ -6089,32 +6102,15 @@
     for (const el of doc.querySelectorAll('[aria-label][id*="_td_Day_"]')) {
       const m3 = el.id.match(/_td_Day_(\d+)$/);
       if (!m3) continue;
-      const label = el.getAttribute("aria-label") || "";
-      const dm = label.match(/^([A-Za-z]+)\.\s+(\d+),\s+(\d{4})/);
-      if (!dm) continue;
-      const mon = BR_MONTH_ABBR.indexOf(dm[1]);
-      if (mon === -1) continue;
-      const date = `${dm[3]}-${String(mon + 1).padStart(2, "0")}-${String(+dm[2]).padStart(2, "0")}`;
-      map[date] = +m3[1];
+      const date = brParseAriaDate(el.getAttribute("aria-label") || "");
+      if (date) map[date] = +m3[1];
     }
     return map;
   }
   function brParseResponse(html, origin, destination, date, cabin) {
     const doc = new DOMParser().parseFromString(html, "text/html");
-    const ariaTarget = brFormatAriaDate(date);
-    const headerRow = doc.querySelectorAll("[aria-label]");
-    let dayIdx = -1;
-    for (const el of headerRow) {
-      const label = el.getAttribute("aria-label") || "";
-      if (label.startsWith(ariaTarget)) {
-        const m3 = el.id.match(/_td_Day_(\d+)$/);
-        if (m3) {
-          dayIdx = +m3[1];
-          break;
-        }
-      }
-    }
-    if (dayIdx === -1) return [];
+    const dayIdx = brParseWeekDates(doc)[date];
+    if (dayIdx == null) return [];
     const rows = doc.querySelectorAll("#content_control_Award_AvailabilityGO_div_Result tr.table-dataRow");
     const results = [];
     for (const row of rows) {
@@ -6151,30 +6147,63 @@
     }
     return results;
   }
-  async function brSearchCabin(origin, destination, date, cabin) {
-    await sleep(BR_DELAY_MS);
-    const body = brBuildBody(origin, destination, date, BR_CABIN_PARAM[cabin], brCaptured.zipState);
-    let res = await fetch(BR_SEARCH_URL, {
+  var brQueue = Promise.resolve();
+  function brPost(origin, destination, date, cabin) {
+    const run = brQueue.then(() => brPostNow(origin, destination, date, cabin));
+    brQueue = run.catch(() => {
+    });
+    return run;
+  }
+  var BR_WEEK_TTL_MS = 30 * 60 * 1e3;
+  var brWeekCache = /* @__PURE__ */ new Map();
+  function brWeekKey(origin, destination, date, cabin) {
+    const d3 = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+    d3.setUTCDate(d3.getUTCDate() - d3.getUTCDay());
+    return `${origin}|${destination}|${cabin}|${d3.toISOString().slice(0, 10)}`;
+  }
+  function brPostWeek(origin, destination, date, cabin) {
+    const key = brWeekKey(origin, destination, date, cabin);
+    const hit = brWeekCache.get(key);
+    if (hit && Date.now() - hit.at < BR_WEEK_TTL_MS) return hit.html;
+    const html = brPost(origin, destination, date, cabin);
+    brWeekCache.set(key, { at: Date.now(), html });
+    html.then(
+      (h3) => {
+        if (typeof h3 !== "string" || h3 === "SESSION_EXPIRED") brWeekCache.delete(key);
+      },
+      () => brWeekCache.delete(key)
+    );
+    return html;
+  }
+  async function brPostNow(origin, destination, date, cabin) {
+    if (brChallenged) return "SESSION_EXPIRED";
+    await sleep(brLastPostAt + BR_DELAY_MS - Date.now());
+    brLastPostAt = Date.now();
+    const post = () => fetch(BR_SEARCH_URL, {
       method: "POST",
       credentials: "include",
       headers: { "content-type": "application/x-www-form-urlencoded" },
-      body
+      body: brBuildBody(origin, destination, date, BR_CABIN_PARAM[cabin], brCaptured.zipState)
     });
+    const blocked = () => {
+      brChallenged = true;
+      brSessionCallback?.();
+      return "SESSION_EXPIRED";
+    };
+    let res = await post();
+    if (res.status === 403) return blocked();
     if (!res.ok || res.url.includes("login")) {
-      const ok = await brFetchSession();
-      if (!ok) return [];
-      res = await fetch(BR_SEARCH_URL, {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: brBuildBody(origin, destination, date, BR_CABIN_PARAM[cabin], brCaptured.zipState)
-      });
-      if (!res.ok) return [];
+      if (!await brFetchSession()) return "SESSION_EXPIRED";
+      await sleep(BR_DELAY_MS);
+      brLastPostAt = Date.now();
+      res = await post();
+      if (!res.ok) return null;
     }
     const html = await res.text();
+    if (brIsBlockedPage(html)) return blocked();
     const newZs = brExtractZipState(html);
     if (newZs) brCaptured.zipState = newZs;
-    return brParseResponse(html, origin, destination, date, cabin);
+    return html;
   }
   var BR_AIRPORTS = [
     { code: "TPE", name: "Taipei (Taoyuan)" },
@@ -6248,6 +6277,9 @@
     airports: BR_AIRPORTS,
     matches: [],
     matchHost: (h3) => h3 === "evaair.com" || h3.endsWith(".evaair.com"),
+    expiredMessage: BR_CHALLENGE_MESSAGE,
+    sessionHint: "Search one route on this EVA page by hand first",
+    searchTip: "EVA blocks requests quickly: use Calendar first to find days with seats, then search those days",
     onSessionReady(cb) {
       brSessionCallback = cb;
       if (brTryCapture()) return;
@@ -6270,8 +6302,9 @@
         if (attempts > 120) clearInterval(poll);
       }, 500);
     },
+    // A bot check sticks until the page is reloaded (which re-runs Akamai's sensor)
     isSessionReady() {
-      return !!brCaptured.zipState && location.hostname === "booking.evaair.com";
+      return !brChallenged && !!brCaptured.zipState && location.hostname === "booking.evaair.com" && brHasManualSearch();
     },
     calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
       const cabins = (cabinFilter.length ? cabinFilter : ["J", "N", "Y"]).filter((c3) => c3 !== "F");
@@ -6300,32 +6333,13 @@
             continue;
           }
           onProgress?.(null, { done, total, label: `${cabin} \u2013 week of ${weekStart}` });
-          await sleep(BR_DELAY_MS);
           try {
-            const body = brBuildBody(origin, destination, weekStart, BR_CABIN_PARAM[cabin], brCaptured.zipState);
-            let res = await fetch(BR_SEARCH_URL, {
-              method: "POST",
-              credentials: "include",
-              headers: { "content-type": "application/x-www-form-urlencoded" },
-              body
-            });
-            if (!res.ok || res.url.includes("login")) {
-              const ok = await brFetchSession();
-              if (!ok) return "SESSION_EXPIRED";
-              res = await fetch(BR_SEARCH_URL, {
-                method: "POST",
-                credentials: "include",
-                headers: { "content-type": "application/x-www-form-urlencoded" },
-                body: brBuildBody(origin, destination, weekStart, BR_CABIN_PARAM[cabin], brCaptured.zipState)
-              });
-              if (!res.ok) {
-                done++;
-                continue;
-              }
+            const html = await brPostWeek(origin, destination, weekStart, cabin);
+            if (html === "SESSION_EXPIRED") return html;
+            if (!html) {
+              done++;
+              continue;
             }
-            const html = await res.text();
-            const newZs = brExtractZipState(html);
-            if (newZs) brCaptured.zipState = newZs;
             const doc = new DOMParser().parseFromString(html, "text/html");
             const weekDates = brParseWeekDates(doc);
             const rows = doc.querySelectorAll("#content_control_Award_AvailabilityGO_div_Result tr.table-dataRow");
@@ -6359,7 +6373,10 @@
       const byFlight = {};
       for (const cabin of cabins) {
         try {
-          const rows = await brSearchCabin(origin, destination, date, cabin);
+          const html = await brPostWeek(origin, destination, date, cabin);
+          if (html === "SESSION_EXPIRED") return html;
+          if (!html) continue;
+          const rows = brParseResponse(html, origin, destination, date, cabin);
           for (const row of rows) {
             const key = row.segs.map((s3) => s3.flight).join("+");
             if (!byFlight[key]) byFlight[key] = row;

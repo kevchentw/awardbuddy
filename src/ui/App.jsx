@@ -246,6 +246,7 @@ function FlightSearch({ program, session }) {
           <button class={cx('ab-mode-btn', calMode && 'active')} onClick={() => setCalMode(true)}>Calendar</button>
         </div>
       )}
+      {hasCalendar && !calMode && program.searchTip && <div class="ab-tip">💡 {program.searchTip}</div>}
       <div class="ab-row">
         {airportField('origins', 'Origins', 'e.g. TPE, TSA')}
         {airportField('dests', 'Destinations', 'e.g. NRT, HND')}
@@ -308,7 +309,7 @@ function App({ program }) {
         {program.requiresSession && (session.ready
           ? <div class="ab-session-bar ok"><div class="ab-dot" /> Session ready</div>
           : <div class="ab-session-bar waiting">
-              <div class="ab-dot" /> Waiting for session…
+              <div class="ab-dot" /> {program.sessionHint ?? 'Waiting for session…'}
               {program.triggerSession
                 ? <button style={{ marginLeft: 6, fontSize: 12 }} onClick={() => program.triggerSession()}>Get session</button>
                 : session.url && <a href={session.url} target="_blank" style={{ color: 'inherit', marginLeft: 6 }}>→ Get session</a>}

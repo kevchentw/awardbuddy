@@ -2,9 +2,14 @@ import { sleep } from '../common/search.js'
 
 // EVA Air – award availability via ASP.NET WebForms page
 // Requires login; captures __ZIPSTATE from page DOM or fetches fresh.
+// Akamai Bot Manager guards the search POST: when it objects it answers 200 with a "Challenge
+// Validation" (sec_chlge_form) or "Access Denied" page instead of results. That must surface as
+// SESSION_EXPIRED – parsing it as an empty table made every search look like "no seats".
 
 const BR_SEARCH_URL = 'https://booking.evaair.com/flyeva/EVA/B2C/plan-your-journey/award-upgrade-availability/award-upgrade-availability.aspx'
-const BR_DELAY_MS = 700
+// Minimum gap between POSTs, counted from the last one – including the user's own search that
+// loaded this page. Shorter gaps (700 ms, 3 s) got challenged within a few requests.
+const BR_DELAY_MS = 15000
 // EY=Economy(Y), PE=PremiumEconomy(N), SD=Business/RoyalLaurel(J)
 const BR_CABIN_PARAM = { Y: 'EY', N: 'PE', J: 'SD' }
 const BR_MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -40,6 +45,17 @@ export function brAwardMiles(origin, destination, cabin) {
 
 const brCaptured = { zipState: null }
 let brSessionCallback = null
+let brChallenged = false
+let brLastPostAt = Date.now()  // this page is itself the result of a POST when the user searched by hand
+
+// Akamai trusts scripted POSTs far more once the user has run a real search in this tab, so we
+// only start once the page shows a results week (i.e. it was loaded by the form's own POST).
+const brHasManualSearch = () => !!document.querySelector('[aria-label][id*="_td_Day_"]')
+
+export const BR_CHALLENGE_MESSAGE = '⚠ EVA bot check — run one search on the EVA page by hand, then search again'
+
+export const brIsBlockedPage = html =>
+  html.includes('sec_chlge_form') || /<title>\s*(Challenge Validation|Access Denied)\s*<\/title>/i.test(html)
 
 function brExtractZipState(html) {
   const m = html.match(/id="__ZIPSTATE"[^>]*value="([^"]+)"/)
@@ -67,15 +83,17 @@ async function brFetchSession() {
   } catch { return false }
 }
 
-// Format date for aria-label matching: "2026-07-08" → "Jul. 8, 2026"
-function brFormatAriaDate(date) {
-  const [y, m, d] = date.split('-')
-  return `${BR_MONTH_ABBR[+m - 1]}. ${+d}, ${y}`
+// Day header aria-label → "YYYY-MM-DD". Seen as "May 16, 2027Sunday"; older pages had "Jul. 8, 2026…"
+export function brParseAriaDate(label) {
+  const dm = label.match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d+),\s+(\d{4})/)
+  const mon = dm ? BR_MONTH_ABBR.indexOf(dm[1]) : -1
+  if (mon === -1) return null
+  return `${dm[3]}-${String(mon + 1).padStart(2, '0')}-${String(+dm[2]).padStart(2, '0')}`
 }
 
 function brBuildBody(origin, destination, date, cabinParam, zipState) {
-  // date: YYYY-MM-DD → YYYY/MM/DD
-  const fmtDate = date.replace(/-/g, '/')
+  // The form's own date inputs hold YYYY-MM-DD
+  const fmtDate = date
   return new URLSearchParams({
     __EVENTTARGET: '',
     __EVENTARGUMENT: '',
@@ -113,35 +131,16 @@ function brParseWeekDates(doc) {
   for (const el of doc.querySelectorAll('[aria-label][id*="_td_Day_"]')) {
     const m = el.id.match(/_td_Day_(\d+)$/)
     if (!m) continue
-    const label = el.getAttribute('aria-label') || ''
-    // label: "Jul. 8, 2026Wednesday" → parse month abbr, day, year
-    const dm = label.match(/^([A-Za-z]+)\.\s+(\d+),\s+(\d{4})/)
-    if (!dm) continue
-    const mon = BR_MONTH_ABBR.indexOf(dm[1])
-    if (mon === -1) continue
-    const date = `${dm[3]}-${String(mon + 1).padStart(2, '0')}-${String(+dm[2]).padStart(2, '0')}`
-    map[date] = +m[1]
+    const date = brParseAriaDate(el.getAttribute('aria-label') || '')
+    if (date) map[date] = +m[1]
   }
   return map
 }
 
 function brParseResponse(html, origin, destination, date, cabin) {
   const doc = new DOMParser().parseFromString(html, 'text/html')
-  const ariaTarget = brFormatAriaDate(date)
-
-  // Find which day column index matches our target date
-  // aria-label like "Jul. 8, 2026Wednesday"
-  const headerRow = doc.querySelectorAll('[aria-label]')
-  let dayIdx = -1
-  for (const el of headerRow) {
-    const label = el.getAttribute('aria-label') || ''
-    if (label.startsWith(ariaTarget)) {
-      // Extract column index from element id: _td_Day_N
-      const m = el.id.match(/_td_Day_(\d+)$/)
-      if (m) { dayIdx = +m[1]; break }
-    }
-  }
-  if (dayIdx === -1) return []
+  const dayIdx = brParseWeekDates(doc)[date]
+  if (dayIdx == null) return []
 
   // Each flight row: th with flight info, tds for each day
   const rows = doc.querySelectorAll('#content_control_Award_AvailabilityGO_div_Result tr.table-dataRow')
@@ -188,30 +187,70 @@ function brParseResponse(html, origin, destination, date, cabin) {
   return results
 }
 
-async function brSearchCabin(origin, destination, date, cabin) {
-  await sleep(BR_DELAY_MS)
-  const body = brBuildBody(origin, destination, date, BR_CABIN_PARAM[cabin], brCaptured.zipState)
-  let res = await fetch(BR_SEARCH_URL, {
+// One POST at a time: the UI's worker pool would otherwise fire several at once and trip Akamai.
+// → results HTML, null (network/HTTP error) or 'SESSION_EXPIRED' (login lost or bot check)
+let brQueue = Promise.resolve()
+function brPost(origin, destination, date, cabin) {
+  const run = brQueue.then(() => brPostNow(origin, destination, date, cabin))
+  brQueue = run.catch(() => {})
+  return run
+}
+
+// A results page covers the whole Sun–Sat week around the requested date, so a date-range search
+// needs one POST per cabin per week, not per day. Akamai starts challenging after a couple of
+// scripted POSTs, so every request saved counts. Failures aren't cached. The calendar fills the
+// same cache, so searching a day it already covered costs nothing – hence a TTL longer than a
+// multi-month calendar run at BR_DELAY_MS.
+const BR_WEEK_TTL_MS = 30 * 60 * 1000
+const brWeekCache = new Map()
+
+export function brWeekKey(origin, destination, date, cabin) {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay())
+  return `${origin}|${destination}|${cabin}|${d.toISOString().slice(0, 10)}`
+}
+
+function brPostWeek(origin, destination, date, cabin) {
+  const key = brWeekKey(origin, destination, date, cabin)
+  const hit = brWeekCache.get(key)
+  if (hit && Date.now() - hit.at < BR_WEEK_TTL_MS) return hit.html
+  const html = brPost(origin, destination, date, cabin)
+  brWeekCache.set(key, { at: Date.now(), html })
+  html.then(h => { if (typeof h !== 'string' || h === 'SESSION_EXPIRED') brWeekCache.delete(key) },
+    () => brWeekCache.delete(key))
+  return html
+}
+
+async function brPostNow(origin, destination, date, cabin) {
+  if (brChallenged) return 'SESSION_EXPIRED'
+  await sleep(brLastPostAt + BR_DELAY_MS - Date.now())
+  brLastPostAt = Date.now()
+  const post = () => fetch(BR_SEARCH_URL, {
     method: 'POST', credentials: 'include',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body,
+    body: brBuildBody(origin, destination, date, BR_CABIN_PARAM[cabin], brCaptured.zipState),
   })
+  const blocked = () => {
+    brChallenged = true
+    brSessionCallback?.()
+    return 'SESSION_EXPIRED'
+  }
+  let res = await post()
+  if (res.status === 403) return blocked()
   // Session may have expired – refresh once
   if (!res.ok || res.url.includes('login')) {
-    const ok = await brFetchSession()
-    if (!ok) return []
-    res = await fetch(BR_SEARCH_URL, {
-      method: 'POST', credentials: 'include',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: brBuildBody(origin, destination, date, BR_CABIN_PARAM[cabin], brCaptured.zipState),
-    })
-    if (!res.ok) return []
+    if (!await brFetchSession()) return 'SESSION_EXPIRED'
+    await sleep(BR_DELAY_MS)
+    brLastPostAt = Date.now()
+    res = await post()
+    if (!res.ok) return null
   }
   const html = await res.text()
+  if (brIsBlockedPage(html)) return blocked()
   // Update ZIPSTATE for next request
   const newZs = brExtractZipState(html)
   if (newZs) brCaptured.zipState = newZs
-  return brParseResponse(html, origin, destination, date, cabin)
+  return html
 }
 
 const BR_AIRPORTS = [
@@ -287,6 +326,9 @@ export const brProgram = {
   airports: BR_AIRPORTS,
   matches: [],
   matchHost: h => h === 'evaair.com' || h.endsWith('.evaair.com'),
+  expiredMessage: BR_CHALLENGE_MESSAGE,
+  sessionHint: 'Search one route on this EVA page by hand first',
+  searchTip: 'EVA blocks requests quickly: use Calendar first to find days with seats, then search those days',
 
   onSessionReady(cb) {
     brSessionCallback = cb
@@ -305,7 +347,10 @@ export const brProgram = {
     }, 500)
   },
 
-  isSessionReady() { return !!brCaptured.zipState && location.hostname === 'booking.evaair.com' },
+  // A bot check sticks until the page is reloaded (which re-runs Akamai's sensor)
+  isSessionReady() {
+    return !brChallenged && !!brCaptured.zipState && location.hostname === 'booking.evaair.com' && brHasManualSearch()
+  },
 
   calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
     const cabins = (cabinFilter.length ? cabinFilter : ['J', 'N', 'Y']).filter(c => c !== 'F')
@@ -336,27 +381,10 @@ export const brProgram = {
       for (const weekStart of weekStarts) {
         if (weekStart < fromMonth || weekStart > toMonth + '-38') { done++; continue }
         onProgress?.(null, { done, total, label: `${cabin} – week of ${weekStart}` })
-        await sleep(BR_DELAY_MS)
         try {
-          const body = brBuildBody(origin, destination, weekStart, BR_CABIN_PARAM[cabin], brCaptured.zipState)
-          let res = await fetch(BR_SEARCH_URL, {
-            method: 'POST', credentials: 'include',
-            headers: { 'content-type': 'application/x-www-form-urlencoded' },
-            body,
-          })
-          if (!res.ok || res.url.includes('login')) {
-            const ok = await brFetchSession()
-            if (!ok) return 'SESSION_EXPIRED'
-            res = await fetch(BR_SEARCH_URL, {
-              method: 'POST', credentials: 'include',
-              headers: { 'content-type': 'application/x-www-form-urlencoded' },
-              body: brBuildBody(origin, destination, weekStart, BR_CABIN_PARAM[cabin], brCaptured.zipState),
-            })
-            if (!res.ok) { done++; continue }
-          }
-          const html = await res.text()
-          const newZs = brExtractZipState(html)
-          if (newZs) brCaptured.zipState = newZs
+          const html = await brPostWeek(origin, destination, weekStart, cabin)
+          if (html === 'SESSION_EXPIRED') return html
+          if (!html) { done++; continue }
 
           const doc = new DOMParser().parseFromString(html, 'text/html')
           const weekDates = brParseWeekDates(doc)
@@ -391,7 +419,10 @@ export const brProgram = {
     const byFlight = {}
     for (const cabin of cabins) {
       try {
-        const rows = await brSearchCabin(origin, destination, date, cabin)
+        const html = await brPostWeek(origin, destination, date, cabin)
+        if (html === 'SESSION_EXPIRED') return html
+        if (!html) continue
+        const rows = brParseResponse(html, origin, destination, date, cabin)
         for (const row of rows) {
           const key = row.segs.map(s => s.flight).join('+')
           if (!byFlight[key]) byFlight[key] = row
