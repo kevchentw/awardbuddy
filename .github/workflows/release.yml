@@ -1,0 +1,53 @@
+name: Release
+
+# Push a tag like v1.2.3 (matching package.json "version") to publish a GitHub release
+# with the userscript and the extension ZIP attached.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check tag matches package.json version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${VERSION}"
+            exit 1
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      # Users install straight from main, so the committed build must match the source
+      - name: Check committed build is up to date
+        run: |
+          if ! git diff --exit-code -- dist extension; then
+            echo "::error::dist/ or extension/ is out of date. Run npm run build and commit the result."
+            exit 1
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Award Buddy ${VERSION}" \
+            --generate-notes \
+            --verify-tag \
+            dist/award-buddy.user.js \
+            "dist/award-buddy-extension-${VERSION}.zip"

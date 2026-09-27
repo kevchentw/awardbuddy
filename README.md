@@ -42,9 +42,9 @@ The script updates itself from this repo.
 
 ### Chrome / Edge extension (unpacked)
 
-1. Clone this repo, or download it as a ZIP and unzip it.
+1. Download `award-buddy-extension-<version>.zip` from the [latest release](https://github.com/kevchentw/awardbuddy/releases/latest) and unzip it. (Or clone this repo and use the `extension/` folder.)
 2. Go to `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
-3. Click **Load unpacked** and select the `extension/` folder.
+3. Click **Load unpacked** and select the unzipped folder.
 
 ## Usage
 
@@ -93,6 +93,13 @@ Pull requests are welcome. New airlines, new search modes, fixes for sites that 
 Before you open a PR, run `npm test` and `npm run build`, and commit the rebuilt `dist/award-buddy.user.js` and `extension/` too, since users install straight from those. Keep request pacing gentle so searches don't trip the airline's bot protection.
 
 For bigger changes, you can [open an issue](https://github.com/kevchentw/awardbuddy/issues) first to talk it over.
+
+## Releasing
+
+1. Bump `version` in `package.json`, run `npm run build`, and commit the result.
+2. Tag and push: `git tag v<version> && git push origin main v<version>`.
+
+The [Release workflow](.github/workflows/release.yml) checks that the tag matches `package.json`, runs the tests, makes sure the committed build is up to date, and publishes a GitHub release with `award-buddy.user.js` and the extension ZIP attached.
 
 ## License
 
