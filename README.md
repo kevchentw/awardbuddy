@@ -27,7 +27,7 @@ It runs in your browser on the airline's page, using your own session. There's n
 |---|---|---|
 | IHG One Rewards | ihg.com | Not needed |
 
-Hotel search looks up the points per night for one or more hotels (IHG's five-letter code, such as `TPEKM`) across a range of months. It shows the lowest points per day on a calendar and every reward rate by room type in a table. On the site's search results, each hotel gets a **Search in Award Buddy** button that adds it to the panel. On a hotel's own page, its code is filled in for you.
+Hotel search looks up the points per night for one or more hotels across a range of months. To add hotels, type a hotel name, city or airport: picking a hotel adds it, and picking a place lists the IHG hotels nearby to tick. **Pick from hotels on this page** lists the hotels on the site's search results (or the hotel page you're on). You can also type a hotel code such as `TPEKM`. Results show the lowest points per day on a calendar and every reward rate by room type in a table.
 
 When a program needs a session and doesn't have one yet, the panel shows a **Get session** link that takes you to the right page.
 
@@ -95,7 +95,7 @@ build.cjs             builds the userscript, the unpacked extension and the stor
 Pull requests are welcome. New airlines, new search modes, fixes for sites that changed, and UI improvements are all useful.
 
 - **Add an airline:** write a module in `src/programs/` that exports a program object (`id`, `name`, `cabins`, `matches`, `onSearch`, plus `onCalendarSearch` and the session hooks if needed). Register it in `src/entrypoint.js` and add the site to `MATCHES` in `build.cjs`.
-- **Add a hotel chain:** write a module with `kind: 'hotel'` and `onHotelSearch({ hotel, start, end })`, which returns the reward-night rates for one hotel over one month. `src/programs/ihg.js` is an example, and the comment at the top of `src/ui/HotelSearch.jsx` lists the other fields.
+- **Add a hotel chain:** write a module with `kind: 'hotel'` and `onHotelSearch({ hotel, start, end })`, which returns the reward-night rates for one hotel over one month. `src/programs/ihg.js` is an example. The comments at the top of `src/ui/HotelSearch.jsx` and `src/ui/HotelPicker.jsx` list the optional hotel-finding functions (name search, hotels nearby, hotels on the page).
 - **Add a search mode:** give the program `carriers` (shown as a dropdown) and, if the mode needs extra inputs, `optionsFor`. The Air Canada stopover mode in `src/programs/ac.js` is an example.
 - **Fix a broken program:** the comments at the top of each module explain how it gets a session and which endpoints it calls. That's usually where to start.
 

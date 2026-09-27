@@ -53,3 +53,28 @@ test('IHG: hotel code from hotel page URLs', async () => {
   assert.equal(ihgHotelFromUrl('https://www.ihg.com/hotels/us/en/find-hotels/hotel-search?qDest=Taipei'), null)
   assert.equal(ihgHotelFromUrl('https://www.ihg.com/hotels/us/en/reservation'), null)
 })
+
+test('IHG: autocomplete keeps entries with coordinates and marks airports', async () => {
+  const { ihgParseDestinations } = await import('../src/programs/ihg.js')
+  const s = ihgParseDestinations([
+    { clarifiedLocation: 'Taipei, Taiwan', type: 'B', latitude: 25.05, longitude: 121.53 },
+    { clarifiedLocation: 'TPE - Taipei Shek Airport, Taiwan', type: 'A', latitude: 25.08, longitude: 121.23 },
+    { clarifiedLocation: 'No coordinates', type: 'B' },
+  ])
+  assert.deepEqual(s.map(x => [x.label, x.sub, x.ref.airport]), [['Taipei, Taiwan', undefined, false], ['TPE - Taipei Shek Airport, Taiwan', 'Airport', true]])
+  assert.deepEqual(ihgParseDestinations(null), [])
+})
+
+test('IHG: nearby hotels sorted by distance; a suggestion on top of a hotel is that hotel', async () => {
+  const { ihgParseNearby } = await import('../src/programs/ihg.js')
+  const data = { hotels: [
+    { hotelMnemonic: 'TPETT', distanceKm: 2.04, availabilityStatus: 'OPEN' },
+    { hotelMnemonic: 'TPERG', distanceKm: 1.54, availabilityStatus: 'OPEN' },
+    { hotelMnemonic: 'TPETC', distanceKm: 4.28, availabilityStatus: 'CLOSED' },
+  ] }
+  assert.deepEqual(ihgParseNearby(data, { label: 'Taipei, Taiwan' }).nearby,
+    [{ code: 'TPERG', sub: '1.5 km' }, { code: 'TPETT', sub: '2.0 km' }, { code: 'TPETC', sub: '4.3 km · closed' }])
+  const onHotel = { hotels: [{ hotelMnemonic: 'TPEKM', distanceKm: 0 }, ...data.hotels] }
+  assert.deepEqual(ihgParseNearby(onHotel, { label: 'Kimpton Da An Hotel' }).exact, { code: 'TPEKM' })
+  assert.equal(ihgParseNearby(onHotel, { label: 'TPE airport', airport: true }).exact, undefined)
+})

@@ -3865,6 +3865,16 @@
   .ab-summary span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ab-summary button { background: none; border: none; color: var(--ab-color); font-size: 12px; font-weight: 600; cursor: pointer; }
   .ab-link-btn { background: none; border: none; color: var(--ab-color); font-size: 11px; font-weight: 600; cursor: pointer; margin-left: 6px; }
+  .ab-hlist { margin-top: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; background: #fafafa; }
+  .ab-hlist-head { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 6px; }
+  .ab-hlist-head .ab-link-btn { margin-left: 0; }
+  .ab-hlist-note { font-size: 12px; color: #999; padding: 6px 0; }
+  .ab-hlist-items { max-height: 220px; overflow-y: auto; }
+  .ab-hlist-item { display: flex; align-items: baseline; gap: 6px; padding: 4px 2px; font-size: 12px; cursor: pointer; }
+  .ab-hlist-item.added { color: #999; cursor: default; }
+  .ab-hlist-name { flex: 1; }
+  .ab-hlist-sub { font-size: 11px; color: #999; white-space: nowrap; }
+  .ab-hlist-add { width: 100%; margin-top: 6px; padding: 6px; border: 1px solid var(--ab-color); border-radius: 6px; background: #fff; color: var(--ab-color); font-size: 12px; font-weight: 600; cursor: pointer; }
   .ab-no-results { text-align: center; color: #999; font-size: 13px; padding: 20px 0; }
   .ab-mode-toggle { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
   .ab-mode-btn { flex: 1; padding: 5px; font-size: 12px; background: #fff; border: none; cursor: pointer; color: #666; }
@@ -4606,32 +4616,147 @@
     ] });
   }
 
-  // src/ui/hotelButtons.js
-  var BTN_ATTR = "data-award-buddy";
-  function watchHotelCards(cards, color, onPick) {
-    function inject() {
-      for (const card of document.querySelectorAll(cards.selector)) {
-        if (card.querySelector(`[${BTN_ATTR}]`)) continue;
-        const code = cards.code(card);
-        if (!code) continue;
-        const btn = document.createElement("button");
-        btn.setAttribute(BTN_ATTR, "");
-        btn.type = "button";
-        btn.textContent = "\u{1F3E8} Search in Award Buddy";
-        btn.style.cssText = `display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin-top:6px;height:36px;
-        background:${color};color:#fff;border:none;border-radius:4px;font:600 12px -apple-system,sans-serif;cursor:pointer;`;
-        btn.addEventListener("click", (e3) => {
-          e3.preventDefault();
-          e3.stopPropagation();
-          onPick(code, cards.name?.(card)?.replace(/\s+/g, " ").trim());
-        });
-        (cards.anchor?.(card) ?? card).appendChild(btn);
+  // src/ui/HotelPicker.jsx
+  function HotelPicker({ program: program2, value, names, onChange }) {
+    const [query, setQuery] = d2("");
+    const [open, setOpen] = d2(false);
+    const [sugs, setSugs] = d2([]);
+    const [list, setList] = d2(null);
+    const [picked, setPicked] = d2([]);
+    const wrapRef = A2(), inputRef = A2();
+    useOutsideClick(wrapRef, () => setOpen(false));
+    h2(() => {
+      const text = query.trim();
+      if (text.length < 2 || !program2.suggestHotels) {
+        setSugs([]);
+        return;
+      }
+      let stale = false;
+      const t3 = setTimeout(() => program2.suggestHotels(text).then((s3) => !stale && setSugs(s3), () => !stale && setSugs([])), 300);
+      return () => {
+        stale = true;
+        clearTimeout(t3);
+      };
+    }, [query]);
+    function add(hotels) {
+      const fresh = hotels.filter((h3) => !value.includes(h3.code));
+      const named = Object.fromEntries(hotels.filter((h3) => h3.name).map((h3) => [h3.code, h3.name]));
+      onChange([...value, ...fresh.map((h3) => h3.code)], { ...names, ...named });
+    }
+    const remove = (code) => onChange(value.filter((c3) => c3 !== code), names);
+    function showList(title, hotels) {
+      setPicked([]);
+      setList({ title, hotels });
+      const missing = hotels.filter((h3) => !h3.name && !names[h3.code]).map((h3) => h3.code);
+      if (!program2.hotelName || !missing.length) return;
+      let i3 = 0;
+      const next = async () => {
+        while (i3 < missing.length) {
+          const code = missing[i3++];
+          const name = await program2.hotelName(code).catch(() => null);
+          if (name) setList((l3) => l3 && { ...l3, hotels: l3.hotels.map((h3) => h3.code === code ? { ...h3, name } : h3) });
+        }
+      };
+      for (let n2 = 0; n2 < 4; n2++) next();
+    }
+    async function choose(s3) {
+      setOpen(false);
+      setQuery("");
+      setSugs([]);
+      setList({ title: s3.label, hotels: [], loading: true });
+      try {
+        const { exact, nearby } = await program2.hotelsAt(s3.ref);
+        if (exact) {
+          add([{ ...exact, name: exact.name ?? await program2.hotelName?.(exact.code).catch(() => null) }]);
+          setList(null);
+        } else showList(`Hotels near ${s3.label}`, nearby);
+      } catch {
+        setList({ title: s3.label, hotels: [], error: true });
       }
     }
-    inject();
-    const observer = new MutationObserver(inject);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    function onKeyDown(e3) {
+      if (e3.key === "Backspace" && !query && value.length) remove(value[value.length - 1]);
+      else if (e3.key === "Enter") {
+        e3.preventDefault();
+        const typed = query.trim().toUpperCase();
+        if (program2.isHotelCode?.(typed)) {
+          add([{ code: typed }]);
+          setQuery("");
+        } else if (sugs[0]) choose(sugs[0]);
+      } else if (e3.key === "Escape") setOpen(false);
+    }
+    const toggle = (code) => setPicked((p3) => p3.includes(code) ? p3.filter((c3) => c3 !== code) : [...p3, code]);
+    const choosable = list?.hotels.filter((h3) => !value.includes(h3.code)) ?? [];
+    const nameOf = (h3) => h3.name ?? names[h3.code];
+    return /* @__PURE__ */ u3("div", { ref: wrapRef, children: [
+      /* @__PURE__ */ u3("div", { class: "ab-combo", children: [
+        /* @__PURE__ */ u3("div", { class: "ab-combo-box", onClick: () => inputRef.current?.focus(), children: [
+          value.map((code) => /* @__PURE__ */ u3("span", { class: "ab-chip", title: code, children: [
+            names[code] ?? code,
+            /* @__PURE__ */ u3("button", { class: "ab-chip-x", "aria-label": `Remove ${code}`, onClick: (e3) => {
+              e3.stopPropagation();
+              remove(code);
+            }, children: "\xD7" })
+          ] }, code)),
+          /* @__PURE__ */ u3(
+            "input",
+            {
+              ref: inputRef,
+              class: "ab-combo-input",
+              autocomplete: "off",
+              placeholder: value.length ? "" : program2.hotelPlaceholder ?? "Hotel name, city or code",
+              value: query,
+              onInput: (e3) => {
+                setQuery(e3.currentTarget.value);
+                setOpen(true);
+              },
+              onFocus: () => setOpen(true),
+              onKeyDown
+            }
+          )
+        ] }),
+        open && sugs.length > 0 && /* @__PURE__ */ u3("div", { class: "ab-combo-drop", children: sugs.map((s3, i3) => (
+          // mousedown + preventDefault keeps focus in the input
+          /* @__PURE__ */ u3("div", { class: "ab-combo-opt", onMouseDown: (e3) => {
+            e3.preventDefault();
+            choose(s3);
+          }, children: [
+            /* @__PURE__ */ u3("strong", { children: s3.label }),
+            s3.sub && /* @__PURE__ */ u3("span", { style: { color: "#999" }, children: [
+              " \xB7 ",
+              s3.sub
+            ] })
+          ] }, i3)
+        )) })
+      ] }),
+      program2.pageHotels && !list && /* @__PURE__ */ u3("button", { class: "ab-link-btn", style: { margin: "4px 0 0" }, onClick: () => showList("Hotels on this page", program2.pageHotels()), children: "+ Pick from hotels on this page" }),
+      list && /* @__PURE__ */ u3("div", { class: "ab-hlist", children: [
+        /* @__PURE__ */ u3("div", { class: "ab-hlist-head", children: [
+          /* @__PURE__ */ u3("b", { children: list.title }),
+          choosable.length > 0 && /* @__PURE__ */ u3("button", { class: "ab-link-btn", onClick: () => setPicked(picked.length === choosable.length ? [] : choosable.map((h3) => h3.code)), children: picked.length === choosable.length ? "Select none" : "Select all" }),
+          /* @__PURE__ */ u3("button", { class: "ab-link-btn", style: { marginLeft: "auto" }, onClick: () => setList(null), children: "\u2715" })
+        ] }),
+        list.loading ? /* @__PURE__ */ u3("div", { class: "ab-hlist-note", children: "Loading\u2026" }) : list.error ? /* @__PURE__ */ u3("div", { class: "ab-hlist-note", children: "Couldn't load hotels. Try again." }) : !list.hotels.length ? /* @__PURE__ */ u3("div", { class: "ab-hlist-note", children: "No hotels found." }) : /* @__PURE__ */ u3("div", { class: "ab-hlist-items", children: list.hotels.map((h3) => {
+          const added = value.includes(h3.code);
+          return /* @__PURE__ */ u3("label", { class: cx("ab-hlist-item", added && "added"), children: [
+            /* @__PURE__ */ u3("input", { type: "checkbox", checked: added || picked.includes(h3.code), disabled: added, onChange: () => toggle(h3.code) }),
+            /* @__PURE__ */ u3("span", { class: "ab-hlist-name", children: nameOf(h3) ?? "\u2026" }),
+            /* @__PURE__ */ u3("span", { class: "ab-hlist-sub", children: [
+              h3.code,
+              h3.sub ? ` \xB7 ${h3.sub}` : ""
+            ] })
+          ] }, h3.code);
+        }) }),
+        picked.length > 0 && /* @__PURE__ */ u3("button", { class: "ab-hlist-add", onClick: () => {
+          add(list.hotels.filter((h3) => picked.includes(h3.code)).map((h3) => ({ code: h3.code, name: nameOf(h3) })));
+          setList(null);
+        }, children: [
+          "Add ",
+          picked.length,
+          " hotel(s)"
+        ] })
+      ] })
+    ] });
   }
 
   // src/ui/HotelSearch.jsx
@@ -4649,17 +4774,17 @@
     } catch {
     }
     const current = program2.currentHotel?.();
-    const hotels = typeof saved.hotels === "string" ? saved.hotels : "";
+    const hotels = Array.isArray(saved.hotels) ? saved.hotels.filter((c3) => typeof c3 === "string") : parseHotelCodes(saved.hotels);
     return {
       // On a hotel page with nothing saved, start with that hotel
-      hotels: hotels || current || "",
+      hotels: hotels.length ? hotels : current ? [current] : [],
       fromMonth: monthISO(0),
       toMonth: monthISO(2),
       names: saved.names && typeof saved.names === "object" ? saved.names : {}
       // code → hotel name, from the site's cards
     };
   }
-  function HotelSearch({ program: program2, session, openPanel }) {
+  function HotelSearch({ program: program2, session }) {
     const [form, setForm] = d2(() => initialForm(program2));
     const set = (patch) => setForm((f4) => ({ ...f4, ...patch }));
     h2(() => {
@@ -4671,31 +4796,18 @@
     }, [form]);
     const run = useSearchRun(form);
     const { ctl, setStatus, setProgress } = run;
-    h2(() => program2.hotelCards && watchHotelCards(program2.hotelCards, program2.color, (code, name) => {
-      setForm((f4) => {
-        const codes2 = parseHotelCodes(f4.hotels);
-        return {
-          ...f4,
-          hotels: codes2.includes(code) ? f4.hotels : [...codes2, code].join(", "),
-          names: name ? { ...f4.names, [code]: name } : f4.names
-        };
-      });
-      run.setCollapsed(false);
-      openPanel();
-    }), []);
     const [results, setResults] = d2([]);
     const [shown, setShown] = d2(null);
     const [date, setDate] = d2(null);
     const [noResults, setNoResults] = d2(false);
     const latest = A2();
     latest.current = form;
-    const hotels = parseHotelCodes(form.hotels);
+    const hotels = form.hotels;
     const spans = form.fromMonth && form.toMonth ? monthSpans(form.fromMonth, form.toMonth) : [];
-    const current = program2.currentHotel?.();
     async function search() {
       if (run.stopIfRunning()) return;
       const f4 = latest.current;
-      const codes2 = parseHotelCodes(f4.hotels);
+      const codes2 = f4.hotels;
       const spans2 = monthSpans(f4.fromMonth, f4.toMonth);
       if (!codes2.length || !spans2.length) {
         setStatus("\u26A0 Fill in all fields");
@@ -4744,29 +4856,14 @@
       } else if (all.length) setStatus((s3) => `${s3} (${all.length} found so far)`);
     }
     const summary2 = [
-      hotels.join(", ") || "?",
+      hotels.map((c3) => form.names[c3] ?? c3).join(", ") || "?",
       `${form.fromMonth} \u2013 ${form.toMonth}`
     ].join(" \xB7 ");
     return /* @__PURE__ */ u3(S, { children: [
       run.collapsed ? /* @__PURE__ */ u3(SearchSummary, { run, text: summary2 }) : /* @__PURE__ */ u3(S, { children: [
         /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-          /* @__PURE__ */ u3("label", { children: [
-            "Hotel codes (comma separated)",
-            current && !hotels.includes(current) && /* @__PURE__ */ u3("button", { class: "ab-link-btn", onClick: () => set({ hotels: [...hotels, current].join(", ") }), children: [
-              "+ Add this hotel (",
-              current,
-              ")"
-            ] })
-          ] }),
-          /* @__PURE__ */ u3(
-            "input",
-            {
-              type: "text",
-              placeholder: program2.hotelPlaceholder ?? "Hotel codes",
-              value: form.hotels,
-              onInput: (e3) => set({ hotels: e3.currentTarget.value })
-            }
-          )
+          /* @__PURE__ */ u3("label", { children: "Hotels" }),
+          /* @__PURE__ */ u3(HotelPicker, { program: program2, value: form.hotels, names: form.names, onChange: (hotels2, names) => set({ hotels: hotels2, names }) })
         ] }) }),
         /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
           /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
@@ -5081,7 +5178,7 @@
           " Waiting for session\u2026",
           program2.triggerSession ? /* @__PURE__ */ u3("button", { style: { marginLeft: 6, fontSize: 12 }, onClick: () => program2.triggerSession(), children: "Get session" }) : session.url && /* @__PURE__ */ u3("a", { href: session.url, target: "_blank", style: { color: "inherit", marginLeft: 6 }, children: "\u2192 Get session" })
         ] })),
-        /* @__PURE__ */ u3("div", { class: "ab-body", children: /* @__PURE__ */ u3(Search, { program: program2, session, openPanel: () => setOpen(true) }) })
+        /* @__PURE__ */ u3("div", { class: "ab-body", children: /* @__PURE__ */ u3(Search, { program: program2, session }) })
       ] })
     ] });
   }
@@ -7964,8 +8061,12 @@
   };
 
   // src/programs/ihg.js
-  var IHG_CALENDAR_URL = "https://apis.ihg.com/availability/v1/calendar";
+  var IHG_API = "https://apis.ihg.com";
   var IHG_API_KEY = "se9ym5iAzaW8pxfBjkmgbuGjJcr3Pj6Y";
+  var IHG_HEADERS = { accept: "application/json", "x-ihg-api-key": IHG_API_KEY, "ihg-language": "en-US" };
+  var NEARBY_RADIUS_MI = 30;
+  var NEARBY_MAX = 30;
+  var SAME_PLACE_KM = 0.15;
   var IHG_DELAY_MS = 600;
   var REWARD_RATE_PLANS = ["IVAN1", "IVAN3", "IVAN5", "IVAN6", "IVAN7", "IVANI"];
   var BED_TYPE = { K: "King", C: "Double", T: "Twin", Q: "Queen", S: "Studio", D: "Double" };
@@ -8048,6 +8149,24 @@
     }
     return results;
   }
+  function ihgParseDestinations(data) {
+    return (Array.isArray(data) ? data : []).filter((d3) => d3.clarifiedLocation && d3.latitude != null && d3.longitude != null).map((d3) => ({
+      label: d3.clarifiedLocation,
+      sub: d3.type === "A" ? "Airport" : void 0,
+      ref: { lat: d3.latitude, lng: d3.longitude, label: d3.clarifiedLocation, airport: d3.type === "A" }
+    }));
+  }
+  function ihgParseNearby(data, ref) {
+    const hotels = [...data?.hotels ?? []].filter((h3) => h3.hotelMnemonic).sort((a3, b2) => (a3.distanceKm ?? Infinity) - (b2.distanceKm ?? Infinity));
+    const first = hotels[0];
+    if (first && !ref.airport && first.distanceKm < SAME_PLACE_KM) return { exact: { code: first.hotelMnemonic }, nearby: [] };
+    return {
+      nearby: hotels.slice(0, NEARBY_MAX).map((h3) => ({
+        code: h3.hotelMnemonic,
+        sub: [h3.distanceKm != null && `${h3.distanceKm.toFixed(1)} km`, h3.availabilityStatus && h3.availabilityStatus !== "OPEN" && h3.availabilityStatus.toLowerCase()].filter(Boolean).join(" \xB7 ")
+      }))
+    };
+  }
   function ihgHotelFromUrl(url) {
     const u4 = new URL(url);
     const code = u4.searchParams.get("qSlH") ?? u4.pathname.match(/\/([a-z0-9]{5})\/hoteldetail/i)?.[1] ?? (u4.pathname.includes("/find-hotels/hotel/") ? u4.searchParams.get("qDest") : null);
@@ -8060,26 +8179,56 @@
     color: "#0D2D52",
     matches: ["www.ihg.com"],
     requiresSession: false,
-    hotelPlaceholder: "e.g. TPEKM, TYOIC",
+    hotelPlaceholder: "Hotel name, city, airport or code",
     expiredMessage: "\u26A0 IHG rejected the request \u2014 refresh the page and try again",
     currentHotel: () => ihgHotelFromUrl(location.href),
-    // Hotel cards on the site's search results (find-hotels/hotel-search); the card's id is the hotel code
-    hotelCards: {
-      selector: 'app-hotel-card-list-view[data-testid="hotel-card"]',
-      code: (card) => /^[a-z0-9]{5}$/i.test(card.id) ? card.id.toUpperCase() : null,
-      name: (card) => (card.querySelector(".hotel-name") ?? card.querySelector("h2"))?.textContent,
-      anchor: (card) => card.querySelector(".hotel-selection-btn")?.parentElement ?? card.querySelector(".hotel-body-rhs-container")
+    isHotelCode: (text) => /^[A-Z0-9]{5}$/.test(text),
+    // The hotel page the user is on, or the cards on a search results page (each card's id is the code)
+    pageHotels() {
+      const hotels = [...document.querySelectorAll('app-hotel-card-list-view[data-testid="hotel-card"]')].filter((card) => /^[a-z0-9]{5}$/i.test(card.id)).map((card) => ({
+        code: card.id.toUpperCase(),
+        name: (card.querySelector(".hotel-name") ?? card.querySelector("h2"))?.textContent.replace(/\s+/g, " ").trim() || void 0
+      }));
+      const current = ihgHotelFromUrl(location.href);
+      if (current && !hotels.some((h3) => h3.code === current)) hotels.unshift({ code: current });
+      return hotels;
+    },
+    async suggestHotels(text) {
+      const res = await fetch(`${IHG_API}/locations/v2/destinations?destination=${encodeURIComponent(text)}`, { headers: IHG_HEADERS });
+      return res.ok ? ihgParseDestinations(await res.json()) : [];
+    },
+    // The offers search needs a stay; any near-future night lists the same hotels
+    async hotelsAt(ref) {
+      const start = addDays(todayISO(), 30);
+      const res = await fetch(`${IHG_API}/availability/v3/hotels/offers?fieldset=summary`, {
+        method: "POST",
+        headers: { ...IHG_HEADERS, "content-type": "application/json; charset=UTF-8" },
+        credentials: "include",
+        body: JSON.stringify({
+          startDate: start,
+          endDate: addDays(start, 1),
+          hotelMnemonics: null,
+          rates: { ratePlanCodes: [{ internal: "IVANI" }] },
+          products: [{ productCode: "SR", guestCounts: [{ otaCode: "AQC10", count: 1 }], quantity: 1 }],
+          options: { disabilityMode: "ACCESSIBLE_AND_NON_ACCESSIBLE" },
+          geoLocation: [{ latitude: ref.lat, longitude: ref.lng, radius: NEARBY_RADIUS_MI, uom: "MI" }]
+        })
+      });
+      if (!res.ok) throw new Error(`IHG ${res.status}`);
+      return ihgParseNearby(await res.json(), ref);
+    },
+    async hotelName(code) {
+      const res = await fetch(`${IHG_API}/hotels/v3/profiles/${code}/details?fieldset=brandInfo,profile`, { headers: IHG_HEADERS });
+      if (!res.ok) return null;
+      const h3 = (await res.json())?.hotelContent?.[0];
+      const name = h3?.profile?.name?.[0]?.value;
+      return h3?.profile?.gdsName?.replace(/ by IHG$/, "") ?? (name && [h3.brandInfo?.brandName, name].filter(Boolean).join(" ")) ?? null;
     },
     async onHotelSearch(params) {
       await sleep(IHG_DELAY_MS);
-      const res = await fetch(IHG_CALENDAR_URL, {
+      const res = await fetch(`${IHG_API}/availability/v1/calendar`, {
         method: "POST",
-        headers: {
-          "content-type": "application/json; charset=UTF-8",
-          accept: "application/json",
-          "x-ihg-api-key": IHG_API_KEY,
-          "ihg-language": "en-US"
-        },
+        headers: { ...IHG_HEADERS, "content-type": "application/json; charset=UTF-8" },
         credentials: "include",
         body: JSON.stringify(ihgBuildRequest(params))
       });

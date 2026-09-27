@@ -1,13 +1,20 @@
-import { sleep, addDays } from '../common/search.js'
+import { sleep, addDays, todayISO } from '../common/search.js'
 
 // IHG One Rewards – no login required.
 // The site's own availability API (apis.ihg.com/availability/v1/calendar) takes a public API key and
 // returns reward-night pricing per date for a date range, one hotel per request ("Multiple hotel codes
 // are not supported"). Dates without availability are left out. It has to be called from www.ihg.com
 // (CORS), so the panel runs there.
+// Finding hotels by name: locations/v2/destinations autocompletes hotels, cities and airports but only
+// gives coordinates; availability/v3/hotels/offers lists the hotel codes around a point; and
+// hotels/v3/profiles/{code}/details has the name (one hotel per call).
 
-const IHG_CALENDAR_URL = 'https://apis.ihg.com/availability/v1/calendar'
+const IHG_API = 'https://apis.ihg.com'
 const IHG_API_KEY = 'se9ym5iAzaW8pxfBjkmgbuGjJcr3Pj6Y'  // public key the site sends with every request
+const IHG_HEADERS = { accept: 'application/json', 'x-ihg-api-key': IHG_API_KEY, 'ihg-language': 'en-US' }
+const NEARBY_RADIUS_MI = 30
+const NEARBY_MAX = 30
+const SAME_PLACE_KM = 0.15  // a suggestion this close to a hotel is that hotel
 const IHG_DELAY_MS = 600
 // Reward Nights rate plans
 const REWARD_RATE_PLANS = ['IVAN1', 'IVAN3', 'IVAN5', 'IVAN6', 'IVAN7', 'IVANI']
@@ -76,6 +83,33 @@ export function ihgParseCalendar(data) {
   return results
 }
 
+// Autocomplete entries → suggestions; type 'A' is an airport
+export function ihgParseDestinations(data) {
+  return (Array.isArray(data) ? data : [])
+    .filter(d => d.clarifiedLocation && d.latitude != null && d.longitude != null)
+    .map(d => ({
+      label: d.clarifiedLocation,
+      sub: d.type === 'A' ? 'Airport' : undefined,
+      ref: { lat: d.latitude, lng: d.longitude, label: d.clarifiedLocation, airport: d.type === 'A' },
+    }))
+}
+
+// Hotels around a suggestion, nearest first; exact when the suggestion sits on a hotel
+export function ihgParseNearby(data, ref) {
+  const hotels = [...(data?.hotels ?? [])].filter(h => h.hotelMnemonic)
+    .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+  const first = hotels[0]
+  // No name: the suggestion text can be a street address, so the picker looks the name up
+  if (first && !ref.airport && first.distanceKm < SAME_PLACE_KM) return { exact: { code: first.hotelMnemonic }, nearby: [] }
+  return {
+    nearby: hotels.slice(0, NEARBY_MAX).map(h => ({
+      code: h.hotelMnemonic,
+      sub: [h.distanceKm != null && `${h.distanceKm.toFixed(1)} km`, h.availabilityStatus && h.availabilityStatus !== 'OPEN' && h.availabilityStatus.toLowerCase()]
+        .filter(Boolean).join(' · '),
+    })),
+  }
+}
+
 // Hotel code from a hotel page URL: …/taipei/tpekm/hoteldetail… or ?qSlH=TPEKM / ?qDest=TPEKM
 export function ihgHotelFromUrl(url) {
   const u = new URL(url)
@@ -91,28 +125,62 @@ export const ihgProgram = {
   color: '#0D2D52',
   matches: ['www.ihg.com'],
   requiresSession: false,
-  hotelPlaceholder: 'e.g. TPEKM, TYOIC',
+  hotelPlaceholder: 'Hotel name, city, airport or code',
   expiredMessage: '⚠ IHG rejected the request — refresh the page and try again',
 
   currentHotel: () => ihgHotelFromUrl(location.href),
-  // Hotel cards on the site's search results (find-hotels/hotel-search); the card's id is the hotel code
-  hotelCards: {
-    selector: 'app-hotel-card-list-view[data-testid="hotel-card"]',
-    code: card => /^[a-z0-9]{5}$/i.test(card.id) ? card.id.toUpperCase() : null,
-    name: card => (card.querySelector('.hotel-name') ?? card.querySelector('h2'))?.textContent,
-    anchor: card => card.querySelector('.hotel-selection-btn')?.parentElement ?? card.querySelector('.hotel-body-rhs-container'),
+  isHotelCode: text => /^[A-Z0-9]{5}$/.test(text),
+
+  // The hotel page the user is on, or the cards on a search results page (each card's id is the code)
+  pageHotels() {
+    const hotels = [...document.querySelectorAll('app-hotel-card-list-view[data-testid="hotel-card"]')]
+      .filter(card => /^[a-z0-9]{5}$/i.test(card.id))
+      .map(card => ({
+        code: card.id.toUpperCase(),
+        name: (card.querySelector('.hotel-name') ?? card.querySelector('h2'))?.textContent.replace(/\s+/g, ' ').trim() || undefined,
+      }))
+    const current = ihgHotelFromUrl(location.href)
+    if (current && !hotels.some(h => h.code === current)) hotels.unshift({ code: current })
+    return hotels
+  },
+
+  async suggestHotels(text) {
+    const res = await fetch(`${IHG_API}/locations/v2/destinations?destination=${encodeURIComponent(text)}`, { headers: IHG_HEADERS })
+    return res.ok ? ihgParseDestinations(await res.json()) : []
+  },
+
+  // The offers search needs a stay; any near-future night lists the same hotels
+  async hotelsAt(ref) {
+    const start = addDays(todayISO(), 30)
+    const res = await fetch(`${IHG_API}/availability/v3/hotels/offers?fieldset=summary`, {
+      method: 'POST',
+      headers: { ...IHG_HEADERS, 'content-type': 'application/json; charset=UTF-8' },
+      credentials: 'include',
+      body: JSON.stringify({
+        startDate: start, endDate: addDays(start, 1), hotelMnemonics: null,
+        rates: { ratePlanCodes: [{ internal: 'IVANI' }] },
+        products: [{ productCode: 'SR', guestCounts: [{ otaCode: 'AQC10', count: 1 }], quantity: 1 }],
+        options: { disabilityMode: 'ACCESSIBLE_AND_NON_ACCESSIBLE' },
+        geoLocation: [{ latitude: ref.lat, longitude: ref.lng, radius: NEARBY_RADIUS_MI, uom: 'MI' }],
+      }),
+    })
+    if (!res.ok) throw new Error(`IHG ${res.status}`)
+    return ihgParseNearby(await res.json(), ref)
+  },
+
+  async hotelName(code) {
+    const res = await fetch(`${IHG_API}/hotels/v3/profiles/${code}/details?fieldset=brandInfo,profile`, { headers: IHG_HEADERS })
+    if (!res.ok) return null
+    const h = (await res.json())?.hotelContent?.[0]
+    const name = h?.profile?.name?.[0]?.value
+    return h?.profile?.gdsName?.replace(/ by IHG$/, '') ?? (name && [h.brandInfo?.brandName, name].filter(Boolean).join(' ')) ?? null
   },
 
   async onHotelSearch(params) {
     await sleep(IHG_DELAY_MS)
-    const res = await fetch(IHG_CALENDAR_URL, {
+    const res = await fetch(`${IHG_API}/availability/v1/calendar`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json; charset=UTF-8',
-        accept: 'application/json',
-        'x-ihg-api-key': IHG_API_KEY,
-        'ihg-language': 'en-US',
-      },
+      headers: { ...IHG_HEADERS, 'content-type': 'application/json; charset=UTF-8' },
       credentials: 'include',
       body: JSON.stringify(ihgBuildRequest(params)),
     })

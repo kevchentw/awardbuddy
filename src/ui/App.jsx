@@ -314,7 +314,7 @@ function App({ program }) {
                 : session.url && <a href={session.url} target="_blank" style={{ color: 'inherit', marginLeft: 6 }}>→ Get session</a>}
             </div>)}
         <div class="ab-body">
-          <Search program={program} session={session} openPanel={() => setOpen(true)} />
+          <Search program={program} session={session} />
         </div>
       </div>
     </>

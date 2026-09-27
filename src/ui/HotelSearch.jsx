@@ -5,15 +5,14 @@ import { parseHotelCodes } from '../common/hotels.js'
 import { useSearchRun, SearchSummary, SearchControls } from './searchRun.jsx'
 import { MonthRangePicker } from './Calendar.jsx'
 import { HotelCalendar, HotelTable } from './HotelResults.jsx'
-import { watchHotelCards } from './hotelButtons.js'
+import { HotelPicker } from './HotelPicker.jsx'
 
 // Hotel award search: points per night for hotel codes × check-in months, one request per hotel and month.
 // A hotel program ({ kind: 'hotel', ... }) provides:
 //   onHotelSearch({ hotel, start, end }) → results (see common/hotels.js) or 'SESSION_EXPIRED';
 //     start/end is an inclusive range of check-in dates within one month; throws when the request fails
-//   currentHotel()     code of the hotel page the user is on, if any
-//   hotelPlaceholder   example codes for the input
-//   hotelCards         where to add a "Search in Award Buddy" button on the site's results (see hotelButtons.js)
+//   currentHotel()     code of the hotel page the user is on, if any (preselected on first visit)
+//   plus the hotel-finding functions listed in HotelPicker.jsx
 
 function monthISO(offset) {
   const d = new Date()
@@ -27,16 +26,17 @@ function initialForm(program) {
   let saved = {}
   try { saved = JSON.parse(localStorage.getItem(storeKey(program))) || {} } catch {}
   const current = program.currentHotel?.()
-  const hotels = typeof saved.hotels === 'string' ? saved.hotels : ''
+  // Older saves kept the codes as comma-separated text
+  const hotels = Array.isArray(saved.hotels) ? saved.hotels.filter(c => typeof c === 'string') : parseHotelCodes(saved.hotels)
   return {
     // On a hotel page with nothing saved, start with that hotel
-    hotels: hotels || current || '',
+    hotels: hotels.length ? hotels : current ? [current] : [],
     fromMonth: monthISO(0), toMonth: monthISO(2),
     names: saved.names && typeof saved.names === 'object' ? saved.names : {},  // code → hotel name, from the site's cards
   }
 }
 
-export function HotelSearch({ program, session, openPanel }) {
+export function HotelSearch({ program, session }) {
   const [form, setForm] = useState(() => initialForm(program))
   const set = patch => setForm(f => ({ ...f, ...patch }))
   useEffect(() => {
@@ -47,20 +47,6 @@ export function HotelSearch({ program, session, openPanel }) {
   const run = useSearchRun(form)
   const { ctl, setStatus, setProgress } = run
 
-  // A card button on the site adds that hotel to the form and opens the panel
-  useEffect(() => program.hotelCards && watchHotelCards(program.hotelCards, program.color, (code, name) => {
-    setForm(f => {
-      const codes = parseHotelCodes(f.hotels)
-      return {
-        ...f,
-        hotels: codes.includes(code) ? f.hotels : [...codes, code].join(', '),
-        names: name ? { ...f.names, [code]: name } : f.names,
-      }
-    })
-    run.setCollapsed(false)
-    openPanel()
-  }), [])
-
   const [results, setResults] = useState([])
   const [shown, setShown] = useState(null)  // { hotels, fromMonth, toMonth } of the last search, for the calendar
   const [date, setDate] = useState(null)    // calendar day picked to narrow the table
@@ -68,14 +54,13 @@ export function HotelSearch({ program, session, openPanel }) {
   const latest = useRef()
   latest.current = form
 
-  const hotels = parseHotelCodes(form.hotels)
+  const hotels = form.hotels
   const spans = form.fromMonth && form.toMonth ? monthSpans(form.fromMonth, form.toMonth) : []
-  const current = program.currentHotel?.()
 
   async function search() {
     if (run.stopIfRunning()) return
     const f = latest.current
-    const codes = parseHotelCodes(f.hotels)
+    const codes = f.hotels
     const spans = monthSpans(f.fromMonth, f.toMonth)
     if (!codes.length || !spans.length) { setStatus('⚠ Fill in all fields'); return }
     run.begin()
@@ -116,7 +101,7 @@ export function HotelSearch({ program, session, openPanel }) {
   }
 
   const summary = [
-    hotels.join(', ') || '?',
+    hotels.map(c => form.names[c] ?? c).join(', ') || '?',
     `${form.fromMonth} – ${form.toMonth}`,
   ].join(' · ')
 
@@ -125,14 +110,8 @@ export function HotelSearch({ program, session, openPanel }) {
       {run.collapsed ? <SearchSummary run={run} text={summary} /> : <>
       <div class="ab-row">
         <div class="ab-field">
-          <label>
-            Hotel codes (comma separated)
-            {current && !hotels.includes(current) && (
-              <button class="ab-link-btn" onClick={() => set({ hotels: [...hotels, current].join(', ') })}>+ Add this hotel ({current})</button>
-            )}
-          </label>
-          <input type="text" placeholder={program.hotelPlaceholder ?? 'Hotel codes'} value={form.hotels}
-            onInput={e => set({ hotels: e.currentTarget.value })} />
+          <label>Hotels</label>
+          <HotelPicker program={program} value={form.hotels} names={form.names} onChange={(hotels, names) => set({ hotels, names })} />
         </div>
       </div>
       <div class="ab-row">
