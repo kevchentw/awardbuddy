@@ -4820,6 +4820,7 @@
     const [shown, setShown] = d2(null);
     const [date, setDate] = d2(null);
     const [noResults, setNoResults] = d2(false);
+    const [rateType, setRateType] = d2(null);
     const latest = A2();
     latest.current = form;
     const hotels = form.hotels;
@@ -4875,6 +4876,9 @@
         if (!all.length) setNoResults(true);
       } else if (all.length) setStatus((s3) => `${s3} (${all.length} found so far)`);
     }
+    const rateTypes = ["Standard", "Premium"].filter((t3) => results.some((r3) => r3.rateType === t3));
+    const activeRateType = rateTypes.includes(rateType) ? rateType : null;
+    const visible = activeRateType ? results.filter((r3) => r3.rateType === activeRateType) : results;
     const summary2 = [
       hotels.map((c3) => names[c3] ?? c3).join(", ") || "?",
       `${form.fromMonth} \u2013 ${form.toMonth}`
@@ -4896,10 +4900,21 @@
       ] }),
       /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
       /* @__PURE__ */ u3("div", { children: [
+        rateTypes.length > 1 && /* @__PURE__ */ u3(FilterBar, { filters: { rateType: activeRateType }, onChange: (f4) => {
+          setRateType(f4.rateType);
+          setDate(null);
+        }, pills: [
+          {
+            id: "rateType",
+            label: "Reward",
+            display: activeRateType && `${activeRateType} only`,
+            items: [[null, "Standard & Premium"], ["Standard", "Standard only"], ["Premium", "Premium only"]]
+          }
+        ] }),
         shown && results.length > 0 && /* @__PURE__ */ u3(
           HotelCalendar,
           {
-            results,
+            results: visible,
             hotels: shown.hotels,
             names,
             fromMonth: shown.fromMonth,
@@ -4908,7 +4923,7 @@
             onSelect: setDate
           }
         ),
-        /* @__PURE__ */ u3(HotelTable, { results, hotels: shown?.hotels ?? [], names, date, onClearDate: () => setDate(null) }),
+        /* @__PURE__ */ u3(HotelTable, { results: visible, hotels: shown?.hotels ?? [], names, date, onClearDate: () => setDate(null) }),
         noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
       ] })
     ] });
@@ -8466,6 +8481,7 @@
     d3.setUTCDate(d3.getUTCDate() + 1);
     return d3.toISOString().slice(0, 10);
   };
+  var rateTypeOf = (name) => /premium/i.test(name ?? "") ? "Premium" : /standard/i.test(name ?? "") ? "Standard" : void 0;
   function hiltonParseCalendar(data, { hotel, start, end }) {
     const results = [];
     for (const day of data?.data?.hotel?.shopCalendarAvail?.calendars ?? []) {
@@ -8478,6 +8494,7 @@
         hotel,
         points,
         room: rate.ratePlan?.ratePlanName || void 0,
+        rateType: rateTypeOf(rate.ratePlan?.ratePlanName),
         roomsLeft: rate.numRoomsAvail ?? void 0,
         bookUrl: hiltonBookUrl(hotel, date, nextDay(date))
       });

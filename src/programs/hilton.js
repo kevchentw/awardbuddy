@@ -79,7 +79,11 @@ const nextDay = date => {
   return d.toISOString().slice(0, 10)
 }
 
-// One result per date (the lowest reward rate that night), kept to start..end since the reply is a whole month
+// Standard Room Reward / Premium Room Rewards (the only plans the calendar returns with points)
+const rateTypeOf = name => /premium/i.test(name ?? '') ? 'Premium' : /standard/i.test(name ?? '') ? 'Standard' : undefined
+
+// One result per date (the lowest reward rate that night), kept to start..end since the reply is a whole month.
+// A Premium night means no Standard room was left that night
 export function hiltonParseCalendar(data, { hotel, start, end }) {
   const results = []
   for (const day of data?.data?.hotel?.shopCalendarAvail?.calendars ?? []) {
@@ -90,6 +94,7 @@ export function hiltonParseCalendar(data, { hotel, start, end }) {
     results.push({
       date, hotel, points,
       room: rate.ratePlan?.ratePlanName || undefined,
+      rateType: rateTypeOf(rate.ratePlan?.ratePlanName),
       roomsLeft: rate.numRoomsAvail ?? undefined,
       bookUrl: hiltonBookUrl(hotel, date, nextDay(date)),
     })

@@ -6,6 +6,7 @@ import { useSearchRun, SearchSummary, SearchControls } from './searchRun.jsx'
 import { MonthRangePicker } from './Calendar.jsx'
 import { HotelCalendar, HotelTable } from './HotelResults.jsx'
 import { HotelPicker } from './HotelPicker.jsx'
+import { FilterBar } from './ResultsTable.jsx'
 
 // Hotel award search: points per night for hotel codes × check-in months, one request per hotel and month.
 // A hotel program ({ kind: 'hotel', ... }) provides:
@@ -61,6 +62,7 @@ export function HotelSearch({ program, session }) {
   const [shown, setShown] = useState(null)  // { hotels, fromMonth, toMonth } of the last search, for the calendar
   const [date, setDate] = useState(null)    // calendar day picked to narrow the table
   const [noResults, setNoResults] = useState(false)
+  const [rateType, setRateType] = useState(null)  // 'Standard' / 'Premium' reward, for the calendar and table
   const latest = useRef()
   latest.current = form
 
@@ -110,6 +112,11 @@ export function HotelSearch({ program, session }) {
     } else if (all.length) setStatus(s => `${s} (${all.length} found so far)`)
   }
 
+  // Reward types in the results (Hilton prices Standard and Premium); the filter only applies while they're there
+  const rateTypes = ['Standard', 'Premium'].filter(t => results.some(r => r.rateType === t))
+  const activeRateType = rateTypes.includes(rateType) ? rateType : null
+  const visible = activeRateType ? results.filter(r => r.rateType === activeRateType) : results
+
   const summary = [
     hotels.map(c => names[c] ?? c).join(', ') || '?',
     `${form.fromMonth} – ${form.toMonth}`,
@@ -134,9 +141,15 @@ export function HotelSearch({ program, session }) {
       </>}
       <SearchControls run={run} session={session} onSearch={search} />
       <div>
-        {shown && results.length > 0 && <HotelCalendar results={results} hotels={shown.hotels} names={names} fromMonth={shown.fromMonth} toMonth={shown.toMonth}
+        {rateTypes.length > 1 && (
+          <FilterBar filters={{ rateType: activeRateType }} onChange={f => { setRateType(f.rateType); setDate(null) }} pills={[
+            { id: 'rateType', label: 'Reward', display: activeRateType && `${activeRateType} only`,
+              items: [[null, 'Standard & Premium'], ['Standard', 'Standard only'], ['Premium', 'Premium only']] },
+          ]} />
+        )}
+        {shown && results.length > 0 && <HotelCalendar results={visible} hotels={shown.hotels} names={names} fromMonth={shown.fromMonth} toMonth={shown.toMonth}
           selected={date} onSelect={setDate} />}
-        <HotelTable results={results} hotels={shown?.hotels ?? []} names={names} date={date} onClearDate={() => setDate(null)} />
+        <HotelTable results={visible} hotels={shown?.hotels ?? []} names={names} date={date} onClearDate={() => setDate(null)} />
         {noResults && <div class="ab-no-results">No award availability found.</div>}
       </div>
     </>

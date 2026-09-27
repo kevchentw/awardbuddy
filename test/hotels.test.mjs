@@ -183,9 +183,9 @@ test('Hilton: calendar request for one hotel, parsed to one row per date within 
     day('2026-11-30', 543000, 'Premium Room Rewards', 18),
   ] } } } }
   const rows = hiltonParseCalendar(data, { hotel: 'TYOCICI', start: '2026-11-02', end: '2026-11-30' })
-  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room, r.roomsLeft]), [
-    ['2026-11-02', 'TYOCICI', 130000, 'Standard Room Reward', 22],
-    ['2026-11-30', 'TYOCICI', 543000, 'Premium Room Rewards', 18],
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room, r.roomsLeft, r.rateType]), [
+    ['2026-11-02', 'TYOCICI', 130000, 'Standard Room Reward', 22, 'Standard'],
+    ['2026-11-30', 'TYOCICI', 543000, 'Premium Room Rewards', 18, 'Premium'],
   ])
   assert.equal(rows[1].bookUrl, 'https://www.hilton.com/en/book/reservation/rooms/?ctyhocn=TYOCICI&arrivalDate=2026-11-30&departureDate=2026-12-01&room1NumAdults=1&redeemPts=true')
   assert.deepEqual(hiltonParseCalendar(null, { hotel: 'TYOCICI', start: '2026-11-01', end: '2026-11-30' }), [])
