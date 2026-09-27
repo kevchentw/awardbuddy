@@ -330,3 +330,68 @@ test('Hyatt: a place is geocoded by the search page; nearby bookable hotels come
   ])
   assert.deepEqual(hyattNearby(null, center), [])
 })
+
+test('Choice: calendar variables and one row per bookable night, within the span', async () => {
+  const { choiceCalendarVariables, choiceParseCalendar } = await import('../src/programs/choice.js')
+  assert.deepEqual(choiceCalendarVariables({ hotel: 'JP056', start: '2026-11-02', end: '2026-11-30' }), {
+    hotelCode: 'JP056', startDate: '2026-11-02', endDate: '2026-11-30', adults: 1, minors: 0, ratePlanCodes: ['SRD'], currencyCode: 'HOTEL_DEFAULT_CURRENCY',
+  })
+  const rate = (startDate, points, availableForSale = true) => ({ startDate, points, availableForSale })
+  const data = { data: { getHotelAvailabilityCalendarRates: { calendarRates: [
+    rate('2026-11-03', 20000), rate('2026-11-02', 16000), rate('2026-11-04', 0, false), rate('2026-11-05', 0), null, rate('2026-12-01', 20000),
+  ] } } }
+  const rows = choiceParseCalendar(data, { hotel: 'JP056', start: '2026-11-02', end: '2026-11-30' })
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points]), [['2026-11-02', 'JP056', 16000], ['2026-11-03', 'JP056', 20000]])
+  assert.equal(rows[0].bookUrl, 'https://www.choicehotels.com/hotel/jp056?checkInDate=2026-11-02&checkOutDate=2026-11-03&ratePlanCode=SRD')
+  // An unknown code is a 400 with NONEXISTENT_HOTEL_INFO and no data
+  assert.deepEqual(choiceParseCalendar({ errors: [{ message: 'INVALID_ARGUMENT: {"NONEXISTENT_HOTEL_INFO":"The hotel id is invalid."}' }], data: { getHotelAvailabilityCalendarRates: null } },
+    { hotel: 'ZZ999', start: '2026-11-01', end: '2026-11-30' }), [])
+  assert.deepEqual(choiceParseCalendar(null, { hotel: 'JP056', start: '2026-11-01', end: '2026-11-30' }), [])
+})
+
+test('Choice: hotel code from hotel page URLs', async () => {
+  const { choiceHotelFromUrl } = await import('../src/programs/choice.js')
+  assert.equal(choiceHotelFromUrl('https://www.choicehotels.com/japan/tokyo/comfort-inn-hotels/jp056?checkInDate=2026-11-02'), 'JP056')
+  assert.equal(choiceHotelFromUrl('https://www.choicehotels.com/california/anaheim/quality-inn-hotels/cah59'), 'CAH59')
+  assert.equal(choiceHotelFromUrl('https://www.choicehotels.com/hotel/jp056'), 'JP056')
+  assert.equal(choiceHotelFromUrl('https://www.choicehotels.com/japan/narita/narita-airport-nrt-hotels?placeId=ChIJ'), null)
+  assert.equal(choiceHotelFromUrl('https://www.choicehotels.com/'), null)
+})
+
+test('Choice: hotels on a search results page, plus the hotel page the user is on', async () => {
+  const { choicePageHotels } = await import('../src/programs/choice.js')
+  const h2 = (code, name) => ({ id: `search-page-list-card-property-name_${code}`, textContent: name })
+  const doc = { querySelectorAll: () => [h2('JP120', ' Comfort Inn\n Chiba Hamano '), h2('JP026', 'Comfort Hotel Narita'), h2('JP026', 'Comfort Hotel Narita'), h2('bad', 'x')] }
+  assert.deepEqual(choicePageHotels(doc, 'https://www.choicehotels.com/japan/narita/narita-airport-nrt-hotels'), [
+    { code: 'JP120', name: 'Comfort Inn Chiba Hamano' },
+    { code: 'JP026', name: 'Comfort Hotel Narita' },
+  ])
+  assert.deepEqual(choicePageHotels({ querySelectorAll: () => [] }, 'https://www.choicehotels.com/japan/tokyo/comfort-inn-hotels/jp056'), [{ code: 'JP056' }])
+})
+
+test('Choice: autocomplete places, and the hotels around one (exact when it sits on a hotel)', async () => {
+  const { choiceParseSuggestions, choiceNearby } = await import('../src/programs/choice.js')
+  assert.deepEqual(choiceParseSuggestions({ data: { searchPoisByTerm: [
+    { placeId: 'ChIJVze', placeType: 'Airport', displayName: 'Narita Airport (NRT), 1-1 Furugome, Narita, Chiba, Japan' },
+    { placeId: 'ChIJ51c', placeType: 'CountrySubdivision', displayName: 'Tokyo, Japan' },
+    { placeId: null, displayName: 'No id' },
+  ] } }), [
+    { label: 'Narita Airport (NRT)', sub: 'Airport · 1-1 Furugome, Narita, Chiba, Japan', ref: { placeId: 'ChIJVze', label: 'Narita Airport (NRT), 1-1 Furugome, Narita, Chiba, Japan' } },
+    { label: 'Tokyo', sub: 'Japan', ref: { placeId: 'ChIJ51c', label: 'Tokyo, Japan' } },
+  ])
+  assert.deepEqual(choiceParseSuggestions(null), [])
+  const h = (code, name, latitude, longitude, status = 'ACTIVE') => ({ code, details: { name, status, geoLocation: { latitude, longitude } } })
+  const hotels = [
+    h('JP083', 'Comfort Hotel ERA Tokyo Higashi Kanda', 35.69454, 139.779826),
+    h('JP056', 'Comfort Hotel Tokyo Kanda', 35.693547, 139.774469),
+    h('JP999', 'Closed', 35.6936, 139.7744, 'INACTIVE'),
+    { code: 'JP000', details: { name: 'No location' } },
+  ]
+  const kanda = { placeType: 'Resort', latitude: 35.6935692, longitude: 139.7743707 }
+  assert.deepEqual(choiceNearby(hotels, kanda), { exact: { code: 'JP056', name: 'Comfort Hotel Tokyo Kanda' }, nearby: [] })
+  assert.deepEqual(choiceNearby(hotels, { ...kanda, placeType: 'Airport' }), { nearby: [
+    { code: 'JP056', name: 'Comfort Hotel Tokyo Kanda', sub: '0.0 km' },
+    { code: 'JP083', name: 'Comfort Hotel ERA Tokyo Higashi Kanda', sub: '0.5 km' },
+  ] })
+  assert.deepEqual(choiceNearby(null, kanda), { nearby: [] })
+})
