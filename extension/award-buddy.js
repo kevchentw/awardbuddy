@@ -8240,8 +8240,177 @@
     }
   };
 
+  // src/programs/marriott.js
+  var MARRIOTT_SIGNATURES = {
+    phoenixShopADFSearchProductsByProperty: "887375892e1ad2a43f46a9c95c55ea47cf6eca3af03331c2134f1b440cff3f9f",
+    phoenixShopSuggestedPlacesQuery: "70b3555c91797ca8945e4f4b1bdda42c3e37fa1f08fa99feafb73195702c1d34",
+    phoenixShopSuggestedPlacesDetailsQuery: "0b89c8ea7a6a6408eaee651983d6c7ee168670b727cc5beea980b2d2edfdbe2b",
+    phoenixShopSearchPropertiesByGeoLocation: "bea225a1df0a1546d3f0a18ac19b5f5cfe1b94fbead7cf0624e5d5dcef28419f",
+    phoenixShopPropertyInfoCall: "00f8d18ee03321350caae9366a33f51b190bc80e760eb3d586260f31b902e843"
+  };
+  var MARRIOTT_QUERIES = {
+    phoenixShopADFSearchProductsByProperty: `query phoenixShopADFSearchProductsByProperty($search: CalendarSearchByPropertyInput!, $id: [ID!]!) {
+  search { calendarSearchByProperty(search: $search) { edges { node { startDate rateModes { pointsPerQuantity { points } } } } } }
+}`,
+    phoenixShopSuggestedPlacesQuery: `query phoenixShopSuggestedPlacesQuery($query: String!) {
+  suggestedPlaces(query: $query) { edges { node { placeId primaryDescription secondaryDescription } } }
+}`,
+    phoenixShopSuggestedPlacesDetailsQuery: `query phoenixShopSuggestedPlacesDetailsQuery($placeId: ID!) {
+  suggestedPlaceDetails(placeId: $placeId) { placeId destinationType location { latitude longitude } }
+}`,
+    phoenixShopSearchPropertiesByGeoLocation: `query phoenixShopSearchPropertiesByGeoLocation($search: SearchPropertiesByGeolocationInput!, $sort: SearchPropertiesSort, $limit: Int, $offset: Int, $filter: [PropertyDescriptionType]) {
+  search { properties { searchByGeolocation(search: $search, sort: $sort, limit: $limit, offset: $offset) { edges { distance node { id basicInformation { name } } } } } }
+}`,
+    phoenixShopPropertyInfoCall: `query phoenixShopPropertyInfoCall($propertyId: ID!) {
+  property(id: $propertyId) { id basicInformation { name } }
+}`
+  };
+  var MARRIOTT_DELAY_MS = 600;
+  var NEARBY_RADIUS_M = 80467;
+  var NEARBY_MAX2 = 30;
+  var SAME_PLACE_M = 150;
+  var CODE_RE = /^[A-Z0-9]{5}$/;
+  async function marriottQuery(operationName, variables) {
+    const res = await fetch(`/mi/query/${operationName}`, {
+      method: "POST",
+      headers: {
+        accept: "*/*",
+        "content-type": "application/json",
+        "apollographql-client-name": "phoenix_shop",
+        "apollographql-client-version": "v1",
+        "application-name": "shop",
+        "graphql-operation-name": operationName,
+        "graphql-operation-signature": MARRIOTT_SIGNATURES[operationName],
+        "graphql-require-safelisting": "true"
+      },
+      credentials: "include",
+      body: JSON.stringify({ operationName, variables, query: MARRIOTT_QUERIES[operationName] })
+    });
+    if (res.status === 403 || res.status === 429) return "SESSION_EXPIRED";
+    if (!res.ok) throw new Error(`Marriott ${res.status}`);
+    const data = await res.json();
+    if (data?.errors?.length && !data.data) throw new Error(`Marriott: ${data.errors[0].message}`);
+    return data;
+  }
+  function marriottCalendarVariables({ hotel, start, end }) {
+    return {
+      id: [hotel],
+      search: {
+        propertyId: hotel,
+        options: {
+          startDate: start,
+          endDate: end,
+          numberOfRooms: 1,
+          numberOfDays: 1,
+          numberInParty: 1,
+          rateRequestTypes: [{ type: "REDEMPTION" }]
+        }
+      }
+    };
+  }
+  var marriottBookUrl = (hotel) => `https://www.marriott.com/search/availabilityCalendar.mi?propertyCode=${hotel}&isRateCalendar=true&isSearch=true`;
+  function marriottParseCalendar(data, hotel) {
+    const results = [];
+    for (const edge of data?.data?.search?.calendarSearchByProperty?.edges ?? []) {
+      const node = edge?.node;
+      const points = node?.rateModes?.pointsPerQuantity?.points;
+      if (!node?.startDate || !(points > 0)) continue;
+      results.push({ date: node.startDate, hotel, points, bookUrl: marriottBookUrl(hotel) });
+    }
+    return results;
+  }
+  function marriottHotelFromUrl(url) {
+    const u4 = new URL(url);
+    const code = u4.searchParams.get("propertyCode") ?? u4.searchParams.get("marshaCode") ?? u4.pathname.match(/\/hotels\/(?:travel\/)?([a-z0-9]{5})(?:-|\/|$)/i)?.[1];
+    return code && CODE_RE.test(code.toUpperCase()) ? code.toUpperCase() : null;
+  }
+  function marriottPageHotels(doc, url) {
+    const hotels = [];
+    const push = (code, name) => {
+      code = code?.toUpperCase();
+      if (code && CODE_RE.test(code) && !hotels.some((h3) => h3.code === code)) hotels.push({ code, name: name?.replace(/\s+/g, " ").trim() || void 0 });
+    };
+    for (const card of doc.querySelectorAll(".property-card[data-marsha]")) {
+      let name;
+      try {
+        name = JSON.parse(card.getAttribute("data-property") ?? "{}").hotelName;
+      } catch {
+      }
+      push(card.getAttribute("data-marsha"), name ?? card.querySelector(".property-card-title, h2, h3")?.textContent);
+    }
+    for (const card of doc.querySelectorAll(".HotelCardContainer")) {
+      const href = card.querySelector('a[href*="propertyCode="]')?.getAttribute("href");
+      const code = href && new URL(href, "https://www.marriott.com").searchParams.get("propertyCode");
+      push(code, card.querySelector(".HotelCard__top-section_title")?.textContent);
+    }
+    const current = marriottHotelFromUrl(url);
+    if (current && !hotels.some((h3) => h3.code === current)) hotels.unshift({ code: current, name: doc.querySelector(".hotel-name")?.textContent.replace(/\s+/g, " ").trim() || void 0 });
+    return hotels;
+  }
+  function marriottParseSuggestions(data) {
+    return (data?.data?.suggestedPlaces?.edges ?? []).map((e3) => e3?.node).filter((n2) => n2?.placeId && n2.primaryDescription).map((n2) => ({
+      label: n2.primaryDescription,
+      sub: n2.secondaryDescription || void 0,
+      ref: { placeId: n2.placeId, label: n2.primaryDescription }
+    }));
+  }
+  function marriottParseNearby(data, place) {
+    const hotels = (data?.data?.search?.properties?.searchByGeolocation?.edges ?? []).filter((e3) => e3?.node?.id && CODE_RE.test(e3.node.id.toUpperCase())).map((e3) => ({ code: e3.node.id.toUpperCase(), name: e3.node.basicInformation?.name || void 0, distance: e3.distance })).sort((a3, b2) => (a3.distance ?? Infinity) - (b2.distance ?? Infinity));
+    const first = hotels[0];
+    if (first && place?.destinationType === "Hotel Name" && first.distance < SAME_PLACE_M) {
+      return { exact: { code: first.code, name: first.name }, nearby: [] };
+    }
+    return {
+      nearby: hotels.slice(0, NEARBY_MAX2).map((h3) => ({
+        code: h3.code,
+        name: h3.name,
+        sub: h3.distance != null ? `${(h3.distance / 1e3).toFixed(1)} km` : void 0
+      }))
+    };
+  }
+  var marriottProgram = {
+    id: "marriott",
+    kind: "hotel",
+    name: "Marriott",
+    color: "#1C1C1C",
+    matches: ["www.marriott.com"],
+    requiresSession: false,
+    hotelPlaceholder: "Hotel name, city, airport or code",
+    expiredMessage: "\u26A0 Marriott blocked the request \u2014 refresh the page and try again",
+    currentHotel: () => marriottHotelFromUrl(location.href),
+    isHotelCode: (text) => CODE_RE.test(text),
+    pageHotels: () => marriottPageHotels(document, location.href),
+    async suggestHotels(text) {
+      const data = await marriottQuery("phoenixShopSuggestedPlacesQuery", { query: text });
+      return data === "SESSION_EXPIRED" ? [] : marriottParseSuggestions(data);
+    },
+    async hotelsAt(ref) {
+      const details = await marriottQuery("phoenixShopSuggestedPlacesDetailsQuery", { placeId: ref.placeId });
+      if (details === "SESSION_EXPIRED") throw new Error("Marriott blocked the request");
+      const place = details?.data?.suggestedPlaceDetails;
+      const { latitude, longitude } = place?.location ?? {};
+      if (latitude == null || longitude == null) return { nearby: [] };
+      const data = await marriottQuery("phoenixShopSearchPropertiesByGeoLocation", {
+        search: { latitude, longitude, distance: NEARBY_RADIUS_M },
+        limit: NEARBY_MAX2 * 2,
+        offset: 0
+      });
+      if (data === "SESSION_EXPIRED") throw new Error("Marriott blocked the request");
+      return marriottParseNearby(data, place);
+    },
+    async hotelName(code) {
+      const data = await marriottQuery("phoenixShopPropertyInfoCall", { propertyId: code });
+      return data === "SESSION_EXPIRED" ? null : data?.data?.property?.basicInformation?.name ?? null;
+    },
+    async onHotelSearch(params) {
+      await sleep(MARRIOTT_DELAY_MS);
+      const data = await marriottQuery("phoenixShopADFSearchProductsByProperty", marriottCalendarVariables(params));
+      return data === "SESSION_EXPIRED" ? data : marriottParseCalendar(data, params.hotel);
+    }
+  };
+
   // src/entrypoint.js
-  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram];
+  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram];
   var program = ALL_PROGRAMS.find((p3) => p3.matchHost?.(location.hostname) ?? p3.matches.includes(location.hostname));
   if (program) {
     if (document.body) mountPanel(program);

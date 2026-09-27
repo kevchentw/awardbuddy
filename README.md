@@ -31,6 +31,7 @@ It runs in your browser on the airline's or hotel's page, using your own session
 | Program | Site | Session |
 |---|---|---|
 | IHG One Rewards | ihg.com | Not needed |
+| Marriott Bonvoy | marriott.com | Not needed |
 
 More hotel chains are planned.
 
@@ -75,11 +76,11 @@ Go to a supported site. A button appears in the corner of the page (✈ on airli
 1. Add hotels:
    - Type a hotel name, city or airport. Picking a hotel adds it; picking a place lists the hotels nearby (nearest first) to tick.
    - Or click **Pick from hotels on this page** to choose from the hotels on the site's search results, or the hotel page you're on.
-   - Or type a hotel code (for example IHG's `TPEKM`) and press Enter.
+   - Or type a hotel code (for example IHG's `TPEKM` or Marriott's `TPEDM`) and press Enter.
 2. Pick a range of months and click **Search**. There's one request per hotel per month.
-3. The calendar shows the lowest points per night for each day, one color per hotel. Click a day to see its rates in the table. The table lists every reward-night rate by room type, with rooms left, and can be sorted by date or points and filtered by hotel or day of week.
+3. The calendar shows the lowest points per night for each day, one color per hotel. Click a day to see its rates in the table. The table lists every reward-night rate (by room type and with rooms left, where the site gives them), and can be sorted by date or points and filtered by hotel or day of week.
 
-Hotel search covers standard reward nights paid in points only. There's no booking link yet; book on the hotel's site.
+Hotel search covers standard reward nights paid in points only. Marriott gives only the lowest rate per night, and its rows link to the hotel's rate calendar. IHG has no booking link; book on IHG's site.
 
 The panel shows roughly how many requests a search will make before you start. Your last search is saved for each site. If you change the inputs while a search is running, it stops and starts over with the new values.
 

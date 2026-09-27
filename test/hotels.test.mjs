@@ -78,3 +78,90 @@ test('IHG: nearby hotels sorted by distance; a suggestion on top of a hotel is t
   assert.deepEqual(ihgParseNearby(onHotel, { label: 'Kimpton Da An Hotel' }).exact, { code: 'TPEKM' })
   assert.equal(ihgParseNearby(onHotel, { label: 'TPE airport', airport: true }).exact, undefined)
 })
+
+test('Marriott: redemption calendar request for one hotel, parsed to one row per date', async () => {
+  const { marriottCalendarVariables, marriottParseCalendar } = await import('../src/programs/marriott.js')
+  const vars = marriottCalendarVariables({ hotel: 'TPEDM', start: '2026-10-01', end: '2026-10-31' })
+  assert.deepEqual(vars.id, ['TPEDM'])
+  assert.equal(vars.search.propertyId, 'TPEDM')
+  assert.deepEqual(vars.search.options.rateRequestTypes, [{ type: 'REDEMPTION' }])
+  assert.equal(vars.search.options.startDate, '2026-10-01')
+  assert.equal(vars.search.options.endDate, '2026-10-31')
+  const node = (date, points) => ({ node: { startDate: date, endDate: date, rateModes: { pointsPerQuantity: points == null ? null : { points }, sourceOfRate: 'DSP' } } })
+  const data = { data: { search: { calendarSearchByProperty: { edges: [node('2026-10-01', 134000), node('2026-10-02', null), node('2026-10-03', 118000)] } } } }
+  const rows = marriottParseCalendar(data, 'TPEDM')
+  assert.deepEqual(rows.map(r => [r.date, r.hotel, r.points, r.room]), [['2026-10-01', 'TPEDM', 134000, undefined], ['2026-10-03', 'TPEDM', 118000, undefined]])
+  assert.match(rows[0].bookUrl, /availabilityCalendar\.mi\?propertyCode=TPEDM/)
+  assert.deepEqual(marriottParseCalendar(null, 'TPEDM'), [])
+})
+
+test('Marriott: hotel code from hotel, rate list and rate calendar URLs', async () => {
+  const { marriottHotelFromUrl } = await import('../src/programs/marriott.js')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/en-us/hotels/tpedm-le-meridien-taipei/overview/'), 'TPEDM')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/hotels/travel/tyomy-sheraton-miyako-hotel-tokyo/'), 'TYOMY')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/search/availabilityCalendar.mi?isRateCalendar=true&propertyCode=ukyrz&isSearch=true'), 'UKYRZ')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/reservation/rateListMenu.mi?marshaCode=TPEDM'), 'TPEDM')
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/search/findHotels.mi?destinationAddress.city=Tokyo'), null)
+  assert.equal(marriottHotelFromUrl('https://www.marriott.com/default.mi'), null)
+})
+
+test('Marriott: hotels on a search results page, plus the hotel page the user is on', async () => {
+  const { marriottPageHotels } = await import('../src/programs/marriott.js')
+  // Just enough of the DOM API for the selectors used
+  const el = (attrs, children = {}) => ({
+    getAttribute: k => attrs[k] ?? null,
+    querySelector: sel => children[sel] ?? null,
+    textContent: attrs.text,
+  })
+  const listCard = el({ 'data-marsha': 'TYOAK', 'data-property': JSON.stringify({ marshacode: 'TYOAK', hotelName: 'The Prince Sakura Tower Tokyo, Autograph Collection' }) })
+  const mapCard = el({}, {
+    'a[href*="propertyCode="]': el({ href: '/search/availabilityCalendar.mi?propertyCode=TYOMY&isSearch=true' }),
+    '.HotelCard__top-section_title': el({ text: '  Sheraton Miyako\n Hotel Tokyo ' }),
+  })
+  const doc = {
+    querySelectorAll: sel => sel.startsWith('.property-card') ? [listCard, listCard] : sel === '.HotelCardContainer' ? [mapCard] : [],
+    querySelector: sel => sel === '.hotel-name' ? el({ text: 'Le Méridien Taipei' }) : null,
+  }
+  assert.deepEqual(marriottPageHotels(doc, 'https://www.marriott.com/search/findHotels.mi'), [
+    { code: 'TYOAK', name: 'The Prince Sakura Tower Tokyo, Autograph Collection' },
+    { code: 'TYOMY', name: 'Sheraton Miyako Hotel Tokyo' },
+  ])
+  assert.deepEqual(marriottPageHotels({ querySelectorAll: () => [], querySelector: doc.querySelector }, 'https://www.marriott.com/reservation/rateListMenu.mi?marshaCode=TPEDM'),
+    [{ code: 'TPEDM', name: 'Le Méridien Taipei' }])
+})
+
+test('Marriott: autocomplete suggestions carry the place id for the details lookup', async () => {
+  const { marriottParseSuggestions } = await import('../src/programs/marriott.js')
+  const node = (placeId, primaryDescription, secondaryDescription) => ({ node: { placeId, primaryDescription, secondaryDescription, description: `${primaryDescription}, ${secondaryDescription}` } })
+  const data = { data: { suggestedPlaces: { edges: [
+    node('ChIJO4Ou6haLGGARdRY9-ojhl74', 'The Westin Tokyo', '1 Chome-4-1 Mita, Meguro City, Tokyo, Japan'),
+    node('ChIJ8cM8zdaoAWARPR27azYdlsA', 'Kyoto', 'Japan'),
+    node(null, 'No place id', ''),
+  ] } } }
+  assert.deepEqual(marriottParseSuggestions(data), [
+    { label: 'The Westin Tokyo', sub: '1 Chome-4-1 Mita, Meguro City, Tokyo, Japan', ref: { placeId: 'ChIJO4Ou6haLGGARdRY9-ojhl74', label: 'The Westin Tokyo' } },
+    { label: 'Kyoto', sub: 'Japan', ref: { placeId: 'ChIJ8cM8zdaoAWARPR27azYdlsA', label: 'Kyoto' } },
+  ])
+  assert.deepEqual(marriottParseSuggestions(null), [])
+})
+
+test('Marriott: nearby hotels sorted by distance; a hotel suggestion on top of a hotel is that hotel', async () => {
+  const { marriottParseNearby } = await import('../src/programs/marriott.js')
+  const edge = (id, name, distance) => ({ distance, node: { id, basicInformation: { name } } })
+  const data = { data: { search: { properties: { searchByGeolocation: { edges: [
+    edge('TYOJW', 'JW Marriott Hotel Tokyo', 973.2531),
+    edge('TYOMY', 'Sheraton Miyako Hotel Tokyo', 15.375167),
+    edge('TYOWI', 'The Westin Tokyo', 1373.614),
+  ] } } } } }
+  assert.deepEqual(marriottParseNearby(data, { destinationType: 'Hotel Name' }).exact, { code: 'TYOMY', name: 'Sheraton Miyako Hotel Tokyo' })
+  assert.deepEqual(marriottParseNearby(data, { destinationType: 'City' }).nearby, [
+    { code: 'TYOMY', name: 'Sheraton Miyako Hotel Tokyo', sub: '0.0 km' },
+    { code: 'TYOJW', name: 'JW Marriott Hotel Tokyo', sub: '1.0 km' },
+    { code: 'TYOWI', name: 'The Westin Tokyo', sub: '1.4 km' },
+  ])
+  // An airport (or a hotel suggestion with no hotel right there) lists what's around it
+  assert.equal(marriottParseNearby(data, { destinationType: 'Airport' }).exact, undefined)
+  const far = { data: { search: { properties: { searchByGeolocation: { edges: [edge('TYOJW', 'JW Marriott Hotel Tokyo', 973.2531)] } } } } }
+  assert.equal(marriottParseNearby(far, { destinationType: 'Hotel Name' }).exact, undefined)
+  assert.deepEqual(marriottParseNearby(null, {}), { nearby: [] })
+})
