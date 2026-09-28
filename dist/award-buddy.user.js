@@ -5085,15 +5085,29 @@
     }
   }
   var sameShape = (v3, fallback) => v3 != null && typeof v3 === typeof fallback && Array.isArray(v3) === Array.isArray(fallback) ? v3 : fallback;
+  var isDate = (v3) => typeof v3 === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v3);
+  var isMonth = (v3) => typeof v3 === "string" && /^\d{4}-\d{2}$/.test(v3);
+  function savedDates(saved) {
+    const today = todayISO();
+    if (!isDate(saved.start)) return { start: null, end: null };
+    const end = isDate(saved.end) && saved.end > saved.start ? saved.end : null;
+    if ((end ?? saved.start) < today) return { start: null, end: null };
+    if (saved.start >= today) return { start: saved.start, end };
+    return { start: today, end: end > today ? end : null };
+  }
+  function savedMonths(saved) {
+    const now = monthISO2(0);
+    if (!isMonth(saved.fromMonth) || !isMonth(saved.toMonth) || saved.toMonth < now || saved.toMonth < saved.fromMonth)
+      return { fromMonth: now, toMonth: monthISO2(2) };
+    return { fromMonth: saved.fromMonth < now ? now : saved.fromMonth, toMonth: saved.toMonth };
+  }
   function initialForm2(program2) {
     const saved = loadSaved(program2);
     return {
       origins: sameShape(saved.origins, program2.airports ? [] : ""),
       dests: sameShape(saved.dests, program2.airports ? [] : "NRT"),
-      start: null,
-      end: null,
-      fromMonth: monthISO2(0),
-      toMonth: monthISO2(2),
+      ...savedDates(saved),
+      ...savedMonths(saved),
       carrier: program2.carriers?.some((c3) => c3.code === saved.carrier) ? saved.carrier : program2.carriers?.[0]?.code,
       options: saved.options && typeof saved.options === "object" ? saved.options : {},
       cabins: Array.isArray(saved.cabins) ? saved.cabins.filter((c3) => program2.cabins.includes(c3)) : []
@@ -5148,9 +5162,9 @@
       if (!hasCalendar) setCalMode(false);
     }, [hasCalendar]);
     h2(() => {
-      const { origins, dests, cabins, carrier, options } = form;
+      const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form;
       try {
-        localStorage.setItem(storeKey2(program2), JSON.stringify({ origins, dests, cabins, carrier, options }));
+        localStorage.setItem(storeKey2(program2), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options }));
       } catch {
       }
     }, [form]);

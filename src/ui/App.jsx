@@ -1,7 +1,7 @@
 import { render } from 'preact'
 import { useState, useRef, useEffect } from 'preact/hooks'
 import { CABIN_LABELS, CABIN_COLORS, CONCURRENCY } from '../common/constants.js'
-import { getDates, runPool, parseNumberList, combos } from '../common/search.js'
+import { getDates, runPool, parseNumberList, combos, todayISO } from '../common/search.js'
 import { CSS } from './styles.js'
 import { AirportCombo } from './AirportCombo.jsx'
 import { DateRangePicker } from './DateRangePicker.jsx'
@@ -36,7 +36,7 @@ function optionCombos(program, form) {
   })))
 }
 
-// Last-used route/cabin/carrier/options per program, in the host site's localStorage
+// Last-used route/dates/cabin/carrier/options per program, in the host site's localStorage
 const storeKey = program => `award-buddy:${program.id}`
 function loadSaved(program) {
   try { return JSON.parse(localStorage.getItem(storeKey(program))) || {} } catch { return {} }
@@ -44,13 +44,33 @@ function loadSaved(program) {
 // Saved value only if it has the same shape as the default (combo array vs. comma text)
 const sameShape = (v, fallback) => v != null && typeof v === typeof fallback && Array.isArray(v) === Array.isArray(fallback) ? v : fallback
 
+const isDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+const isMonth = v => typeof v === 'string' && /^\d{4}-\d{2}$/.test(v)
+
+// Saved date range, with any days already past dropped (none left → no dates)
+function savedDates(saved) {
+  const today = todayISO()
+  if (!isDate(saved.start)) return { start: null, end: null }
+  const end = isDate(saved.end) && saved.end > saved.start ? saved.end : null
+  if ((end ?? saved.start) < today) return { start: null, end: null }
+  if (saved.start >= today) return { start: saved.start, end }
+  return { start: today, end: end > today ? end : null }
+}
+// Saved month range, starting no earlier than this month (all past → the default range)
+function savedMonths(saved) {
+  const now = monthISO(0)
+  if (!isMonth(saved.fromMonth) || !isMonth(saved.toMonth) || saved.toMonth < now || saved.toMonth < saved.fromMonth)
+    return { fromMonth: now, toMonth: monthISO(2) }
+  return { fromMonth: saved.fromMonth < now ? now : saved.fromMonth, toMonth: saved.toMonth }
+}
+
 function initialForm(program) {
   const saved = loadSaved(program)
   return {
     origins: sameShape(saved.origins, program.airports ? [] : ''),
     dests: sameShape(saved.dests, program.airports ? [] : 'NRT'),
-    start: null, end: null,
-    fromMonth: monthISO(0), toMonth: monthISO(2),
+    ...savedDates(saved),
+    ...savedMonths(saved),
     carrier: program.carriers?.some(c => c.code === saved.carrier) ? saved.carrier : program.carriers?.[0]?.code,
     options: saved.options && typeof saved.options === 'object' ? saved.options : {},
     cabins: Array.isArray(saved.cabins) ? saved.cabins.filter(c => program.cabins.includes(c)) : [],
@@ -106,8 +126,10 @@ function FlightSearch({ program, session }) {
   const hasCalendar = !!program.onCalendarSearch && (program.calendarFor?.(form.carrier) ?? true)
   useEffect(() => { if (!hasCalendar) setCalMode(false) }, [hasCalendar])
   useEffect(() => {
-    const { origins, dests, cabins, carrier, options } = form
-    try { localStorage.setItem(storeKey(program), JSON.stringify({ origins, dests, cabins, carrier, options })) } catch {}
+    const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form
+    try {
+      localStorage.setItem(storeKey(program), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options }))
+    } catch {}
   }, [form])
 
   const run = useSearchRun(form)
