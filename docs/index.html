@@ -426,9 +426,6 @@
     display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--accent); background: var(--accent-soft);
   }
   .note { font-size: 14px; color: var(--muted); margin-top: 12px; }
-  .soon-box { display: flex; flex-direction: column; }
-  .browsers { display: flex; gap: 10px; margin: 18px 0 6px; }
-  .browsers span { flex: 1; text-align: center; padding: 14px 8px; border: 1px dashed var(--border); border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
 
   .how { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); margin-top: 56px; }
   @media (max-width: 860px) { .how { grid-template-columns: 1fr; } }
@@ -757,25 +754,29 @@
       <div class="head-c reveal">
         <span class="kicker grad" data-i18n="i.kicker">Get started</span>
         <h2 data-i18n="i.h2">Install in under a minute</h2>
-        <p class="sub" data-i18n="i.sub">Install it as a userscript today. It updates itself automatically. A Chrome / Edge extension is coming soon.</p>
+        <p class="sub" data-i18n="i.sub">Add the extension from the Chrome Web Store, or install the userscript. Both update themselves.</p>
       </div>
       <div class="install-grid">
         <div class="card feature reveal">
-          <h3 data-i18n="i.us">Userscript <span class="rec">Recommended</span></h3>
+          <h3 data-i18n="i.ext">Chrome / Edge extension <span class="rec">Recommended</span></h3>
+          <ol class="steps">
+            <li data-i18n="i.e1">Open <a href="https://chromewebstore.google.com/detail/award-buddy/okbappjoegddchhfjaipdbbmlffdcnpe">Award Buddy on the Chrome Web Store</a>.</li>
+            <li data-i18n="i.e2">Click <strong>Add to Chrome</strong>. In Edge, click <strong>Allow extensions from other stores</strong> first.</li>
+          </ol>
+          <p class="note" data-i18n="i.eupd">Chrome and Edge keep the extension up to date.</p>
+          <p style="margin:20px 0 0"><a class="btn primary" href="https://chromewebstore.google.com/detail/award-buddy/okbappjoegddchhfjaipdbbmlffdcnpe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+            <span data-i18n="i.ebtn">Add to Chrome</span></a></p>
+        </div>
+        <div class="card reveal">
+          <h3 data-i18n="i.us">Userscript</h3>
+          <p class="note" style="margin-top:0" data-i18n="i.usp">For other browsers, or if you already use a userscript manager.</p>
           <ol class="steps">
             <li data-i18n="i.s1">Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> or <a href="https://violentmonkey.github.io/">Violentmonkey</a>.</li>
             <li data-i18n="i.s2">Open <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a> and click <strong>Install</strong>.</li>
           </ol>
           <p class="note" data-i18n="i.upd">Updates arrive on their own through Tampermonkey.</p>
-          <p style="margin:20px 0 0"><a class="btn primary" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
-            <span data-i18n="i.btn">Install userscript</span></a></p>
-        </div>
-        <div class="card soon-box reveal">
-          <h3 data-i18n="i.ext">Chrome / Edge extension <span class="soon">Coming soon</span></h3>
-          <p class="note" style="margin-top:0" data-i18n="i.extp">A one-click install from the Chrome Web Store and Edge Add-ons is on the way. The link will be posted here.</p>
-          <div class="browsers" aria-hidden="true"><span data-i18n="i.cws">Chrome Web Store</span><span data-i18n="i.edge">Edge Add-ons</span></div>
-          <p class="note" data-i18n="i.until">Until then, the userscript works in Chrome and Edge with Tampermonkey.</p>
+          <p style="margin:20px 0 0"><a class="btn" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js" data-i18n="i.btn">Install userscript</a></p>
         </div>
       </div>
 
@@ -972,7 +973,7 @@
         <h2 data-i18n="fin.h">Stop checking one date at a time.</h2>
         <p data-i18n="fin.p">Install Award Buddy, open your favorite program's site, and search two months of award space in a few minutes.</p>
         <div class="cta">
-          <a class="btn light" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js" data-i18n="i.btn">Install userscript</a>
+          <a class="btn light" href="https://chromewebstore.google.com/detail/award-buddy/okbappjoegddchhfjaipdbbmlffdcnpe" data-i18n="i.ebtn">Add to Chrome</a>
           <a class="btn ghost" href="https://github.com/kevchentw/awardbuddy" data-i18n="fin.star">Star on GitHub</a>
         </div>
       </div>
@@ -1021,16 +1022,18 @@
     'cal.dow': '日一二三四五六',
 
     'i.kicker': '開始使用', 'i.h2': '一分鐘就裝好',
-    'i.sub': '現在可以用油猴腳本（userscript）安裝，之後會自動更新。Chrome / Edge 擴充功能即將推出。',
-    'i.us': '油猴腳本 <span class="rec">推薦</span>',
+    'i.sub': '可以從 Chrome 線上應用程式商店加入擴充功能，或安裝油猴腳本（userscript），兩種都會自動更新。',
+    'i.ext': 'Chrome / Edge 擴充功能 <span class="rec">推薦</span>',
+    'i.e1': '打開 <a href="https://chromewebstore.google.com/detail/award-buddy/okbappjoegddchhfjaipdbbmlffdcnpe">Chrome 線上應用程式商店的 Award Buddy 頁面</a>。',
+    'i.e2': '按下<strong>加到 Chrome</strong>（Add to Chrome）。用 Edge 的話，先按<strong>允許來自其他市集的擴充功能</strong>。',
+    'i.eupd': 'Chrome 和 Edge 會自動幫你更新擴充功能。',
+    'i.ebtn': '加到 Chrome',
+    'i.us': '油猴腳本',
+    'i.usp': '適合其他瀏覽器，或是已經在用腳本管理器的人。',
     'i.s1': '先安裝 <a href="https://www.tampermonkey.net/">Tampermonkey</a> 或 <a href="https://violentmonkey.github.io/">Violentmonkey</a>。',
     'i.s2': '打開 <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a>，按下<strong>安裝</strong>（Install）。',
     'i.upd': '之後有新版本，Tampermonkey 會自動幫你更新。',
     'i.btn': '安裝油猴腳本',
-    'i.ext': 'Chrome / Edge 擴充功能 <span class="soon">即將推出</span>',
-    'i.extp': '之後可以從 Chrome 線上應用程式商店和 Edge 附加元件一鍵安裝，上架後連結會放在這裡。',
-    'i.cws': 'Chrome 線上應用程式商店', 'i.edge': 'Edge 附加元件',
-    'i.until': '在那之前，Chrome 和 Edge 裝 Tampermonkey 就能用油猴腳本。',
     'h1.h': '打開支援的網站',
     'h1.p': '從<a href="#programs">下面的清單</a>挑一個。頁面角落會出現一顆按鈕：航空公司網站是 ✈，飯店網站是 🏨。',
     'h2.h': '打開面板',

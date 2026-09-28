@@ -54,6 +54,10 @@ Some programs have more to search than a plain one-way. These appear as a **Sear
 
 ## Install
 
+### Chrome / Edge extension (recommended)
+
+Install [Award Buddy from the Chrome Web Store](https://chromewebstore.google.com/detail/award-buddy/okbappjoegddchhfjaipdbbmlffdcnpe). It works in Edge too: click **Allow extensions from other stores** on the store page first. The extension updates itself.
+
 ### Userscript (Tampermonkey / Violentmonkey)
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/).
@@ -62,6 +66,8 @@ Some programs have more to search than a plain one-way. These appear as a **Sear
 The script updates itself from this repo.
 
 ### Chrome / Edge extension (unpacked)
+
+To run a build that isn't on the store yet:
 
 1. Download `award-buddy-extension-<version>.zip` from the [latest release](https://github.com/kevchentw/awardbuddy/releases/latest) and unzip it. (Or clone this repo and use the `extension/` folder.)
 2. Go to `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
