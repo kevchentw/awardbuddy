@@ -28,6 +28,7 @@
     --accent-ink: #ffffff;
     --accent-soft: #e6eefa;
     --ok: #1f7a4d;
+    --warn: #a25a00;
     --code-bg: #f0ede6;
     --glow-1: rgba(31, 95, 191, .18);
     --glow-2: rgba(124, 58, 237, .14);
@@ -48,6 +49,7 @@
       --accent-ink: #0e1a2e;
       --accent-soft: #1d2a40;
       --ok: #6cc596;
+      --warn: #f0b458;
       --code-bg: #2a2931;
       --glow-1: rgba(90, 140, 240, .22);
       --glow-2: rgba(160, 110, 255, .18);
@@ -68,6 +70,7 @@
     --accent-ink: #0e1a2e;
     --accent-soft: #1d2a40;
     --ok: #6cc596;
+    --warn: #f0b458;
     --code-bg: #2a2931;
     --glow-1: rgba(90, 140, 240, .22);
     --glow-2: rgba(160, 110, 255, .18);
@@ -422,41 +425,83 @@
   }
   .tabs button[aria-selected="true"] { background: var(--text); color: var(--bg); }
   .programs { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); }
-  .programs th, .programs td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 15px; }
+  .programs th, .programs td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 15px; }
   .programs th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); background: var(--surface-2); }
+  .programs th.cal { text-align: center; }
   .programs tbody tr { transition: background .15s; }
   .programs tbody tr:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
   .programs tr:last-child td { border-bottom: 0; }
-  .programs td.name { padding-left: 60px; position: relative; }
+  .programs td.name { padding-left: 64px; position: relative; width: 38%; }
   .programs td.name strong { display: block; }
-  .plogo { position: absolute; left: 16px; top: 14px; width: 30px; height: 30px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+  .plogo { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border); }
   i.plogo { font-style: normal; font-size: 11px; font-weight: 700; color: #fff; border: 0; display: flex; align-items: center; justify-content: center; }
-  .programs td.name small { color: var(--muted); }
-  .programs td.cal { text-align: center; color: var(--ok); font-weight: 700; }
-  .programs td.go { white-space: nowrap; text-align: right; }
+  .programs td.name small { color: var(--muted); font-size: 13px; }
+  .programs td.cal { text-align: center; width: 110px; }
+  .yes { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); font-size: 13px; font-weight: 800; }
+  .programs td.cal small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+  .no { color: color-mix(in srgb, var(--muted) 55%, transparent); }
+  .programs td.go { white-space: nowrap; text-align: right; width: 1%; }
   .programs td.go a {
-    font-weight: 600; font-size: 14px; text-decoration: none; padding: 6px 12px; border-radius: 999px;
+    display: inline-block; font-weight: 600; font-size: 14px; text-decoration: none; padding: 7px 14px; border-radius: 999px;
     border: 1px solid var(--border); color: var(--text); transition: border-color .15s, color .15s, background .15s;
   }
   .programs td.go a:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-  .programs td.sess { color: var(--muted); font-size: 14px; }
-  .programs td.sess em { font-style: normal; color: var(--text); }
+  .programs tr:hover td.go a { border-color: var(--accent); color: var(--accent); }
+  .programs td.sess { color: var(--muted); font-size: 13.5px; }
+  .programs td.sess .need { margin-right: 6px; }
+  .programs td.sess .hint { display: block; margin-top: 4px; }
+  .programs td.sess a { color: var(--accent); }
+  /* Session requirement pills */
+  .need { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .need::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .need-none { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .need-page { color: var(--accent); background: var(--accent-soft); }
+  .need-login { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .legend > span { display: inline-flex; align-items: center; gap: 6px; }
+  .tabs-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .tabs-row .tabs { margin-bottom: 0; }
+  .tabs-row .legend { margin: 0; }
+  /* Sub-row: a search mode of the program above it */
+  .programs tr.sub td { border-top: 0; }
+  .programs tr.sub td.name { padding-left: 88px; }
+  .programs tr.sub .plogo { left: 40px; width: 28px; height: 28px; }
+  .programs tr.sub td.name::before { content: ""; position: absolute; left: 32px; top: -20px; width: 9px; height: calc(50% + 20px); border-left: 1.5px solid var(--border); border-bottom: 1.5px solid var(--border); border-bottom-left-radius: 6px; }
+  .programs tr.has-sub td { border-bottom-color: transparent; }
   @media (max-width: 640px) {
+    .tabs-row { flex-direction: column; align-items: stretch; }
+    .tabs-row .tabs { align-self: flex-start; }
+    .legend > span { flex-wrap: wrap; }
     .programs thead { display: none; }
     .programs, .programs tbody, .programs tr, .programs td { display: block; width: 100%; }
-    .programs tr { border-bottom: 1px solid var(--border); padding: 12px 0; }
+    .programs tr { border-bottom: 1px solid var(--border); padding: 12px 0; position: relative; }
     .programs tr:last-child { border-bottom: 0; }
-    .programs td { border: 0; padding: 4px 16px; text-align: left !important; }
-    .programs td.cal:empty { display: none; }
-    .plogo { top: 4px; }
-    .programs td.go { padding-top: 10px; }
-    .programs td.cal::before { content: "Calendar mode "; color: var(--muted); font-weight: 400; }
+    .programs tr.has-sub { border-bottom: 0; padding-bottom: 0; }
+    .programs td { border: 0; padding: 4px 16px; text-align: left !important; width: auto !important; }
+    .programs td.name { padding-left: 64px; min-height: 40px; }
+    .programs tr.sub td.name { padding-left: 88px; }
+    .programs td.name::before { display: none; }
+    .plogo { top: 6px; transform: none; }
+    .programs td.cal, .programs td.sess { padding-left: 64px; }
+    .programs tr.sub td.cal, .programs tr.sub td.sess, .programs tr.sub td.go { padding-left: 88px; }
+    .programs td.cal:has(.no) { display: none; }
+    .programs td.cal::before { content: "Calendar mode "; color: var(--muted); font-size: 13px; }
+    .programs td.cal .yes { width: 20px; height: 20px; font-size: 11px; }
+    .programs td.cal small { display: inline; margin-left: 6px; }
+    .programs td.go { padding-top: 10px; padding-left: 64px; }
   }
   .modes { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); margin: 0; }
   @media (max-width: 640px) { .modes { grid-template-columns: 1fr; } }
-  .modes > div { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px; }
-  .modes dt { font-weight: 700; }
-  .modes dd { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
+  .modes > div { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px 20px 74px; transition: border-color .2s, transform .2s, box-shadow .2s; }
+  .modes > div:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: var(--shadow); transform: translateY(-2px); }
+  .modes .plogo { left: 22px; top: 22px; transform: none; width: 36px; height: 36px; }
+  .modes .prog { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .modes dt { font-weight: 700; font-size: 17px; }
+  .modes dd { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+  .modes .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .modes .chips span { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
+  .section-h3 { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 64px 0 6px; font-size: 24px; }
+  .section-sub { margin: 0 0 20px; color: var(--muted); font-size: 15px; }
 
   /* Changelog timeline */
   .log { list-style: none; margin: 0; padding: 0; position: relative; }
@@ -736,58 +781,69 @@
       <div class="reveal">
       <span class="kicker grad">Programs</span>
       <h2>Supported programs</h2>
-      <p class="sub">Click <strong>Start search</strong> to open the page where the panel works. Some programs need you to log in or run one search first. The Session column says which.</p>
+      <p class="sub">Click <strong>Start search</strong> to open the page where the panel works. Some programs need you to log in or run one search first. The <strong>Before you search</strong> column says which.</p>
       </div>
 
-      <div class="tabs" role="tablist">
-        <button role="tab" aria-selected="true" aria-controls="tab-air" id="btn-air">✈ Airlines (10)</button>
-        <button role="tab" aria-selected="false" aria-controls="tab-hotel" id="btn-hotel">🏨 Hotels (6)</button>
+      <div class="tabs-row">
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true" aria-controls="tab-air" id="btn-air">✈ Airlines (10)</button>
+          <button role="tab" aria-selected="false" aria-controls="tab-hotel" id="btn-hotel">🏨 Hotels (6)</button>
+        </div>
+        <div class="legend" aria-label="Session legend">
+          <span><span class="need need-none">No login</span>works right away</span>
+          <span><span class="need need-page">Open page</span>no login, start on a page</span>
+          <span><span class="need need-login">Log in</span>member login first</span>
+        </div>
       </div>
 
       <div id="tab-air" role="tabpanel" aria-labelledby="btn-air">
         <table class="programs">
-          <thead><tr><th>Program</th><th>Calendar</th><th>Session</th><th></th></tr></thead>
+          <thead><tr><th>Program</th><th class="cal">Calendar</th><th>Before you search</th><th></th></tr></thead>
           <tbody>
-            <tr><td class="name"><img class="plogo" src="logos/as.png" alt=""><strong>Alaska Airlines</strong><small>Atmos Rewards · alaskaair.com</small></td><td class="cal">✓</td><td class="sess">Not needed</td><td class="go"><a href="https://www.alaskaair.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/aa.png" alt=""><strong>American Airlines</strong><small>AAdvantage · aa.com</small></td><td class="cal">✓</td><td class="sess"><em>Run one award search</em> on the page (Get session)</td><td class="go"><a href="https://www.aa.com/">Start search →</a></td></tr>
-            <tr><td class="name"><i class="plogo" style="background:#d2001f">AC</i><strong>Air Canada</strong><small>Aeroplan · aircanada.com</small></td><td class="cal"></td><td class="sess">Open the award search page</td><td class="go"><a href="https://www.aircanada.com/aeroplan/redeem/availability/outbound">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/nh.png" alt=""><strong>ANA</strong><small>ANA Mileage Club · ana.co.jp</small></td><td class="cal"></td><td class="sess"><em>Log in</em> to the award booking page</td><td class="go"><a href="https://aswbe-i.ana.co.jp/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml?aswcid=1">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/cx.png" alt=""><strong>Cathay Pacific</strong><small>Asia Miles · cathaypacific.com</small></td><td class="cal"></td><td class="sess">Open the award booking page</td><td class="go"><a href="https://www.cathaypacific.com/cx/en_HK/book-a-trip/redeem-flights/redeem-flight-awards.html">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/br.png" alt=""><strong>EVA Air</strong><small>Infinity MileageLands · evaair.com</small></td><td class="cal">✓</td><td class="sess"><em>Log in</em> and run one search by hand</td><td class="go"><a href="https://booking.evaair.com/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability/login.aspx?lang=en-us">Start search →</a></td></tr>
-            <tr><td class="name"><i class="plogo" style="background:#002157">AF</i><strong>Flying Blue</strong><small>Air France / KLM · airfrance.us, klm.com</small></td><td class="cal">✓</td><td class="sess">Open the award search page</td><td class="go"><a href="https://wwws.airfrance.us/search/flights/0">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/jl.png" alt=""><strong>Japan Airlines</strong><small>JAL Mileage Bank · jal.co.jp</small></td><td class="cal">✓ <small>JAL only</small></td><td class="sess"><em>Log in</em></td><td class="go"><a href="https://www.jal.co.jp/jp/en/jmb/award-inter/booking/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/av.png" alt=""><strong>LifeMiles</strong><small>Avianca · lifemiles.com</small></td><td class="cal"></td><td class="sess"><em>Log in</em></td><td class="go"><a href="https://www.lifemiles.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/jx.png" alt=""><strong>Starlux Airlines</strong><small>COSMILE · starlux-airlines.com</small></td><td class="cal">✓</td><td class="sess"><em>Log in</em></td><td class="go"><a href="https://www.starlux-airlines.com/en-US/redeem-award-ticket/index">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/as.png" alt=""><strong>Alaska Airlines</strong><small>Atmos Rewards · alaskaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.alaskaair.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/aa.png" alt=""><strong>American Airlines</strong><small>AAdvantage · aa.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page">Run one search</span><span class="hint">Run an award search on the page, then Get session</span></td><td class="go"><a href="https://www.aa.com/">Start search →</a></td></tr>
+            <tr><td class="name"><i class="plogo" style="background:#d2001f">AC</i><strong>Air Canada</strong><small>Aeroplan · aircanada.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page">Open search page</span></td><td class="go"><a href="https://www.aircanada.com/aeroplan/redeem/availability/outbound">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/nh.png" alt=""><strong>ANA</strong><small>ANA Mileage Club · ana.co.jp</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login">Log in</span><span class="hint">Then open the award booking page</span></td><td class="go"><a href="https://aswbe-i.ana.co.jp/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml?aswcid=1">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/cx.png" alt=""><strong>Cathay Pacific</strong><small>Asia Miles · cathaypacific.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page">Open booking page</span></td><td class="go"><a href="https://www.cathaypacific.com/cx/en_HK/book-a-trip/redeem-flights/redeem-flight-awards.html">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/br.png" alt=""><strong>EVA Air</strong><small>Infinity MileageLands · evaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login">Log in</span><span class="hint">Then run one search by hand</span></td><td class="go"><a href="https://booking.evaair.com/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability/login.aspx?lang=en-us">Start search →</a></td></tr>
+            <tr><td class="name"><i class="plogo" style="background:#002157">AF</i><strong>Flying Blue</strong><small>Air France / KLM · airfrance.us, klm.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page">Open search page</span></td><td class="go"><a href="https://wwws.airfrance.us/search/flights/0">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/jl.png" alt=""><strong>Japan Airlines</strong><small>JAL Mileage Bank · jal.co.jp</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span><small>JAL flights</small></td><td class="sess"><span class="need need-login">Log in</span></td><td class="go"><a href="https://www.jal.co.jp/jp/en/jmb/award-inter/booking/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/av.png" alt=""><strong>LifeMiles</strong><small>Avianca · lifemiles.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login">Log in</span></td><td class="go"><a href="https://www.lifemiles.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/jx.png" alt=""><strong>Starlux Airlines</strong><small>COSMILE · starlux-airlines.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login">Log in</span></td><td class="go"><a href="https://www.starlux-airlines.com/en-US/redeem-award-ticket/index">Start search →</a></td></tr>
           </tbody>
         </table>
       </div>
 
       <div id="tab-hotel" role="tabpanel" aria-labelledby="btn-hotel" hidden>
         <table class="programs">
-          <thead><tr><th>Program</th><th>Session</th><th></th></tr></thead>
+          <thead><tr><th>Program</th><th>Before you search</th><th></th></tr></thead>
           <tbody>
-            <tr><td class="name"><img class="plogo" src="logos/ihg.png" alt=""><strong>IHG One Rewards</strong><small>ihg.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.ihg.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/marriott.png" alt=""><strong>Marriott Bonvoy</strong><small>marriott.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.marriott.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/hilton.png" alt=""><strong>Hilton Honors</strong><small>hilton.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.hilton.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/hyatt.png" alt=""><strong>World of Hyatt</strong><small>hyatt.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.hyatt.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>Choice Privileges</strong><small>choicehotels.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.choicehotels.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/iprefer.png" alt=""><strong>I Prefer</strong><small>Preferred Hotels &amp; Resorts · iprefer.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://iprefer.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>Preferred Hotels with Choice points</strong><small>preferredhotels.com/choicepoints</small></td><td class="sess">Not needed to search. To book, <a href="https://www.choicehotels.com/ascend/preferred-hotels-partner">start booking</a> from Choice while logged in</td><td class="go"><a href="https://preferredhotels.com/choicepoints">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/ihg.png" alt=""><strong>IHG One Rewards</strong><small>ihg.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.ihg.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/marriott.png" alt=""><strong>Marriott Bonvoy</strong><small>marriott.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.marriott.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/hilton.png" alt=""><strong>Hilton Honors</strong><small>hilton.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.hilton.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/hyatt.png" alt=""><strong>World of Hyatt</strong><small>hyatt.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.hyatt.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>Choice Privileges</strong><small>choicehotels.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.choicehotels.com/">Start search →</a></td></tr>
+            <tr class="has-sub"><td class="name"><img class="plogo" src="logos/iprefer.png" alt=""><strong>I Prefer</strong><small>Preferred Hotels &amp; Resorts · iprefer.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://iprefer.com/">Start search →</a></td></tr>
+            <tr class="sub"><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>with Choice points</strong><small>preferredhotels.com/choicepoints</small></td><td class="sess"><span class="need need-none">No login</span><span class="hint">To book, <a href="https://www.choicehotels.com/ascend/preferred-hotels-partner">start from Choice</a> while logged in</span></td><td class="go"><a href="https://preferredhotels.com/choicepoints">Start search →</a></td></tr>
           </tbody>
         </table>
         <p class="note">Hotel search covers standard reward nights paid in points. Add hotels by name, city or airport, pick them from the page you're on, or type a hotel code (for example IHG <code>TPEKM</code>, Hyatt <code>TYOPH</code>). More hotel chains are planned.</p>
       </div>
 
-      <h3 style="margin:56px 0 16px;font-size:22px">Extra search modes</h3>
+      <h3 class="section-h3 reveal">Extra search modes</h3>
+      <p class="section-sub reveal">Program-specific options that show up in the panel.</p>
       <dl class="modes">
-        <div class="reveal"><dt>Air Canada: one-way with stopover</dt>
+        <div class="reveal"><dt><i class="plogo" style="background:#d2001f">AC</i><span class="prog">Air Canada</span>One-way with stopover</dt>
         <dd>Enter stopover cities and stay lengths (for example <code>3-5, 7</code> days). Every city × stay length is searched for each route and date.</dd></div>
-        <div class="reveal"><dt>Japan Airlines: partner awards</dt>
-        <dd>Search JMB partner space on Alaska / Hawaiian, American, British Airways, Cathay Pacific, Qatar, Emirates, Finnair, Iberia, Qantas, Korean Air and more.</dd></div>
-        <div class="reveal"><dt>LifeMiles: carrier filter</dt>
-        <dd>All of Star Alliance, Smart Search, or one airline: Thai, Avianca + Gol, Aegean, ANA, Lufthansa, Singapore Airlines or United.</dd></div>
-        <div class="reveal"><dt>I Prefer: I Prefer or Choice points</dt>
-        <dd>Search Preferred Hotels &amp; Resorts priced in I Prefer points, or the 300+ hotels bookable with Choice Privileges points.</dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/jl.png" alt=""><span class="prog">Japan Airlines</span>Partner awards</dt>
+        <dd>Search JMB partner space on oneworld and other partners.</dd>
+        <dd class="chips"><span>Alaska / Hawaiian</span><span>American</span><span>British Airways</span><span>Cathay Pacific</span><span>Qatar</span><span>Emirates</span><span>Finnair</span><span>Iberia</span><span>Qantas</span><span>Korean Air</span><span>+ more</span></dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/av.png" alt=""><span class="prog">LifeMiles</span>Carrier filter</dt>
+        <dd>Search all of Star Alliance, use Smart Search, or pick one airline.</dd>
+        <dd class="chips"><span>Thai</span><span>Avianca + Gol</span><span>Aegean</span><span>ANA</span><span>Lufthansa</span><span>Singapore Airlines</span><span>United</span></dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/iprefer.png" alt=""><span class="prog">I Prefer</span>I Prefer or Choice points</dt>
+        <dd>Search Preferred Hotels &amp; Resorts priced in I Prefer points, or the 300+ hotels bookable with Choice Privileges points.</dd>
+        <dd class="chips"><span>I Prefer points</span><span>Choice points</span></dd></div>
       </dl>
     </div>
   </section>
