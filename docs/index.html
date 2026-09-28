@@ -10,105 +10,167 @@
 <meta property="og:title" content="Award Buddy">
 <meta property="og:description" content="Search award flights and hotel reward nights across many dates at once, right on the airline and hotel sites.">
 <meta property="og:image" content="icon-128.png">
+<script>if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) document.documentElement.classList.add('js')</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #fbfaf7;
+    --bg-2: #f4f2ed;
     --surface: #ffffff;
     --surface-2: #f3f1ec;
-    --text: #1d1c1a;
-    --muted: #65625c;
-    --border: #e4e0d8;
+    --text: #17161a;
+    --muted: #625f68;
+    --border: #e6e2da;
     --accent: #1f5fbf;
+    --accent-2: #7c3aed;
     --accent-ink: #ffffff;
     --accent-soft: #e6eefa;
     --ok: #1f7a4d;
     --code-bg: #f0ede6;
+    --glow-1: rgba(31, 95, 191, .18);
+    --glow-2: rgba(124, 58, 237, .14);
+    --shadow: 0 1px 2px rgba(20, 20, 30, .04), 0 8px 24px rgba(20, 20, 30, .06);
+    --shadow-lg: 0 2px 6px rgba(20, 20, 30, .05), 0 30px 80px rgba(31, 60, 120, .18);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #151514;
-      --surface: #1d1d1b;
-      --surface-2: #252523;
-      --text: #ecebe7;
-      --muted: #a09d96;
-      --border: #34332f;
+      --bg: #0f0f12;
+      --bg-2: #15151a;
+      --surface: #1a1a20;
+      --surface-2: #22222a;
+      --text: #eeedf2;
+      --muted: #a09eaa;
+      --border: #2e2d36;
       --accent: #7aa7f0;
+      --accent-2: #b495ff;
       --accent-ink: #0e1a2e;
       --accent-soft: #1d2a40;
       --ok: #6cc596;
-      --code-bg: #2a2926;
+      --code-bg: #2a2931;
+      --glow-1: rgba(90, 140, 240, .22);
+      --glow-2: rgba(160, 110, 255, .18);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+      --shadow-lg: 0 2px 6px rgba(0, 0, 0, .3), 0 30px 80px rgba(0, 0, 0, .5);
     }
   }
   :root[data-theme="dark"] {
-    --bg: #151514;
-    --surface: #1d1d1b;
-    --surface-2: #252523;
-    --text: #ecebe7;
-    --muted: #a09d96;
-    --border: #34332f;
+    --bg: #0f0f12;
+    --bg-2: #15151a;
+    --surface: #1a1a20;
+    --surface-2: #22222a;
+    --text: #eeedf2;
+    --muted: #a09eaa;
+    --border: #2e2d36;
     --accent: #7aa7f0;
+    --accent-2: #b495ff;
     --accent-ink: #0e1a2e;
     --accent-soft: #1d2a40;
     --ok: #6cc596;
-    --code-bg: #2a2926;
+    --code-bg: #2a2931;
+    --glow-1: rgba(90, 140, 240, .22);
+    --glow-2: rgba(160, 110, 255, .18);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+    --shadow-lg: 0 2px 6px rgba(0, 0, 0, .3), 0 30px 80px rgba(0, 0, 0, .5);
   }
 
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 16px/1.6 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font: 16px/1.6 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
   a { color: var(--accent); text-underline-offset: 2px; }
   code, kbd {
-    font: 0.9em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font: 0.88em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     background: var(--code-bg);
     padding: 0.1em 0.35em;
     border-radius: 4px;
   }
-  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  .grad {
+    background: linear-gradient(100deg, var(--accent) 10%, var(--accent-2) 90%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
 
   /* Nav */
   header.nav {
-    position: sticky; top: 0; z-index: 10;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: saturate(1.6) blur(14px);
+    -webkit-backdrop-filter: saturate(1.6) blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: border-color .2s, background .2s;
   }
-  header.nav .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text); text-decoration: none; }
+  header.nav.scrolled { border-bottom-color: var(--border); }
+  header.nav .wrap { display: flex; align-items: center; gap: 16px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.01em; color: var(--text); text-decoration: none; }
   .brand img { width: 28px; height: 28px; }
-  nav.links { margin-left: auto; display: flex; gap: 18px; font-size: 15px; }
-  nav.links a { color: var(--muted); text-decoration: none; }
+  nav.links { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: 14.5px; font-weight: 500; }
+  nav.links a { color: var(--muted); text-decoration: none; transition: color .15s; }
   nav.links a:hover { color: var(--text); }
-  @media (max-width: 640px) { nav.links a.opt { display: none; } }
+  nav.links a.pill {
+    color: var(--accent-ink); background: var(--text); padding: 7px 14px; border-radius: 999px; font-weight: 600;
+  }
+  nav.links a.pill:hover { color: var(--accent-ink); opacity: .88; }
+  :root nav.links a.pill { color: var(--bg); }
+  @media (max-width: 640px) { nav.links a.opt { display: none; } nav.links { gap: 14px; } }
 
   /* Hero */
-  .hero { padding: 72px 16px 48px; }
-  .hero h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 16px; max-width: 16ch; }
-  .hero p.lede { font-size: 19px; color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
-  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .hero-bg { position: relative; isolation: isolate; }
+  .hero-bg::before {
+    content: ""; position: absolute; inset: -60px 0 auto 0; height: 760px; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(600px 340px at 22% 18%, var(--glow-1), transparent 70%),
+      radial-gradient(560px 320px at 80% 10%, var(--glow-2), transparent 70%);
+  }
+  .hero-bg::after {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 700px; z-index: -1; pointer-events: none;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+    opacity: .55;
+  }
+  .hero { padding: 72px 16px 24px; text-align: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 22px;
+    padding: 5px 12px 5px 6px; border-radius: 999px; font-size: 13.5px; font-weight: 500;
+    color: var(--text); text-decoration: none; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+    transition: transform .15s, border-color .15s;
+  }
+  .badge:hover { transform: translateY(-1px); border-color: var(--accent); }
+  .badge b { font-size: 12px; font-weight: 700; color: var(--accent-ink); background: linear-gradient(100deg, var(--accent), var(--accent-2)); padding: 2px 8px; border-radius: 999px; }
+  .badge span.arrow { color: var(--muted); }
+  .hero h1 {
+    font-size: clamp(38px, 7vw, 72px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 800;
+    margin: 0 auto 20px; max-width: 17ch;
+  }
+  .hero p.lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); max-width: 58ch; margin: 0 auto 32px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 11px 18px; border-radius: 8px; font-weight: 600; font-size: 15px;
+    padding: 12px 20px; border-radius: 999px; font-weight: 600; font-size: 15px;
     text-decoration: none; border: 1px solid var(--border); color: var(--text); background: var(--surface);
+    box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s, filter .15s;
   }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .btn:hover { filter: brightness(1.05); }
-  .meta { margin-top: 18px; font-size: 14px; color: var(--muted); }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary {
+    border-color: transparent; color: #fff;
+    background: linear-gradient(100deg, #1f5fbf, #6d3ae0);
+    box-shadow: 0 8px 24px rgba(60, 70, 200, .32), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .btn.primary:hover { box-shadow: 0 12px 30px rgba(60, 70, 200, .42), inset 0 1px 0 rgba(255,255,255,.2); filter: brightness(1.06); }
+  .btn svg { width: 16px; height: 16px; }
+  .meta { margin-top: 20px; font-size: 13.5px; color: var(--muted); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+  .meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .meta span::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
 
-  section { padding: 48px 0; border-top: 1px solid var(--border); }
-  section h2 { font-size: 28px; letter-spacing: -0.01em; margin: 0 0 8px; }
-  section p.sub { color: var(--muted); margin: 0 0 28px; max-width: 65ch; }
-  h3 { font-size: 18px; margin: 0 0 8px; }
-
-  /* Why cards */
-  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-  .card p { margin: 0; color: var(--muted); font-size: 15px; }
 
   /* Demo: a made-up airline site with the Award Buddy panel on top. Panel styles mirror src/ui/styles.js */
   .demo-frame { margin-top: 40px; position: relative; }
@@ -120,7 +182,7 @@
   .stage * { box-sizing: border-box; }
   .chrome { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #eceae6; border-bottom: 1px solid #dcd9d3; }
   .chrome i { width: 11px; height: 11px; border-radius: 50%; background: #d3d0ca; display: block; }
-  .chrome .url { margin-left: 14px; flex: 1; max-width: 520px; background: #fff; border-radius: 6px; padding: 5px 12px; font-size: 13px; color: #555; }
+  .chrome .url { margin-left: 14px; flex: 1; max-width: 520px; background: #fff; border-radius: 6px; padding: 5px 12px; font-size: 13px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chrome .url b { color: #1f2933; font-weight: 500; }
 
   .site { height: 560px; background: #f4f6f7; }
@@ -219,94 +281,286 @@
   }
   .soon { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; vertical-align: 2px; }
 
+  /* Demo frame overrides: float the mock browser with a glow */
+  .demo-frame { margin: 56px auto 0; max-width: 1000px; text-align: left; }
+  .demo-pick { justify-content: center; }
+  .demo-scale {
+    border-radius: 16px; box-shadow: var(--shadow-lg);
+    outline: 6px solid color-mix(in srgb, var(--surface) 60%, transparent); outline-offset: 0;
+  }
+  .demo-glow { position: relative; }
+  .demo-glow::before {
+    content: ""; position: absolute; inset: 8% 6% -4%; z-index: -1; border-radius: 40px; filter: blur(60px);
+    background: linear-gradient(100deg, var(--glow-1), var(--glow-2)); opacity: .9;
+  }
+
+  /* Logo marquee */
+  .marquee-wrap { padding: 56px 0 8px; text-align: center; }
+  .marquee-wrap p { margin: 0 0 18px; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .marquee {
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+  .marquee-track { display: flex; gap: 14px; width: max-content; animation: marquee 40s linear infinite; }
+  .marquee:hover .marquee-track { animation-play-state: paused; }
+  @keyframes marquee { to { transform: translateX(calc(-50% - 7px)); } }
+  .logo-chip {
+    display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 600; white-space: nowrap;
+  }
+  .logo-chip img, .logo-chip i {
+    width: 28px; height: 28px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border);
+  }
+  .logo-chip i { font-style: normal; font-size: 10px; font-weight: 700; color: #fff; border: 0; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 56px auto 0; max-width: 900px; }
+  .stat { text-align: center; padding: 8px 12px; border-left: 1px solid var(--border); }
+  .stat:first-child { border-left: 0; }
+  .stat strong { display: block; font-size: clamp(30px, 4.5vw, 44px); font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
+  .stat span { font-size: 14px; color: var(--muted); }
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
+    .stat:nth-child(3) { border-left: 0; }
+  }
+
+  /* Sections */
+  section { padding: 96px 0; }
+  section.alt { background: var(--bg-2); border-block: 1px solid var(--border); }
+  .kicker { display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 12px; }
+  section h2 { font-size: clamp(30px, 4.4vw, 44px); line-height: 1.1; letter-spacing: -0.03em; font-weight: 800; margin: 0 0 14px; }
+  section p.sub { color: var(--muted); font-size: 17.5px; margin: 0 0 40px; max-width: 60ch; }
+  .head-c { text-align: center; }
+  .head-c p.sub { margin-inline: auto; }
+  h3 { font-size: 18px; letter-spacing: -.01em; margin: 0 0 8px; }
+
+  /* Bento feature grid */
+  .bento { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+  .bento .card.wide { grid-column: span 2; }
+  @media (max-width: 860px) { .bento { grid-template-columns: 1fr; } .bento .card.wide { grid-column: auto; } }
+  .card {
+    position: relative; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 26px;
+    box-shadow: var(--shadow); transition: transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .ico {
+    width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 16px;
+    color: var(--accent); background: var(--accent-soft);
+  }
+  .ico svg { width: 22px; height: 22px; }
+  .card.wide { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
+  @media (max-width: 640px) { .card.wide { grid-template-columns: 1fr; } }
+
+  .viz { border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); padding: 14px; font-size: 12.5px; }
+  .viz-math { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; font-weight: 600; }
+  .viz-math span { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+  .viz-math em { font-style: normal; color: var(--muted); }
+  .viz-math strong { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; border-radius: 8px; padding: 6px 10px; }
+  .viz-rows { margin-top: 10px; display: grid; gap: 5px; }
+  .viz-rows div { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; background: var(--surface); border-radius: 7px; padding: 5px 9px; }
+  .viz-rows b { color: #0369a1; }
+  .viz-rows small { color: var(--muted); }
+  .viz-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .viz-cal div {
+    aspect-ratio: 1.5; border-radius: 6px; background: var(--surface); font-size: 10px; color: var(--muted);
+    display: flex; flex-direction: column; justify-content: space-between; padding: 3px 5px;
+  }
+  .viz-cal div b { font-size: 11px; font-weight: 700; align-self: flex-end; }
+  .viz-cal .lo { background: color-mix(in srgb, #16a34a 18%, var(--surface)); }
+  .viz-cal .lo b { color: #15803d; }
+  .viz-cal .mid b { color: #0369a1; }
+  .viz-cal .x { opacity: .45; }
+  .viz-cal .dow { background: transparent; aspect-ratio: auto; text-align: center; align-items: center; font-weight: 600; }
+  .logo-cloud { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .logo-cloud img, .logo-cloud i {
+    width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .logo-cloud i { font-style: normal; font-size: 12px; font-weight: 700; color: #fff; border: 0; display: inline-flex; align-items: center; justify-content: center; }
+
   /* Install */
-  .steps { margin: 0; padding-left: 20px; }
-  .steps li { margin-bottom: 8px; }
-  .steps li::marker { color: var(--muted); }
+  .install-grid { display: grid; gap: 16px; grid-template-columns: 1.3fr 1fr; }
+  @media (max-width: 860px) { .install-grid { grid-template-columns: 1fr; } }
+  .card.feature { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .card.feature::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  }
+  .rec { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); font-size: 12px; font-weight: 600; vertical-align: 2px; }
+  .steps { margin: 12px 0 0; padding: 0; list-style: none; counter-reset: s; }
+  .steps li { counter-increment: s; position: relative; padding-left: 40px; margin-bottom: 14px; color: var(--muted); }
+  .steps li strong { color: var(--text); }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: -1px; width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--accent); background: var(--accent-soft);
+  }
   .note { font-size: 14px; color: var(--muted); margin-top: 12px; }
+  .soon-box { display: flex; flex-direction: column; }
+  .browsers { display: flex; gap: 10px; margin: 18px 0 6px; }
+  .browsers span { flex: 1; text-align: center; padding: 14px 8px; border: 1px dashed var(--border); border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+
+  .how { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); margin-top: 56px; }
+  @media (max-width: 860px) { .how { grid-template-columns: 1fr; } }
+  .how .card { padding: 24px; }
+  .how .num {
+    font-size: 44px; font-weight: 800; letter-spacing: -.04em; line-height: 1; margin-bottom: 14px;
+    background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent-2) 50%, transparent));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
 
   /* Programs */
-  .tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 10px; margin-bottom: 16px; }
+  .tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; margin-bottom: 20px; box-shadow: var(--shadow); }
   .tabs button {
     font: inherit; font-size: 15px; font-weight: 600; border: 0; background: transparent; color: var(--muted);
-    padding: 7px 16px; border-radius: 7px; cursor: pointer;
+    padding: 8px 18px; border-radius: 999px; cursor: pointer; transition: background .2s, color .2s;
   }
-  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-  .programs { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  .programs th, .programs td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 15px; }
-  .programs th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--surface-2); }
+  .tabs button[aria-selected="true"] { background: var(--text); color: var(--bg); }
+  .programs { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); }
+  .programs th, .programs td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 15px; }
+  .programs th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); background: var(--surface-2); }
+  .programs tbody tr { transition: background .15s; }
+  .programs tbody tr:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
   .programs tr:last-child td { border-bottom: 0; }
-  .programs td.name { padding-left: 50px; position: relative; }
+  .programs td.name { padding-left: 60px; position: relative; }
   .programs td.name strong { display: block; }
-  .plogo { position: absolute; left: 14px; top: 14px; width: 24px; height: 24px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border); }
-  i.plogo { font-style: normal; font-size: 10px; font-weight: 700; color: #fff; border: 0; display: flex; align-items: center; justify-content: center; }
+  .plogo { position: absolute; left: 16px; top: 14px; width: 30px; height: 30px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+  i.plogo { font-style: normal; font-size: 11px; font-weight: 700; color: #fff; border: 0; display: flex; align-items: center; justify-content: center; }
   .programs td.name small { color: var(--muted); }
   .programs td.cal { text-align: center; color: var(--ok); font-weight: 700; }
   .programs td.go { white-space: nowrap; text-align: right; }
-  .programs td.go a { font-weight: 600; text-decoration: none; }
-  .programs td.go a:hover { text-decoration: underline; }
+  .programs td.go a {
+    font-weight: 600; font-size: 14px; text-decoration: none; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text); transition: border-color .15s, color .15s, background .15s;
+  }
+  .programs td.go a:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   .programs td.sess { color: var(--muted); font-size: 14px; }
   .programs td.sess em { font-style: normal; color: var(--text); }
   @media (max-width: 640px) {
     .programs thead { display: none; }
     .programs, .programs tbody, .programs tr, .programs td { display: block; width: 100%; }
-    .programs tr { border-bottom: 1px solid var(--border); padding: 10px 0; }
+    .programs tr { border-bottom: 1px solid var(--border); padding: 12px 0; }
     .programs tr:last-child { border-bottom: 0; }
-    .programs td { border: 0; padding: 4px 14px; text-align: left !important; }
+    .programs td { border: 0; padding: 4px 16px; text-align: left !important; }
     .programs td.cal:empty { display: none; }
     .plogo { top: 4px; }
+    .programs td.go { padding-top: 10px; }
     .programs td.cal::before { content: "Calendar mode "; color: var(--muted); font-weight: 400; }
   }
-  .modes { margin-top: 0; }
-  .modes dt { font-weight: 650; margin-top: 14px; }
-  .modes dd { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+  .modes { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); margin: 0; }
+  @media (max-width: 640px) { .modes { grid-template-columns: 1fr; } }
+  .modes > div { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px; }
+  .modes dt { font-weight: 700; }
+  .modes dd { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
 
-  /* Changelog */
-  .log { list-style: none; margin: 0; padding: 0; }
-  .log > li { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--border); }
-  .log > li:last-child { border-bottom: 0; }
-  .log .ver { font-weight: 700; font-variant-numeric: tabular-nums; }
+  /* Changelog timeline */
+  .log { list-style: none; margin: 0; padding: 0; position: relative; }
+  .log::before { content: ""; position: absolute; left: 131px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
+  .log > li { display: grid; grid-template-columns: 120px 1fr; gap: 40px; padding: 0 0 36px; position: relative; }
+  .log > li::before {
+    content: ""; position: absolute; left: 126px; top: 6px; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--muted);
+  }
+  .log > li:first-child::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5px var(--accent-soft); }
+  .log .ver { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
   .log .ver a { color: var(--text); text-decoration: none; }
   .log .ver small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
-  .log h3 { font-size: 16px; }
+  .log h3 { font-size: 17px; }
+  .log .latest { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; vertical-align: 2px; }
   .log ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 15px; }
   .log ul li { margin-bottom: 3px; }
-  @media (max-width: 640px) { .log > li { grid-template-columns: 1fr; gap: 4px; } }
+  .log > li.more { display: none; }
+  .log.open > li.more { display: grid; }
+  .dup { display: contents; }
+  .log-toggle { margin-left: 160px; }
+  @media (max-width: 640px) {
+    .log::before { left: 5px; }
+    .log > li { grid-template-columns: 1fr; gap: 4px; padding-left: 28px; }
+    .log > li::before { left: 0; }
+    .log .ver { text-align: left; }
+    .log-toggle { margin-left: 28px; }
+  }
+  button.btn { font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; }
+
+  /* Closing CTA */
+  .final { padding: 40px 0 96px; }
+  .final-card {
+    position: relative; overflow: hidden; text-align: center; border-radius: 28px; padding: 72px 24px; color: #fff;
+    background: radial-gradient(600px 300px at 15% 0%, rgba(255,255,255,.18), transparent 60%), linear-gradient(120deg, #1f4fa8, #5b2fd0 60%, #7c3aed);
+    box-shadow: var(--shadow-lg);
+  }
+  .final-card::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .18;
+    background-image: linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse at center, #000, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at center, #000, transparent 70%);
+  }
+  .final-card > * { position: relative; z-index: 1; }
+  .final-card h2 { font-size: clamp(30px, 4.6vw, 48px); line-height: 1.08; letter-spacing: -.03em; font-weight: 800; margin: 0 auto 14px; max-width: 18ch; }
+  .final-card p { margin: 0 auto 28px; max-width: 52ch; color: rgba(255,255,255,.82); font-size: 17px; }
+  .final-card .btn { border: 0; }
+  .final-card .btn.light { background: #fff; color: #1b1b3a; }
+  .final-card .btn.ghost { background: rgba(255,255,255,.12); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
 
   footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
-  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; align-items: center; }
+  footer .brand { font-size: 15px; }
+  footer .brand img { width: 22px; height: 22px; }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--text); }
+
+  /* Scroll reveal (only when JS runs and motion is allowed) */
+  .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+  .js .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .js .reveal { opacity: 1; transform: none; transition: none; }
+    .marquee-track { animation: none; flex-wrap: wrap; justify-content: center; width: auto; }
+    .marquee { mask-image: none; -webkit-mask-image: none; }
+    .marquee-track .dup { display: none; }
+    .card, .btn, .badge { transition: none; }
+  }
 </style>
+
 </head>
 <body>
 
-<header class="nav">
+<header class="nav" id="nav">
   <div class="wrap">
     <a class="brand" href="#top"><img src="icon-128.png" alt="">Award Buddy</a>
     <nav class="links">
-      <a class="opt" href="#why">Why</a>
-      <a href="#install">Install</a>
-      <a href="#programs">Programs</a>
+      <a class="opt" href="#why">Features</a>
+      <a class="opt" href="#programs">Programs</a>
       <a class="opt" href="#changelog">Changelog</a>
       <a href="https://github.com/kevchentw/awardbuddy">GitHub</a>
+      <a class="pill" href="#install">Install</a>
     </nav>
   </div>
 </header>
 
 <main id="top">
-  <div class="wrap hero">
-    <h1>Search award space across every date at once.</h1>
-    <p class="lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
-    <div class="cta">
-      <a class="btn primary" href="#install">Install Award Buddy</a>
-      <a class="btn" href="#programs">See supported programs</a>
-    </div>
-    <p class="meta">Free and open source (MIT) · Chrome, Edge, or any browser with Tampermonkey · <span id="cur-ver">v1.6.0</span></p>
+  <div class="hero-bg">
+    <div class="wrap hero">
+      <a class="badge" href="#changelog"><b>New</b> I Prefer hotel search in <span id="cur-ver">v1.6.0</span> <span class="arrow">→</span></a>
+      <h1>Search award space across <span class="grad">every date at once.</span></h1>
+      <p class="lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
+      <div class="cta">
+        <a class="btn primary" href="#install">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+          Install Award Buddy
+        </a>
+        <a class="btn" href="#programs">See supported programs</a>
+      </div>
+      <div class="meta"><span>Free and open source (MIT)</span><span>No account, no server</span><span>Chrome, Edge, or any browser with Tampermonkey</span></div>
 
-    <div class="demo-frame">
+      <div class="demo-frame">
       <div class="demo-pick" role="group" aria-label="Show the demo on">
         <span class="demo-pick-label">Try it on</span>
         <div class="demo-pick-list" id="demo-pick"></div>
       </div>
+      <div class="demo-glow">
       <div class="demo-scale" id="demo-scale" role="img" aria-label="Animated example: on an airline's award search page, the Award Buddy button in the bottom-right corner opens a panel that searches several routes over two months and lists the award seats it finds.">
         <div class="stage" id="stage" aria-hidden="true">
           <div class="chrome"><i></i><i></i><i></i><div class="url" id="d-url"></div></div>
@@ -355,35 +609,76 @@
           <svg class="cursor" id="cursor" viewBox="0 0 24 24"><path d="M4 2l15 11.5-6.6.9 3.8 7.4-2.6 1.3-3.8-7.5L4 20z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
         </div>
       </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="marquee-wrap reveal">
+      <p>Works on 16 airline and hotel programs</p>
+      <div class="marquee"><div class="marquee-track" id="marquee"></div></div>
+    </div>
+
+    <div class="wrap">
+      <div class="stats reveal">
+        <div class="stat"><strong class="grad">10</strong><span>airline programs</span></div>
+        <div class="stat"><strong class="grad">6</strong><span>hotel programs</span></div>
+        <div class="stat"><strong class="grad">0</strong><span>servers or accounts</span></div>
+        <div class="stat"><strong class="grad">100%</strong><span>free and open source</span></div>
+      </div>
     </div>
   </div>
 
   <section id="why">
     <div class="wrap">
-      <h2>What makes it different</h2>
-      <p class="sub">Award search sites mostly let you check one route on one day. Award Buddy checks all your dates and routes in one go, on the airline's or hotel's own site.</p>
-      <div class="grid">
-        <div class="card">
-          <h3>Many dates, one table</h3>
-          <p>Every origin × destination × date runs through the site's own search. Sort by date, duration or miles, and filter by cabin, stops or day of the week.</p>
+      <div class="head-c reveal">
+        <span class="kicker grad">Features</span>
+        <h2>What makes it different</h2>
+        <p class="sub">Award search sites mostly let you check one route on one day. Award Buddy checks all your dates and routes in one go, on the airline's or hotel's own site.</p>
+      </div>
+      <div class="bento">
+        <div class="card wide reveal">
+          <div>
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></div>
+            <h3>Many dates, one table</h3>
+            <p>Every origin × destination × date runs through the site's own search. Sort by date, duration or miles, and filter by cabin, stops or day of the week.</p>
+          </div>
+          <div class="viz" aria-hidden="true">
+            <div class="viz-math"><span>3 routes</span><em>×</em><span>61 days</span><em>=</em><strong>183 searches</strong></div>
+            <div class="viz-rows">
+              <div><span>2026-11-03</span><small>TPE → SFO · direct</small><b>75k</b></div>
+              <div><span>2026-11-09</span><small>TPE → LAX · direct</small><b>75k</b></div>
+              <div><span>2026-11-14</span><small>TPE → SEA · 1 stop</small><b>82k</b></div>
+            </div>
+          </div>
         </div>
-        <div class="card">
+        <div class="card reveal">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
           <h3>Live data from the source</h3>
           <p>Results come straight from the program's site, so you see what you could book right now. Nothing comes from a cached third-party database.</p>
         </div>
-        <div class="card">
+        <div class="card reveal">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></div>
           <h3>No server, no account</h3>
           <p>It runs in your browser with your own session on the airline's or hotel's page. Nothing is sent anywhere else, and it doesn't collect any data.</p>
         </div>
-        <div class="card">
-          <h3>Calendar views</h3>
-          <p>Calendar mode shows the lowest price per day for whole months. Hotel searches show points per night for each hotel, one color per hotel.</p>
+        <div class="card wide reveal">
+          <div>
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
+            <h3>Calendar views</h3>
+            <p>Calendar mode shows the lowest price per day for whole months. Hotel searches show points per night for each hotel, one color per hotel.</p>
+          </div>
+          <div class="viz" aria-hidden="true"><div class="viz-cal" id="viz-cal"></div></div>
         </div>
-        <div class="card">
-          <h3>Flights and hotels</h3>
-          <p>10 airline programs and 6 hotel programs, including partner awards, stopovers and Choice points at Preferred Hotels.</p>
+        <div class="card wide reveal">
+          <div>
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
+            <h3>Flights and hotels</h3>
+            <p>10 airline programs and 6 hotel programs, including partner awards, stopovers and Choice points at Preferred Hotels.</p>
+          </div>
+          <div class="logo-cloud" id="logo-cloud" aria-hidden="true"></div>
         </div>
-        <div class="card">
+        <div class="card reveal">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg></div>
           <h3>Links to booking</h3>
           <p>Most results link to the program's booking page for that flight or night, so you can go from a search to booking quickly.</p>
         </div>
@@ -391,40 +686,60 @@
     </div>
   </section>
 
-  <section id="install">
+  <section id="install" class="alt">
     <div class="wrap">
-      <h2>Install</h2>
-      <p class="sub">Install it as a userscript today. It updates itself automatically. A Chrome / Edge extension is coming soon.</p>
-      <div class="grid">
-        <div class="card">
-          <h3>Userscript (recommended)</h3>
+      <div class="head-c reveal">
+        <span class="kicker grad">Get started</span>
+        <h2>Install in under a minute</h2>
+        <p class="sub">Install it as a userscript today. It updates itself automatically. A Chrome / Edge extension is coming soon.</p>
+      </div>
+      <div class="install-grid">
+        <div class="card feature reveal">
+          <h3>Userscript <span class="rec">Recommended</span></h3>
           <ol class="steps">
             <li>Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> or <a href="https://violentmonkey.github.io/">Violentmonkey</a>.</li>
             <li>Open <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a> and click <strong>Install</strong>.</li>
           </ol>
           <p class="note">Updates arrive on their own through Tampermonkey.</p>
-          <p style="margin-top:16px"><a class="btn primary" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js">Install userscript</a></p>
+          <p style="margin:20px 0 0"><a class="btn primary" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+            Install userscript</a></p>
         </div>
-        <div class="card">
+        <div class="card soon-box reveal">
           <h3>Chrome / Edge extension <span class="soon">Coming soon</span></h3>
           <p class="note" style="margin-top:0">A one-click install from the Chrome Web Store and Edge Add-ons is on the way. The link will be posted here.</p>
+          <div class="browsers" aria-hidden="true"><span>Chrome Web Store</span><span>Edge Add-ons</span></div>
           <p class="note">Until then, the userscript works in Chrome and Edge with Tampermonkey.</p>
         </div>
       </div>
 
-      <h3 style="margin-top:36px">Then search</h3>
-      <ol class="steps">
-        <li>Open a supported site from the <a href="#programs">list below</a>. A button appears in the corner of the page: ✈ on airline sites, 🏨 on hotel sites.</li>
-        <li>Click it to open the panel. If it asks for a session, log in or follow its <strong>Get session</strong> link.</li>
-        <li>Enter your routes or hotels and dates, then click <strong>Search</strong>. Results appear as each request finishes.</li>
-      </ol>
+      <div class="how">
+        <div class="card reveal">
+          <div class="num">01</div>
+          <h3>Open a supported site</h3>
+          <p>Pick one from the <a href="#programs">list below</a>. A button appears in the corner of the page: ✈ on airline sites, 🏨 on hotel sites.</p>
+        </div>
+        <div class="card reveal">
+          <div class="num">02</div>
+          <h3>Open the panel</h3>
+          <p>Click the button. If it asks for a session, log in or follow its <strong>Get session</strong> link.</p>
+        </div>
+        <div class="card reveal">
+          <div class="num">03</div>
+          <h3>Search everything</h3>
+          <p>Enter your routes or hotels and dates, then click <strong>Search</strong>. Results appear as each request finishes.</p>
+        </div>
+      </div>
     </div>
   </section>
 
   <section id="programs">
     <div class="wrap">
+      <div class="reveal">
+      <span class="kicker grad">Programs</span>
       <h2>Supported programs</h2>
       <p class="sub">Click <strong>Start search</strong> to open the page where the panel works. Some programs need you to log in or run one search first. The Session column says which.</p>
+      </div>
 
       <div class="tabs" role="tablist">
         <button role="tab" aria-selected="true" aria-controls="tab-air" id="btn-air">✈ Airlines (10)</button>
@@ -465,29 +780,32 @@
         <p class="note">Hotel search covers standard reward nights paid in points. Add hotels by name, city or airport, pick them from the page you're on, or type a hotel code (for example IHG <code>TPEKM</code>, Hyatt <code>TYOPH</code>). More hotel chains are planned.</p>
       </div>
 
-      <h3 style="margin-top:36px">Extra search modes</h3>
+      <h3 style="margin:56px 0 16px;font-size:22px">Extra search modes</h3>
       <dl class="modes">
-        <dt>Air Canada: one-way with stopover</dt>
-        <dd>Enter stopover cities and stay lengths (for example <code>3-5, 7</code> days). Every city × stay length is searched for each route and date.</dd>
-        <dt>Japan Airlines: partner awards</dt>
-        <dd>Search JMB partner space on Alaska / Hawaiian, American, British Airways, Cathay Pacific, Qatar, Emirates, Finnair, Iberia, Qantas, Korean Air and more.</dd>
-        <dt>LifeMiles: carrier filter</dt>
-        <dd>All of Star Alliance, Smart Search, or one airline: Thai, Avianca + Gol, Aegean, ANA, Lufthansa, Singapore Airlines or United.</dd>
-        <dt>I Prefer: I Prefer or Choice points</dt>
-        <dd>Search Preferred Hotels &amp; Resorts priced in I Prefer points, or the 300+ hotels bookable with Choice Privileges points.</dd>
+        <div class="reveal"><dt>Air Canada: one-way with stopover</dt>
+        <dd>Enter stopover cities and stay lengths (for example <code>3-5, 7</code> days). Every city × stay length is searched for each route and date.</dd></div>
+        <div class="reveal"><dt>Japan Airlines: partner awards</dt>
+        <dd>Search JMB partner space on Alaska / Hawaiian, American, British Airways, Cathay Pacific, Qatar, Emirates, Finnair, Iberia, Qantas, Korean Air and more.</dd></div>
+        <div class="reveal"><dt>LifeMiles: carrier filter</dt>
+        <dd>All of Star Alliance, Smart Search, or one airline: Thai, Avianca + Gol, Aegean, ANA, Lufthansa, Singapore Airlines or United.</dd></div>
+        <div class="reveal"><dt>I Prefer: I Prefer or Choice points</dt>
+        <dd>Search Preferred Hotels &amp; Resorts priced in I Prefer points, or the 300+ hotels bookable with Choice Privileges points.</dd></div>
       </dl>
     </div>
   </section>
 
-  <section id="changelog">
+  <section id="changelog" class="alt">
     <div class="wrap">
-      <h2>Changelog</h2>
-      <p class="sub">Downloads for every version are on <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a>.</p>
-      <ul class="log">
-        <li>
+      <div class="reveal">
+        <span class="kicker grad">Changelog</span>
+        <h2>What's new</h2>
+        <p class="sub">Downloads for every version are on <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a>.</p>
+      </div>
+      <ul class="log" id="log">
+        <li class="reveal">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.6.0">1.6.0</a><small>Sep 27, 2026</small></div>
           <div>
-            <h3>I Prefer hotel search</h3>
+            <h3>I Prefer hotel search <span class="latest">Latest</span></h3>
             <ul>
               <li>New hotel program: I Prefer (Preferred Hotels &amp; Resorts) on iprefer.com and preferredhotels.com.</li>
               <li>Two search modes: I Prefer points, or Choice Privileges points at the 300+ hotels that take them. Choice's taxes and fees are shown in cash.</li>
@@ -495,7 +813,7 @@
             </ul>
           </div>
         </li>
-        <li>
+        <li class="reveal">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.1">1.5.1</a><small>Sep 27, 2026</small></div>
           <div>
             <h3>More reliable EVA Air search</h3>
@@ -506,7 +824,7 @@
             </ul>
           </div>
         </li>
-        <li>
+        <li class="reveal">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.0">1.5.0</a><small>Sep 27, 2026</small></div>
           <div>
             <h3>Choice Privileges hotel search</h3>
@@ -516,7 +834,7 @@
             </ul>
           </div>
         </li>
-        <li>
+        <li class="more">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.4.0">1.4.0</a><small>Sep 27, 2026</small></div>
           <div>
             <h3>World of Hyatt hotel search</h3>
@@ -526,7 +844,7 @@
             </ul>
           </div>
         </li>
-        <li>
+        <li class="more">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.3.0">1.3.0</a><small>Sep 27, 2026</small></div>
           <div>
             <h3>Hilton Honors hotel search</h3>
@@ -536,7 +854,7 @@
             </ul>
           </div>
         </li>
-        <li>
+        <li class="more">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.2.0">1.2.0</a><small>Sep 27, 2026</small></div>
           <div>
             <h3>Marriott Bonvoy hotel search</h3>
@@ -545,7 +863,7 @@
             </ul>
           </div>
         </li>
-        <li>
+        <li class="more">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.1.0">1.1.0</a><small>Sep 27, 2026</small></div>
           <div>
             <h3>Hotel search, starting with IHG One Rewards</h3>
@@ -555,7 +873,7 @@
             </ul>
           </div>
         </li>
-        <li>
+        <li class="more">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.0.0">1.0.0</a><small>Sep 26, 2026</small></div>
           <div>
             <h3>First release</h3>
@@ -567,13 +885,28 @@
           </div>
         </li>
       </ul>
+      <button class="btn log-toggle" id="log-toggle" type="button" aria-expanded="false" aria-controls="log">Show older releases</button>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <div class="final-card reveal">
+        <h2>Stop checking one date at a time.</h2>
+        <p>Install Award Buddy, open your favorite program's site, and search two months of award space in a few minutes.</p>
+        <div class="cta">
+          <a class="btn light" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js">Install userscript</a>
+          <a class="btn ghost" href="https://github.com/kevchentw/awardbuddy">Star on GitHub</a>
+        </div>
+      </div>
     </div>
   </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <span>Award Buddy · <a href="https://github.com/kevchentw/awardbuddy/blob/main/LICENSE">MIT License</a> · Not affiliated with any airline, hotel or loyalty program.</span>
+    <span><a class="brand" href="#top"><img src="icon-128.png" alt="">Award Buddy</a></span>
+    <span><a href="https://github.com/kevchentw/awardbuddy/blob/main/LICENSE">MIT License</a> · Not affiliated with any airline, hotel or loyalty program.</span>
     <span><a href="https://github.com/kevchentw/awardbuddy/issues">Report a problem</a> · <a href="https://github.com/kevchentw/awardbuddy">Source on GitHub</a></span>
   </div>
 </footer>
@@ -757,6 +1090,54 @@
       document.getElementById(t.getAttribute('aria-controls')).hidden = !on
     })
   }))
+
+  // Logo strip and feature-card logo cloud
+  const HOTELS = [
+    { name: 'IHG One Rewards', logo: 'logos/ihg.png' }, { name: 'Marriott Bonvoy', logo: 'logos/marriott.png' },
+    { name: 'Hilton Honors', logo: 'logos/hilton.png' }, { name: 'World of Hyatt', logo: 'logos/hyatt.png' },
+    { name: 'Choice Privileges', logo: 'logos/choice.png' }, { name: 'I Prefer', logo: 'logos/iprefer.png' },
+  ]
+  const ALL = [...AIRLINES, ...HOTELS]
+  const mark = p => p.logo ? `<img src="${p.logo}" alt="">` : `<i style="background:${p.color}">${p.code}</i>`
+  const chipsHtml = ALL.map(p => `<span class="logo-chip">${mark(p)}${p.short ?? p.name}</span>`).join('')
+  $('marquee').innerHTML = chipsHtml + `<span class="dup" aria-hidden="true">${chipsHtml}</span>`
+  $('logo-cloud').innerHTML = ALL.map(p => mark(p).replace('<img', `<img title="${p.short ?? p.name}"`)).join('')
+
+  // Mini calendar for the Calendar views card (made-up prices)
+  {
+    let seed = 7
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280
+    let html = 'SMTWTFS'.split('').map(d => `<div class="dow">${d}</div>`).join('')
+    for (let d = 1; d <= 21; d++) {
+      const r = rnd()
+      const [cls, v] = r < .3 ? ['lo', '60k'] : r < .75 ? ['mid', `${70 + Math.floor(rnd() * 4) * 5}k`] : ['x', '—']
+      html += `<div class="${cls}">${d}<b>${v}</b></div>`
+    }
+    $('viz-cal').innerHTML = html
+  }
+
+  // Nav border once scrolled
+  const nav = $('nav')
+  const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8)
+  addEventListener('scroll', onScroll, { passive: true }); onScroll()
+
+  // Older changelog entries
+  $('log-toggle').addEventListener('click', e => {
+    const open = $('log').classList.toggle('open')
+    e.currentTarget.setAttribute('aria-expanded', open)
+    e.currentTarget.textContent = open ? 'Show fewer releases' : 'Show older releases'
+  })
+
+  // Fade sections in as they scroll into view
+  if (!reduced && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) }
+    }), { rootMargin: '0px 0px -8% 0px' })
+    document.querySelectorAll('.reveal').forEach((el, i) => {
+      el.style.transitionDelay = `${(i % 3) * 70}ms`
+      io.observe(el)
+    })
+  }
 </script>
 </body>
 </html>
