@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.7.0
+// @version      1.7.1
 // @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
@@ -6109,15 +6109,6 @@
     const upsell = av?.upsell;
     const flights = upsell?.bounds?.[0]?.flights;
     if (!flights?.length) return [];
-    const miles = {};
-    try {
-      const rp = JSON.parse(data.requestParams ?? "{}");
-      if (rp.MILES_ECO) miles.Y = +rp.MILES_ECO;
-      if (rp.MILES_PEY) miles.N = +rp.MILES_PEY;
-      if (rp.MILES_BUS) miles.J = +rp.MILES_BUS;
-      if (rp.MILES_FIR) miles.F = +rp.MILES_FIR;
-    } catch {
-    }
     const flightCabins = {};
     for (const assoc of Object.values(upsell.associations ?? {})) {
       const { flightId, fareFamily, lsa } = assoc.boundAssociations[0];
@@ -6139,8 +6130,35 @@
         dep: new Date(seg.flightIdentifier.originDate).toISOString(),
         arr: new Date(seg.destinationDate).toISOString()
       }));
-      results.push({ date, origin, destination, segs, cabins, miles, duration: Math.round(flight.duration / 6e4), bookUrl: CX_AWARD_PAGE });
+      results.push({ date, origin, destination, segs, cabins, miles: {}, duration: Math.round(flight.duration / 6e4), bookUrl: CX_AWARD_PAGE });
     }
+    return results;
+  }
+  var CX_MILES_INFO_URL = "https://api.cathaypacific.com/redibe/milesInfo/v2.0";
+  var CX_MILES_CABIN = { F: "FIR", J: "BUS", N: "PEY", Y: "ECO" };
+  var cxMilesCache = {};
+  function cxMilesKey(segs, cabin) {
+    const airports = [segs[0].origin, ...segs.map((s3) => s3.destination)].join(":");
+    const airlines = segs.map((s3) => s3.airline).join(":");
+    const cabins = segs.map(() => CX_MILES_CABIN[cabin]).join(":");
+    return `${airports}_${airlines}_STD_${cabins}`;
+  }
+  async function cxFillMiles(results) {
+    const keyed = results.flatMap((r3) => Object.entries(r3.cabins).filter(([, lsa]) => lsa !== null).map(([cabin]) => ({ r: r3, cabin, key: cxMilesKey(r3.segs, cabin) })));
+    const missing = [...new Set(keyed.map((k5) => k5.key).filter((k5) => !(k5 in cxMilesCache)))];
+    if (missing.length) {
+      try {
+        const res = await fetch(CX_MILES_INFO_URL, {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json", "accept": "application/json, text/plain, */*" },
+          body: JSON.stringify({ milesInfoList: missing })
+        });
+        if (res.ok) Object.assign(cxMilesCache, (await res.json()).milesInfo);
+      } catch {
+      }
+    }
+    for (const { r: r3, cabin, key } of keyed) if (cxMilesCache[key]) r3.miles[cabin] = cxMilesCache[key];
     return results;
   }
   async function cxDoSearch(origin, destination, date) {
@@ -6162,11 +6180,11 @@
       });
       if (!res2.ok) return [];
       const data2 = await res2.json();
-      return cxParseResponse(data2, origin, destination, date);
+      return cxFillMiles(cxParseResponse(data2, origin, destination, date));
     }
     if (!res.ok) return [];
     const data = await res.json();
-    return cxParseResponse(data, origin, destination, date);
+    return cxFillMiles(cxParseResponse(data, origin, destination, date));
   }
   var cxProgram = {
     id: "cx",

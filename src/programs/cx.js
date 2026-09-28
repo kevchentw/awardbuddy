@@ -128,16 +128,6 @@ function cxParseResponse(data, origin, destination, date) {
   const flights = upsell?.bounds?.[0]?.flights
   if (!flights?.length) return []
 
-  // Miles for all cabins are in data.requestParams (returned per-search, not in pageBom)
-  const miles = {}
-  try {
-    const rp = JSON.parse(data.requestParams ?? '{}')
-    if (rp.MILES_ECO) miles.Y = +rp.MILES_ECO
-    if (rp.MILES_PEY) miles.N = +rp.MILES_PEY
-    if (rp.MILES_BUS) miles.J = +rp.MILES_BUS
-    if (rp.MILES_FIR) miles.F = +rp.MILES_FIR
-  } catch {}
-
   // Build flightId -> cabins map from associations (lsa = lowest seats available)
   const flightCabins = {}
   for (const assoc of Object.values(upsell.associations ?? {})) {
@@ -161,8 +151,42 @@ function cxParseResponse(data, origin, destination, date) {
       dep: new Date(seg.flightIdentifier.originDate).toISOString(),
       arr: new Date(seg.destinationDate).toISOString(),
     }))
-    results.push({ date, origin, destination, segs, cabins, miles, duration: Math.round(flight.duration / 60000), bookUrl: CX_AWARD_PAGE })
+    results.push({ date, origin, destination, segs, cabins, miles: {}, duration: Math.round(flight.duration / 60000), bookUrl: CX_AWARD_PAGE })
   }
+  return results
+}
+
+// Miles depend on the actual itinerary (route, carriers, cabin), so they come from the
+// same milesInfo API the CX results page uses. data.requestParams MILES_* only echo the
+// route the session was opened with and must not be used.
+const CX_MILES_INFO_URL = 'https://api.cathaypacific.com/redibe/milesInfo/v2.0'
+const CX_MILES_CABIN = { F: 'FIR', J: 'BUS', N: 'PEY', Y: 'ECO' }
+const cxMilesCache = {}
+
+// e.g. "NRT:HKG:BOS_CX:CX_STD_ECO:ECO"
+export function cxMilesKey(segs, cabin) {
+  const airports = [segs[0].origin, ...segs.map(s => s.destination)].join(':')
+  const airlines = segs.map(s => s.airline).join(':')
+  const cabins = segs.map(() => CX_MILES_CABIN[cabin]).join(':')
+  return `${airports}_${airlines}_STD_${cabins}`
+}
+
+async function cxFillMiles(results) {
+  const keyed = results.flatMap(r => Object.entries(r.cabins)
+    .filter(([, lsa]) => lsa !== null)
+    .map(([cabin]) => ({ r, cabin, key: cxMilesKey(r.segs, cabin) })))
+  const missing = [...new Set(keyed.map(k => k.key).filter(k => !(k in cxMilesCache)))]
+  if (missing.length) {
+    try {
+      const res = await fetch(CX_MILES_INFO_URL, {
+        method: 'POST', credentials: 'include',
+        headers: { 'content-type': 'application/json', 'accept': 'application/json, text/plain, */*' },
+        body: JSON.stringify({ milesInfoList: missing }),
+      })
+      if (res.ok) Object.assign(cxMilesCache, (await res.json()).milesInfo)
+    } catch {}
+  }
+  for (const { r, cabin, key } of keyed) if (cxMilesCache[key]) r.miles[cabin] = cxMilesCache[key]
   return results
 }
 
@@ -184,11 +208,11 @@ async function cxDoSearch(origin, destination, date) {
     })
     if (!res2.ok) return []
     const data2 = await res2.json()
-    return cxParseResponse(data2, origin, destination, date)
+    return cxFillMiles(cxParseResponse(data2, origin, destination, date))
   }
   if (!res.ok) return []
   const data = await res.json()
-  return cxParseResponse(data, origin, destination, date)
+  return cxFillMiles(cxParseResponse(data, origin, destination, date))
 }
 
 export const cxProgram = {
