@@ -1,25 +1,19 @@
 import { render } from 'preact'
 import { useState, useRef, useEffect } from 'preact/hooks'
 import { CABIN_LABELS, CABIN_COLORS, CONCURRENCY } from '../common/constants.js'
-import { getDates, runPool, parseNumberList, combos } from '../common/search.js'
+import { getDates, runPool, parseNumberList, combos, restoreDates, restoreMonths } from '../common/search.js'
 import { CSS } from './styles.js'
 import { AirportCombo } from './AirportCombo.jsx'
 import { DateRangePicker } from './DateRangePicker.jsx'
 import { ResultsTable } from './ResultsTable.jsx'
 import { CalendarView, MonthRangePicker, calToRows, inMonthRange } from './Calendar.jsx'
 import { cx } from './util.js'
-import { useSearchRun, SearchSummary, SearchControls } from './searchRun.jsx'
+import { useSearchRun, useSavedResults, SearchSummary, SearchControls } from './searchRun.jsx'
 import { HotelSearch } from './HotelSearch.jsx'
+import { useRecentSearches, RecentSearches } from './RecentSearches.jsx'
 
 // Airport list (combo) or comma-separated text (programs without an airport list)
 const codes = v => Array.isArray(v) ? v : v.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
-
-function monthISO(offset) {
-  const d = new Date()
-  d.setDate(1)
-  d.setMonth(d.getMonth() + offset)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
 
 // Extra inputs a search mode needs (e.g. stopover cities, stay lengths). Each field yields a list of
 // values and every combination is searched for each route and date.
@@ -36,7 +30,7 @@ function optionCombos(program, form) {
   })))
 }
 
-// Last-used route/cabin/carrier/options per program, in the host site's localStorage
+// Last-used route/dates/search mode/cabin/carrier/options per program, in the host site's localStorage
 const storeKey = program => `award-buddy:${program.id}`
 function loadSaved(program) {
   try { return JSON.parse(localStorage.getItem(storeKey(program))) || {} } catch { return {} }
@@ -49,11 +43,29 @@ function initialForm(program) {
   return {
     origins: sameShape(saved.origins, program.airports ? [] : ''),
     dests: sameShape(saved.dests, program.airports ? [] : 'NRT'),
-    start: null, end: null,
-    fromMonth: monthISO(0), toMonth: monthISO(2),
+    ...restoreDates(saved.start, saved.end),
+    ...restoreMonths(saved.fromMonth, saved.toMonth),
     carrier: program.carriers?.some(c => c.code === saved.carrier) ? saved.carrier : program.carriers?.[0]?.code,
     options: saved.options && typeof saved.options === 'object' ? saved.options : {},
     cabins: Array.isArray(saved.cabins) ? saved.cabins.filter(c => program.cabins.includes(c)) : [],
+  }
+}
+
+// A search's inputs for the recent-searches list (only the dates its mode uses, so repeats match)
+function recentQuery(form, calMode) {
+  const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form
+  return { origins, dests, calMode, ...(calMode ? { fromMonth, toMonth } : { start, end }), cabins, carrier, options }
+}
+// Form with a recent search's inputs filled in; dates already past are dropped as when restoring the form
+function formFromRecent(program, form, q) {
+  return {
+    ...form,
+    origins: sameShape(q.origins, form.origins),
+    dests: sameShape(q.dests, form.dests),
+    ...(q.calMode ? restoreMonths(q.fromMonth, q.toMonth) : restoreDates(q.start, q.end)),
+    carrier: program.carriers?.some(c => c.code === q.carrier) ? q.carrier : form.carrier,
+    options: q.options && typeof q.options === 'object' ? q.options : {},
+    cabins: Array.isArray(q.cabins) ? q.cabins.filter(c => program.cabins.includes(c)) : [],
   }
 }
 
@@ -98,7 +110,7 @@ function useSession(program) {
 }
 
 function FlightSearch({ program, session }) {
-  const [calMode, setCalMode] = useState(false)
+  const [calMode, setCalMode] = useState(() => loadSaved(program).calMode === true)
   const [form, setForm] = useState(() => initialForm(program))
   const set = patch => setForm(f => ({ ...f, ...patch }))
   // Some programs' airport list and calendar support depend on the selected carrier / search mode
@@ -106,15 +118,21 @@ function FlightSearch({ program, session }) {
   const hasCalendar = !!program.onCalendarSearch && (program.calendarFor?.(form.carrier) ?? true)
   useEffect(() => { if (!hasCalendar) setCalMode(false) }, [hasCalendar])
   useEffect(() => {
-    const { origins, dests, cabins, carrier, options } = form
-    try { localStorage.setItem(storeKey(program), JSON.stringify({ origins, dests, cabins, carrier, options })) } catch {}
-  }, [form])
+    const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form
+    try {
+      localStorage.setItem(storeKey(program), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, calMode, cabins, carrier, options }))
+    } catch {}
+  }, [form, calMode])
 
   const run = useSearchRun(form)
   const { ctl, setStatus, setProgress } = run
   const [results, setResults] = useState([])
   const [cal, setCal] = useState(null)            // { data, fromMonth, toMonth }
   const [noResults, setNoResults] = useState(false)
+  useSavedResults(program.id, run, { results, cal, noResults }, saved => {
+    setResults(saved.results ?? []); setCal(saved.cal ?? null); setNoResults(!!saved.noResults)
+  })
+  const recent = useRecentSearches(program.id)
 
   // Search loop reads the latest inputs via ref so a queued re-run picks up edits
   const latest = useRef()
@@ -129,6 +147,7 @@ function FlightSearch({ program, session }) {
     if (calMode) {
       const { fromMonth, toMonth } = f
       if (!origins.length || !dests.length || !fromMonth || !toMonth) { setStatus('⚠ Fill in all fields'); return }
+      recent.add(recentQuery(f, true))
       run.begin(); setNoResults(false)
       setResults([])
       setStatus('Fetching calendar…')
@@ -170,6 +189,7 @@ function FlightSearch({ program, session }) {
     const from = f.start, to = f.end || f.start
     const optionSets = optionCombos(program, f)
     if (!origins.length || !dests.length || !from || !optionSets.length) { setStatus('⚠ Fill in all fields'); return }
+    recent.add(recentQuery(f, false))
     const dates = getDates(from, to)
     const total = origins.length * dests.length * dates.length * optionSets.length
     run.begin(); setNoResults(false)
@@ -204,6 +224,20 @@ function FlightSearch({ program, session }) {
     } else if (all.length) setStatus(s => `${s} (${all.length} found so far)`)
   }
 
+  // Picking a recent search fills the form and searches once it has re-rendered (a running search
+  // restarts by itself on the form change)
+  const pendingRun = useRef(false)
+  function pickRecent(q) {
+    pendingRun.current = true
+    setCalMode(!!q.calMode)
+    setForm(f => formFromRecent(program, f, q))
+  }
+  useEffect(() => {
+    if (!pendingRun.current) return
+    pendingRun.current = false
+    if (!ctl.searching) search()
+  }, [form, calMode])
+
   const toggleCabin = c => set({ cabins: form.cabins.includes(c) ? form.cabins.filter(x => x !== c) : [...form.cabins, c] })
   const airportField = (key, label, placeholder) => (
     <div class="ab-field">
@@ -216,6 +250,7 @@ function FlightSearch({ program, session }) {
 
   return (
     <>
+      <RecentSearches recent={recent} label={q => summary(program, { ...form, ...q }, q.calMode)} onPick={pickRecent} />
       {run.collapsed ? <SearchSummary run={run} text={summary(program, form, calMode)} /> : <>
       {program.carriers && (
         <div class="ab-row">

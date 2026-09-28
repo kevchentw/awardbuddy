@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'preact/hooks'
 import { CONCURRENCY } from '../common/constants.js'
-import { runPool, monthSpans } from '../common/search.js'
+import { runPool, monthSpans, restoreMonths } from '../common/search.js'
 import { parseHotelCodes } from '../common/hotels.js'
-import { useSearchRun, SearchSummary, SearchControls } from './searchRun.jsx'
+import { useSearchRun, useSavedResults, SearchSummary, SearchControls } from './searchRun.jsx'
 import { MonthRangePicker } from './Calendar.jsx'
 import { HotelCalendar, HotelTable } from './HotelResults.jsx'
 import { HotelPicker } from './HotelPicker.jsx'
+import { useRecentSearches, RecentSearches } from './RecentSearches.jsx'
 
 // Hotel award search: points per night for hotel codes × check-in months, one request per hotel and month.
 // A hotel program ({ kind: 'hotel', ... }) provides:
@@ -18,13 +19,6 @@ import { HotelPicker } from './HotelPicker.jsx'
 // (one saved search for all modes) and clears the results
 //   pageMode()         mode the page the user is on calls for, if any (else the last one used)
 
-function monthISO(offset) {
-  const d = new Date()
-  d.setDate(1)
-  d.setMonth(d.getMonth() + offset)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 const storeKey = id => `award-buddy:${id}`
 function initialForm(program, storeId, carried) {
   if (carried) return carried
@@ -36,7 +30,7 @@ function initialForm(program, storeId, carried) {
   return {
     // On a hotel page with nothing saved, start with that hotel
     hotels: hotels.length ? hotels : current ? [current] : [],
-    fromMonth: monthISO(0), toMonth: monthISO(2),
+    ...restoreMonths(saved.fromMonth, saved.toMonth),
   }
 }
 function initialNames(storeId) {
@@ -90,7 +84,7 @@ function HotelSearchForm({ program, session, storeId = program.id, carried, onFo
   // code → hotel name; kept out of form so a name arriving mid-search doesn't restart it
   const [names, setNames] = useState(() => initialNames(storeId))
   useEffect(() => {
-    try { localStorage.setItem(storeKey(storeId), JSON.stringify({ hotels: form.hotels, names })) } catch {}
+    try { localStorage.setItem(storeKey(storeId), JSON.stringify({ hotels: form.hotels, fromMonth: form.fromMonth, toMonth: form.toMonth, names })) } catch {}
     onFormChange?.(form)
   }, [form, names])
   // Look up names for hotels added by code (or saved before names existed)
@@ -110,6 +104,11 @@ function HotelSearchForm({ program, session, storeId = program.id, carried, onFo
   const [shown, setShown] = useState(null)  // { hotels, fromMonth, toMonth } of the last search, for the calendar
   const [date, setDate] = useState(null)    // calendar day picked to narrow the table
   const [noResults, setNoResults] = useState(false)
+  // program.id rather than storeId: each search mode keeps its own results
+  useSavedResults(program.id, run, { results, shown, noResults }, saved => {
+    setResults(saved.results ?? []); setShown(saved.shown ?? null); setNoResults(!!saved.noResults)
+  })
+  const recent = useRecentSearches(program.id)
   const [rateType, setRateType] = useState(null)  // 'Standard' / 'Premium' reward, for the calendar and table
   const [roomType, setRoomType] = useState(null)  // room category (Hyatt: 'Standard Suite', …), likewise
   const latest = useRef()
@@ -124,6 +123,7 @@ function HotelSearchForm({ program, session, storeId = program.id, carried, onFo
     const codes = f.hotels
     const spans = monthSpans(f.fromMonth, f.toMonth)
     if (!codes.length || !spans.length) { setStatus('⚠ Fill in all fields'); return }
+    recent.add({ hotels: codes, fromMonth: f.fromMonth, toMonth: f.toMonth })
     run.begin()
     setNoResults(false); setResults([]); setDate(null); setStatus('')
     setShown({ hotels: codes, fromMonth: f.fromMonth, toMonth: f.toMonth })
@@ -161,6 +161,20 @@ function HotelSearchForm({ program, session, storeId = program.id, carried, onFo
     } else if (all.length) setStatus(s => `${s} (${all.length} found so far)`)
   }
 
+  // Picking a recent search fills the form and searches once it has re-rendered (a running search
+  // restarts by itself on the form change)
+  const pendingRun = useRef(false)
+  function pickRecent(q) {
+    pendingRun.current = true
+    set({ hotels: Array.isArray(q.hotels) ? q.hotels : [], ...restoreMonths(q.fromMonth, q.toMonth) })
+  }
+  useEffect(() => {
+    if (!pendingRun.current) return
+    pendingRun.current = false
+    if (!ctl.searching) search()
+  }, [form])
+  const hotelNames = codes => codes.map(c => names[c] ?? c).join(', ') || '?'
+
   // Reward types in the results (Hilton prices Standard and Premium); the filter only applies while they're there
   const rateTypes = ['Standard', 'Premium'].filter(t => results.some(r => r.rateType === t))
   const activeRateType = rateTypes.includes(rateType) ? rateType : null
@@ -178,13 +192,11 @@ function HotelSearchForm({ program, session, storeId = program.id, carried, onFo
       items: [[null, 'All rooms'], ...roomTypes.map(t => [t, t])] },
   ].filter(Boolean)
 
-  const summary = [
-    hotels.map(c => names[c] ?? c).join(', ') || '?',
-    `${form.fromMonth} – ${form.toMonth}`,
-  ].join(' · ')
+  const summary = `${hotelNames(hotels)} · ${form.fromMonth} – ${form.toMonth}`
 
   return (
     <>
+      <RecentSearches recent={recent} label={q => `${hotelNames(q.hotels ?? [])} · ${q.fromMonth} – ${q.toMonth}`} onPick={pickRecent} />
       {run.collapsed ? <SearchSummary run={run} text={summary} /> : <>
       <div class="ab-row">
         <div class="ab-field">

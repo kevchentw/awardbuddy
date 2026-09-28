@@ -61,3 +61,35 @@ export function monthSpans(fromMonth, toMonth, minDate = todayISO()) {
   }
   return spans
 }
+
+// "YYYY-MM" of the month `offset` months from now
+export function monthISO(offset = 0) {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() + offset)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+const isDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+const isMonth = v => typeof v === 'string' && /^\d{4}-\d{2}$/.test(v)
+
+// Saved date range with the days already past dropped (none left → no dates)
+export function restoreDates(start, end, today = todayISO()) {
+  if (!isDate(start)) return { start: null, end: null }
+  end = isDate(end) && end > start ? end : null
+  if ((end ?? start) < today) return { start: null, end: null }
+  if (start >= today) return { start, end }
+  return { start: today, end: end > today ? end : null }
+}
+
+// Saved month range starting no earlier than this month (all past or invalid → this month + 2)
+export function restoreMonths(fromMonth, toMonth, now = monthISO(0), fallbackTo = monthISO(2)) {
+  if (!isMonth(fromMonth) || !isMonth(toMonth) || toMonth < fromMonth || toMonth < now) return { fromMonth: now, toMonth: fallbackTo }
+  return { fromMonth: fromMonth < now ? now : fromMonth, toMonth }
+}
+
+// Recent-searches list with `query` put first: an identical earlier one is moved up, and it keeps `max`
+export function addRecent(list, query, max = 10) {
+  const key = JSON.stringify(query)
+  return [query, ...list.filter(q => JSON.stringify(q) !== key)].slice(0, max)
+}

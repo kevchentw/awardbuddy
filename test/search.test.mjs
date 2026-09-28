@@ -1,7 +1,7 @@
 // Run: npm test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { getDates, addDays, parseNumberList, combos } from '../src/common/search.js'
+import { getDates, addDays, parseNumberList, combos, restoreDates, restoreMonths, addRecent } from '../src/common/search.js'
 
 test('getDates spans month end and US DST change without gaps or repeats', () => {
   assert.deepEqual(getDates('2027-03-12', '2027-03-16'), ['2027-03-12', '2027-03-13', '2027-03-14', '2027-03-15', '2027-03-16'])
@@ -160,4 +160,31 @@ test('AA calendar parser keeps valid days with an award price', async () => {
     { days: [day('2026-12-06', 57500)] },
   ] }] })
   assert.deepEqual(out, { '2026-12-01': 138000, '2026-12-06': 57500 })
+})
+
+test('restoreDates drops days already past', () => {
+  const today = '2026-09-28'
+  assert.deepEqual(restoreDates('2026-10-01', '2026-10-05', today), { start: '2026-10-01', end: '2026-10-05' })
+  assert.deepEqual(restoreDates('2026-10-01', null, today), { start: '2026-10-01', end: null })
+  assert.deepEqual(restoreDates('2026-09-20', '2026-10-05', today), { start: today, end: '2026-10-05' })
+  assert.deepEqual(restoreDates('2026-09-20', today, today), { start: today, end: null })
+  assert.deepEqual(restoreDates('2026-09-20', '2026-09-25', today), { start: null, end: null })
+  assert.deepEqual(restoreDates('2026-09-20', null, today), { start: null, end: null })
+  assert.deepEqual(restoreDates(undefined, undefined, today), { start: null, end: null })
+})
+
+test('restoreMonths starts no earlier than this month', () => {
+  const now = '2026-09', fallback = '2026-11'
+  assert.deepEqual(restoreMonths('2026-10', '2026-12', now, fallback), { fromMonth: '2026-10', toMonth: '2026-12' })
+  assert.deepEqual(restoreMonths('2026-08', '2026-10', now, fallback), { fromMonth: '2026-09', toMonth: '2026-10' })
+  assert.deepEqual(restoreMonths('2026-06', '2026-08', now, fallback), { fromMonth: now, toMonth: fallback })
+  assert.deepEqual(restoreMonths('2026-12', '2026-10', now, fallback), { fromMonth: now, toMonth: fallback })
+  assert.deepEqual(restoreMonths(undefined, undefined, now, fallback), { fromMonth: now, toMonth: fallback })
+})
+
+test('addRecent puts the query first, moves a repeat up and caps the list', () => {
+  const a = { o: ['TPE'], d: ['NRT'] }, b = { o: ['TPE'], d: ['HND'] }
+  assert.deepEqual(addRecent([], a), [a])
+  assert.deepEqual(addRecent([a, b], { o: ['TPE'], d: ['HND'] }), [b, a])
+  assert.deepEqual(addRecent([a], b, 1), [b])
 })

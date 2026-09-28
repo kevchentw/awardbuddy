@@ -95,7 +95,7 @@ Go to a supported site. A button appears in the corner of the page (✈ on airli
 
 Hotel search covers reward nights paid in points only (standard rewards; Hilton also shows Premium Room Rewards when that's the night's lowest, and a **Reward** filter keeps Standard or Premium nights only). Marriott, Hilton, Choice and I Prefer give only the lowest rate per night. Marriott's rows link to the hotel's rate calendar and Hilton's to its room list for that night. Hyatt lists every room type with points that night (Standard Room, Club Access, Standard and Premium Suite) with its off-peak / peak level, a **Room** filter keeps one room type only, and its rows link to the hotel's award rooms for that night. Choice's rows link to the hotel page for that night with the points rate picked, and I Prefer's to the hotel page for that night with points pricing on. I Prefer lists only hotels bookable with points, and one request covers every month for a hotel. IHG has no booking link; book on IHG's site.
 
-The panel shows roughly how many requests a search will make before you start. Your last search is saved for each site. If you change the inputs while a search is running, it stops and starts over with the new values.
+The panel shows roughly how many requests a search will make before you start. Your last search (route or hotels, dates, and Search or Calendar mode) is saved for each site, and its results stay in the panel when you reload the page (in the same tab). Your last 10 searches per site are listed under **Recent searches** at the top of the panel; pick one to fill in the form and search again. If you change the inputs while a search is running, it stops and starts over with the new values.
 
 ## Notes
 

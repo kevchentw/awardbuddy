@@ -612,7 +612,7 @@
 <main id="top">
   <div class="hero-bg">
     <div class="wrap hero">
-      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> I Prefer hotel search in <span id="cur-ver">v1.6.0</span> <span class="arrow">→</span></a>
+      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> Results kept after reload in <span id="cur-ver">v1.7.0</span> <span class="arrow">→</span></a>
       <h1 data-i18n="hero.h1">Search award space across <span class="grad">every date at once.</span></h1>
       <p class="lede" data-i18n="hero.lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
       <div class="cta">
@@ -881,9 +881,20 @@
       </div>
       <ul class="log" id="log">
         <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.7.0">1.7.0</a><small><time datetime="2026-09-28">Sep 28, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c170h">Recent searches, kept across reloads <span class="latest">Latest</span></h3>
+            <ul data-i18n="c170u">
+              <li>The panel remembers your last search's dates, month range, and Search or Calendar mode, and the month range for hotels. Dates already past are skipped.</li>
+              <li>The last search's results stay in the panel when you reload the page (in the same tab).</li>
+              <li>New <b>Recent searches</b> list: pick one of your last 10 searches to run it again.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="reveal">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.6.0">1.6.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
-            <h3 data-i18n="c160h">I Prefer hotel search <span class="latest">Latest</span></h3>
+            <h3 data-i18n="c160h">I Prefer hotel search</h3>
             <ul data-i18n="c160u">
               <li>New hotel program: I Prefer (Preferred Hotels &amp; Resorts) on iprefer.com and preferredhotels.com.</li>
               <li>Two search modes: I Prefer points, or Choice Privileges points at the 300+ hotels that take them. Choice's taxes and fees are shown in cash.</li>
@@ -995,7 +1006,7 @@
   const ZH = {
     'nav.features': '功能', 'nav.programs': '支援計畫', 'nav.changelog': '更新紀錄', 'nav.install': '安裝',
 
-    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.6.0</span> 支援 I Prefer 點數房搜尋 <span class="arrow">→</span>',
+    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.7.0</span> 重新整理後保留搜尋結果 <span class="arrow">→</span>',
     'hero.h1': '哩程票、點數房<br><span class="grad">所有日期</span>一次查完',
     'hero.lede': 'Award Buddy 會在航空公司和飯店官網上多加一個搜尋面板。選好航線或飯店、設定日期區間，它就會直接在官網上幫你把每種組合都查一遍，最後整理成一張可以排序的表格和月曆。',
     'hero.install': '安裝 Award Buddy', 'hero.see': '看看支援哪些計畫',
@@ -1074,7 +1085,9 @@
     'c.kicker': '更新紀錄', 'c.h2': '最近更新了什麼',
     'c.sub': '每個版本都可以到 <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a> 下載。',
     'c.older': '看更早的版本', 'c.fewer': '收起更早的版本',
-    'c160h': 'I Prefer 點數房搜尋 <span class="latest">最新</span>',
+    'c170h': '最近搜尋，重新整理也不會消失 <span class="latest">最新</span>',
+    'c170u': '<li>面板會記住上次搜尋的日期、月份範圍，以及用的是一般搜尋還是月曆模式，飯店也會記住月份。已經過去的日期會自動略過。</li><li>重新整理頁面後，上次搜尋的結果還會留在面板上（同一個分頁內）。</li><li>新增「最近搜尋」清單：從最近 10 次搜尋中挑一個，就能再查一次。</li>',
+    'c160h': 'I Prefer 點數房搜尋',
     'c160u': '<li>新增飯店計畫：I Prefer（Preferred Hotels &amp; Resorts），支援 iprefer.com 和 preferredhotels.com。</li><li>兩種查法：用 I Prefer 點數，或在 300 多家接受 Choice Privileges 點數的飯店用 Choice 點數。Choice 的稅費會以現金顯示。</li><li>可以用名稱、代碼、城市、州或國家找飯店，也能直接從目前頁面挑。</li>',
     'c151h': '長榮航空搜尋更穩定',
     'c151u': '<li>查詢會拉開間隔並暫存結果，比較不會被機器人驗證擋下。session 需要更新時，面板會提醒你。</li><li>要先在分頁裡手動查一次，才會開始自動搜尋。</li><li>支援長榮官網新的日期標題格式。</li>',
