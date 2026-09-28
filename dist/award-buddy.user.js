@@ -3791,6 +3791,10 @@
     if (!isMonth(fromMonth) || !isMonth(toMonth) || toMonth < fromMonth || toMonth < now) return { fromMonth: now, toMonth: fallbackTo };
     return { fromMonth: fromMonth < now ? now : fromMonth, toMonth };
   }
+  function addRecent(list, query, max = 10) {
+    const key = JSON.stringify(query);
+    return [query, ...list.filter((q2) => JSON.stringify(q2) !== key)].slice(0, max);
+  }
 
   // src/ui/styles.js
   var CSS = `
@@ -4854,6 +4858,45 @@
     ] });
   }
 
+  // src/ui/RecentSearches.jsx
+  function useRecentSearches(id) {
+    const key = `award-buddy:${id}:recent`;
+    const [list, setList] = d2(() => {
+      try {
+        const l3 = JSON.parse(localStorage.getItem(key));
+        return Array.isArray(l3) ? l3 : [];
+      } catch {
+        return [];
+      }
+    });
+    const save = (update) => setList((l3) => {
+      const next = update(l3);
+      try {
+        localStorage.setItem(key, JSON.stringify(next));
+      } catch {
+      }
+      return next;
+    });
+    return { list, add: (query) => save((l3) => addRecent(l3, query)), clear: () => save(() => []) };
+  }
+  function RecentSearches({ recent, label, onPick }) {
+    if (!recent.list.length) return null;
+    return /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: /* @__PURE__ */ u3("select", { value: "", onChange: (e3) => {
+      const v3 = e3.currentTarget.value;
+      e3.currentTarget.value = "";
+      if (v3 === "clear") recent.clear();
+      else if (v3 !== "") onPick(recent.list[+v3]);
+    }, children: [
+      /* @__PURE__ */ u3("option", { value: "", children: [
+        "\u21BB Recent searches (",
+        recent.list.length,
+        ")"
+      ] }),
+      recent.list.map((q2, i3) => /* @__PURE__ */ u3("option", { value: i3, children: label(q2) }, i3)),
+      /* @__PURE__ */ u3("option", { value: "clear", children: "\u2715 Clear recent searches" })
+    ] }) }) });
+  }
+
   // src/ui/HotelSearch.jsx
   var storeKey = (id) => `award-buddy:${id}`;
   function initialForm(program2, storeId, carried) {
@@ -4965,6 +5008,7 @@
       setShown(saved.shown ?? null);
       setNoResults(!!saved.noResults);
     });
+    const recent = useRecentSearches(program2.id);
     const [rateType, setRateType] = d2(null);
     const [roomType, setRoomType] = d2(null);
     const latest = A2();
@@ -4980,6 +5024,7 @@
         setStatus("\u26A0 Fill in all fields");
         return;
       }
+      recent.add({ hotels: codes2, fromMonth: f4.fromMonth, toMonth: f4.toMonth });
       run.begin();
       setNoResults(false);
       setResults([]);
@@ -5022,6 +5067,17 @@
         if (!all.length) setNoResults(true);
       } else if (all.length) setStatus((s3) => `${s3} (${all.length} found so far)`);
     }
+    const pendingRun = A2(false);
+    function pickRecent(q2) {
+      pendingRun.current = true;
+      set({ hotels: Array.isArray(q2.hotels) ? q2.hotels : [], ...restoreMonths(q2.fromMonth, q2.toMonth) });
+    }
+    h2(() => {
+      if (!pendingRun.current) return;
+      pendingRun.current = false;
+      if (!ctl.searching) search();
+    }, [form]);
+    const hotelNames = (codes2) => codes2.map((c3) => names[c3] ?? c3).join(", ") || "?";
     const rateTypes = ["Standard", "Premium"].filter((t3) => results.some((r3) => r3.rateType === t3));
     const activeRateType = rateTypes.includes(rateType) ? rateType : null;
     const lowest = {};
@@ -5043,11 +5099,9 @@
         items: [[null, "All rooms"], ...roomTypes.map((t3) => [t3, t3])]
       }
     ].filter(Boolean);
-    const summary2 = [
-      hotels.map((c3) => names[c3] ?? c3).join(", ") || "?",
-      `${form.fromMonth} \u2013 ${form.toMonth}`
-    ].join(" \xB7 ");
+    const summary2 = `${hotelNames(hotels)} \xB7 ${form.fromMonth} \u2013 ${form.toMonth}`;
     return /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3(RecentSearches, { recent, label: (q2) => `${hotelNames(q2.hotels ?? [])} \xB7 ${q2.fromMonth} \u2013 ${q2.toMonth}`, onPick: pickRecent }),
       run.collapsed ? /* @__PURE__ */ u3(SearchSummary, { run, text: summary2 }) : /* @__PURE__ */ u3(S, { children: [
         /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
           /* @__PURE__ */ u3("label", { children: "Hotels" }),
@@ -5132,6 +5186,21 @@
       cabins: Array.isArray(saved.cabins) ? saved.cabins.filter((c3) => program2.cabins.includes(c3)) : []
     };
   }
+  function recentQuery(form, calMode) {
+    const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form;
+    return { origins, dests, calMode, ...calMode ? { fromMonth, toMonth } : { start, end }, cabins, carrier, options };
+  }
+  function formFromRecent(program2, form, q2) {
+    return {
+      ...form,
+      origins: sameShape(q2.origins, form.origins),
+      dests: sameShape(q2.dests, form.dests),
+      ...q2.calMode ? restoreMonths(q2.fromMonth, q2.toMonth) : restoreDates(q2.start, q2.end),
+      carrier: program2.carriers?.some((c3) => c3.code === q2.carrier) ? q2.carrier : form.carrier,
+      options: q2.options && typeof q2.options === "object" ? q2.options : {},
+      cabins: Array.isArray(q2.cabins) ? q2.cabins.filter((c3) => program2.cabins.includes(c3)) : []
+    };
+  }
   function summary(program2, form, calMode) {
     const route = `${codes(form.origins).join(", ") || "?"} \u2192 ${codes(form.dests).join(", ") || "?"}`;
     const when = calMode ? `${form.fromMonth} \u2013 ${form.toMonth}` : form.start ? `${form.start} \u2013 ${form.end || form.start}` : "?";
@@ -5197,6 +5266,7 @@
       setCal(saved.cal ?? null);
       setNoResults(!!saved.noResults);
     });
+    const recent = useRecentSearches(program2.id);
     const latest = A2();
     latest.current = { form, calMode };
     async function search() {
@@ -5210,6 +5280,7 @@
           setStatus("\u26A0 Fill in all fields");
           return;
         }
+        recent.add(recentQuery(f4, true));
         run.begin();
         setNoResults(false);
         setResults([]);
@@ -5258,6 +5329,7 @@
         setStatus("\u26A0 Fill in all fields");
         return;
       }
+      recent.add(recentQuery(f4, false));
       const dates = getDates(from, to);
       const total = origins.length * dests.length * dates.length * optionSets.length;
       run.begin();
@@ -5294,12 +5366,24 @@
         if (!all.length) setNoResults(true);
       } else if (all.length) setStatus((s3) => `${s3} (${all.length} found so far)`);
     }
+    const pendingRun = A2(false);
+    function pickRecent(q2) {
+      pendingRun.current = true;
+      setCalMode(!!q2.calMode);
+      setForm((f4) => formFromRecent(program2, f4, q2));
+    }
+    h2(() => {
+      if (!pendingRun.current) return;
+      pendingRun.current = false;
+      if (!ctl.searching) search();
+    }, [form, calMode]);
     const toggleCabin = (c3) => set({ cabins: form.cabins.includes(c3) ? form.cabins.filter((x2) => x2 !== c3) : [...form.cabins, c3] });
     const airportField = (key, label, placeholder) => /* @__PURE__ */ u3("div", { class: "ab-field", children: [
       /* @__PURE__ */ u3("label", { children: airports ? label : `${label}${key === "origins" ? " (comma separated)" : ""}` }),
       airports ? /* @__PURE__ */ u3(AirportCombo, { airports, value: form[key], onChange: (v3) => set({ [key]: v3 }) }) : /* @__PURE__ */ u3("input", { type: "text", placeholder, value: form[key], onInput: (e3) => set({ [key]: e3.currentTarget.value }) })
     ] });
     return /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3(RecentSearches, { recent, label: (q2) => summary(program2, { ...form, ...q2 }, q2.calMode), onPick: pickRecent }),
       run.collapsed ? /* @__PURE__ */ u3(SearchSummary, { run, text: summary(program2, form, calMode) }) : /* @__PURE__ */ u3(S, { children: [
         program2.carriers && /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
           /* @__PURE__ */ u3("label", { children: program2.carrierLabel ?? "Carrier" }),

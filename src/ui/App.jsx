@@ -10,6 +10,7 @@ import { CalendarView, MonthRangePicker, calToRows, inMonthRange } from './Calen
 import { cx } from './util.js'
 import { useSearchRun, useSavedResults, SearchSummary, SearchControls } from './searchRun.jsx'
 import { HotelSearch } from './HotelSearch.jsx'
+import { useRecentSearches, RecentSearches } from './RecentSearches.jsx'
 
 // Airport list (combo) or comma-separated text (programs without an airport list)
 const codes = v => Array.isArray(v) ? v : v.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
@@ -47,6 +48,24 @@ function initialForm(program) {
     carrier: program.carriers?.some(c => c.code === saved.carrier) ? saved.carrier : program.carriers?.[0]?.code,
     options: saved.options && typeof saved.options === 'object' ? saved.options : {},
     cabins: Array.isArray(saved.cabins) ? saved.cabins.filter(c => program.cabins.includes(c)) : [],
+  }
+}
+
+// A search's inputs for the recent-searches list (only the dates its mode uses, so repeats match)
+function recentQuery(form, calMode) {
+  const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form
+  return { origins, dests, calMode, ...(calMode ? { fromMonth, toMonth } : { start, end }), cabins, carrier, options }
+}
+// Form with a recent search's inputs filled in; dates already past are dropped as when restoring the form
+function formFromRecent(program, form, q) {
+  return {
+    ...form,
+    origins: sameShape(q.origins, form.origins),
+    dests: sameShape(q.dests, form.dests),
+    ...(q.calMode ? restoreMonths(q.fromMonth, q.toMonth) : restoreDates(q.start, q.end)),
+    carrier: program.carriers?.some(c => c.code === q.carrier) ? q.carrier : form.carrier,
+    options: q.options && typeof q.options === 'object' ? q.options : {},
+    cabins: Array.isArray(q.cabins) ? q.cabins.filter(c => program.cabins.includes(c)) : [],
   }
 }
 
@@ -113,6 +132,7 @@ function FlightSearch({ program, session }) {
   useSavedResults(program.id, run, { results, cal, noResults }, saved => {
     setResults(saved.results ?? []); setCal(saved.cal ?? null); setNoResults(!!saved.noResults)
   })
+  const recent = useRecentSearches(program.id)
 
   // Search loop reads the latest inputs via ref so a queued re-run picks up edits
   const latest = useRef()
@@ -127,6 +147,7 @@ function FlightSearch({ program, session }) {
     if (calMode) {
       const { fromMonth, toMonth } = f
       if (!origins.length || !dests.length || !fromMonth || !toMonth) { setStatus('⚠ Fill in all fields'); return }
+      recent.add(recentQuery(f, true))
       run.begin(); setNoResults(false)
       setResults([])
       setStatus('Fetching calendar…')
@@ -168,6 +189,7 @@ function FlightSearch({ program, session }) {
     const from = f.start, to = f.end || f.start
     const optionSets = optionCombos(program, f)
     if (!origins.length || !dests.length || !from || !optionSets.length) { setStatus('⚠ Fill in all fields'); return }
+    recent.add(recentQuery(f, false))
     const dates = getDates(from, to)
     const total = origins.length * dests.length * dates.length * optionSets.length
     run.begin(); setNoResults(false)
@@ -202,6 +224,20 @@ function FlightSearch({ program, session }) {
     } else if (all.length) setStatus(s => `${s} (${all.length} found so far)`)
   }
 
+  // Picking a recent search fills the form and searches once it has re-rendered (a running search
+  // restarts by itself on the form change)
+  const pendingRun = useRef(false)
+  function pickRecent(q) {
+    pendingRun.current = true
+    setCalMode(!!q.calMode)
+    setForm(f => formFromRecent(program, f, q))
+  }
+  useEffect(() => {
+    if (!pendingRun.current) return
+    pendingRun.current = false
+    if (!ctl.searching) search()
+  }, [form, calMode])
+
   const toggleCabin = c => set({ cabins: form.cabins.includes(c) ? form.cabins.filter(x => x !== c) : [...form.cabins, c] })
   const airportField = (key, label, placeholder) => (
     <div class="ab-field">
@@ -214,6 +250,7 @@ function FlightSearch({ program, session }) {
 
   return (
     <>
+      <RecentSearches recent={recent} label={q => summary(program, { ...form, ...q }, q.calMode)} onPick={pickRecent} />
       {run.collapsed ? <SearchSummary run={run} text={summary(program, form, calMode)} /> : <>
       {program.carriers && (
         <div class="ab-row">

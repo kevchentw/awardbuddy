@@ -1,7 +1,7 @@
 // Run: npm test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { getDates, addDays, parseNumberList, combos, restoreDates, restoreMonths } from '../src/common/search.js'
+import { getDates, addDays, parseNumberList, combos, restoreDates, restoreMonths, addRecent } from '../src/common/search.js'
 
 test('getDates spans month end and US DST change without gaps or repeats', () => {
   assert.deepEqual(getDates('2027-03-12', '2027-03-16'), ['2027-03-12', '2027-03-13', '2027-03-14', '2027-03-15', '2027-03-16'])
@@ -180,4 +180,11 @@ test('restoreMonths starts no earlier than this month', () => {
   assert.deepEqual(restoreMonths('2026-06', '2026-08', now, fallback), { fromMonth: now, toMonth: fallback })
   assert.deepEqual(restoreMonths('2026-12', '2026-10', now, fallback), { fromMonth: now, toMonth: fallback })
   assert.deepEqual(restoreMonths(undefined, undefined, now, fallback), { fromMonth: now, toMonth: fallback })
+})
+
+test('addRecent puts the query first, moves a repeat up and caps the list', () => {
+  const a = { o: ['TPE'], d: ['NRT'] }, b = { o: ['TPE'], d: ['HND'] }
+  assert.deepEqual(addRecent([], a), [a])
+  assert.deepEqual(addRecent([a, b], { o: ['TPE'], d: ['HND'] }), [b, a])
+  assert.deepEqual(addRecent([a], b, 1), [b])
 })

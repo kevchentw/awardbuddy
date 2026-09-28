@@ -87,3 +87,9 @@ export function restoreMonths(fromMonth, toMonth, now = monthISO(0), fallbackTo 
   if (!isMonth(fromMonth) || !isMonth(toMonth) || toMonth < fromMonth || toMonth < now) return { fromMonth: now, toMonth: fallbackTo }
   return { fromMonth: fromMonth < now ? now : fromMonth, toMonth }
 }
+
+// Recent-searches list with `query` put first: an identical earlier one is moved up, and it keeps `max`
+export function addRecent(list, query, max = 10) {
+  const key = JSON.stringify(query)
+  return [query, ...list.filter(q => JSON.stringify(q) !== key)].slice(0, max)
+}
