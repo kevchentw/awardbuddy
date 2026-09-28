@@ -514,19 +514,36 @@ test('Choice: the Preferred Hotels search mode is a hotel program of its own', a
   assert.equal(typeof choiceProgram.onHotelSearch, 'function')
 })
 
-test('Preferred Hotels portal: the hotel being booked and the search result cards, as codes', async () => {
-  const { preferredChoiceSynxisFromUrl, preferredChoicePageHotels, preferredHotelsProgram } = await import('../src/programs/preferred-choice.js')
-  const { ipreferParseDirectory } = await import('../src/programs/iprefer.js')
-  assert.equal(preferredChoiceSynxisFromUrl('https://preferredhotels.com/choicepoints/book/hotel/58345?x=1'), '58345')
-  assert.equal(preferredChoiceSynxisFromUrl('https://preferredhotels.com/choicepoints/search'), null)
+test('Preferred Hotels site: an I Prefer points mode and a Choice points mode, the latter picked on /choicepoints', async () => {
+  const { preferredHotelsProgram } = await import('../src/programs/preferred.js')
+  assert.deepEqual(preferredHotelsProgram.matches, ['preferredhotels.com'])
+  assert.deepEqual(preferredHotelsProgram.modes.map(m => [m.code, m.program.id]), [['iprefer', 'iprefer'], ['choice', 'choice-preferred']])
+  assert.ok(preferredHotelsProgram.modes.every(m => typeof m.program.pageHotels === 'function' && !m.program.currentHotel))
+  globalThis.location = { pathname: '/choicepoints/search' }
+  assert.equal(preferredHotelsProgram.pageMode(), 'choice')
+  globalThis.location = { pathname: '/hotels/france/hotel-napoleon' }
+  assert.equal(preferredHotelsProgram.pageMode(), null)
+  delete globalThis.location
+})
+
+test('Preferred Hotels site: search cards plus the hotel or booking page the user is on, per mode', async () => {
+  const { preferredSynxisFromUrl, preferredPageHotels } = await import('../src/programs/preferred.js')
+  const { ipreferParseDirectory, bookableWithPoints } = await import('../src/programs/iprefer.js')
+  const { takesChoicePoints } = await import('../src/programs/preferred-choice.js')
+  assert.equal(preferredSynxisFromUrl('https://preferredhotels.com/choicepoints/book/hotel/58345?x=1'), '58345')
+  assert.equal(preferredSynxisFromUrl('https://preferredhotels.com/choicepoints/search'), null)
   const dir = ipreferParseDirectory(ipreferDirectoryData)
   const el = textContent => ({ textContent })
-  // Hotel Napoleon doesn't take Choice points, so its card is skipped
   const doc = { querySelectorAll: () => [el('Cash Only Paris'), el('Hotel Napoleon')] }
-  assert.deepEqual(preferredChoicePageHotels(doc, dir, 'https://preferredhotels.com/choicepoints/book/hotel/58345'), [
+  // Choice points: Hotel Napoleon doesn't take them; the booking page's hotel comes first
+  assert.deepEqual(preferredPageHotels(doc, dir, 'https://preferredhotels.com/choicepoints/book/hotel/58345', takesChoicePoints), [
     { code: 'PARHD' },
     { code: 'PARXX', name: 'Cash Only Paris' },
   ])
-  assert.deepEqual(preferredChoicePageHotels(doc, dir, 'https://preferredhotels.com/choicepoints/search').map(h => h.code), ['PARXX'])
-  assert.deepEqual(preferredHotelsProgram.matches, ['preferredhotels.com'])
+  // I Prefer points: Cash Only Paris isn't bookable with them; a hotel page is matched by its path
+  assert.deepEqual(preferredPageHotels(doc, dir, 'https://preferredhotels.com/hotels/france/lhotel-du-collectionneur-paris/', bookableWithPoints), [
+    { code: 'PARHD' },
+    { code: 'PARNA', name: 'Hotel Napoleon' },
+  ])
+  assert.deepEqual(preferredPageHotels(doc, dir, 'https://preferredhotels.com/destination/311311/Paris', bookableWithPoints).map(h => h.code), ['PARNA'])
 })

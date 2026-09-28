@@ -10,8 +10,8 @@ import { sleep } from '../common/search.js'
 //                                        Choice points value) is ~300 KB.
 //                                        Fetched once and kept for names, text search and the hotels around
 //                                        a city (the site's own place search is Google Maps in the page)
-// The directory, text search and calendar cache are shared with the Choice program's Preferred Hotels
-// search mode (preferred-choice.js).
+// The directory, text search and calendar cache are shared with the Choice-points search (preferred-choice.js),
+// and this program is also a search mode on preferredhotels.com (preferred.js).
 // Hotel pages (/hotels/<country>/<slug>) and search result cards don't carry the code in a URL or
 // attribute: a hotel page's server-rendered data names it, and cards are matched to it by name.
 
@@ -102,7 +102,7 @@ const wordMatch = (text, q) => ` ${norm(text)}`.includes(` ${q}`)
 const place = h => [h.city, h.state, h.country].filter(Boolean).join(', ')
 
 // I Prefer points; the Choice mode passes its own test
-const bookableWithPoints = h => h.points
+export const bookableWithPoints = h => h.points
 
 // Text search over the directory's bookable hotels: cities, then states / countries, then hotels
 // (by name or code)

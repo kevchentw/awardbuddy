@@ -4849,7 +4849,9 @@
       saved = localStorage.getItem(modeKey(program2));
     } catch {
     }
-    return program2.modes.some((m3) => m3.code === saved) ? saved : program2.modes[0].code;
+    const valid = (code) => program2.modes.some((m3) => m3.code === code);
+    const page = program2.pageMode?.();
+    return valid(page) ? page : valid(saved) ? saved : program2.modes[0].code;
   }
   function HotelSearch({ program: program2, session }) {
     if (!program2.modes) return /* @__PURE__ */ u3(HotelSearchForm, { program: program2, session });
@@ -9067,15 +9069,6 @@
     }
     return results.sort((a3, b2) => a3.date.localeCompare(b2.date));
   }
-  function preferredChoiceSynxisFromUrl(url) {
-    return new URL(url).pathname.match(/^\/choicepoints\/book\/hotel\/(\d+)\/?$/)?.[1] ?? null;
-  }
-  function preferredChoicePageHotels(doc, directory3, url) {
-    const bookable = (directory3 ?? []).filter(takesChoicePoints);
-    const synxisId = preferredChoiceSynxisFromUrl(url);
-    const current = synxisId ? bookable.find((h3) => h3.synxisId === synxisId)?.code : null;
-    return ipreferPageHotels(doc, bookable, current);
-  }
   var preferredChoiceProgram = {
     id: "choice-preferred",
     kind: "hotel",
@@ -9097,12 +9090,6 @@
       const [data, dir] = await Promise.all([ptgCalendar(preferredChoiceCalendarUrl(params.hotel)), ipreferDirectory()]);
       return data === "SESSION_EXPIRED" ? data : preferredChoiceParseCalendar(data, params, dir.find((h3) => h3.code === params.hotel));
     }
-  };
-  var preferredHotelsProgram = {
-    ...preferredChoiceProgram,
-    color: "#1B2A3A",
-    matches: ["preferredhotels.com"],
-    pageHotels: async () => preferredChoicePageHotels(document, await ipreferDirectory(), location.href)
   };
 
   // src/programs/choice.js
@@ -9268,6 +9255,39 @@
         tipLink: { url: PARTNER_PAGE_URL, text: "Partner page \u2197" }
       }
     ]
+  };
+
+  // src/programs/preferred.js
+  function preferredSynxisFromUrl(url) {
+    return new URL(url).pathname.match(/^\/choicepoints\/book\/hotel\/(\d+)\/?$/)?.[1] ?? null;
+  }
+  function preferredPageHotels(doc, directory3, url, bookableIf) {
+    const bookable = (directory3 ?? []).filter(bookableIf);
+    const path = new URL(url).pathname.replace(/\/$/, "");
+    const synxisId = preferredSynxisFromUrl(url);
+    const current = bookable.find((h3) => synxisId ? h3.synxisId === synxisId : h3.path === path)?.code;
+    return ipreferPageHotels(doc, bookable, current);
+  }
+  var pageHotelsFor = (bookableIf) => async () => preferredPageHotels(document, await ipreferDirectory(), location.href, bookableIf);
+  var ipreferMode = { ...ipreferProgram, currentHotel: void 0, pageHotels: pageHotelsFor(bookableWithPoints) };
+  var choiceMode = { ...preferredChoiceProgram, pageHotels: pageHotelsFor(takesChoicePoints) };
+  var preferredHotelsProgram = {
+    ...ipreferMode,
+    id: "preferred",
+    name: "Preferred Hotels",
+    matches: ["preferredhotels.com"],
+    modes: [
+      { code: "iprefer", name: "I Prefer points", program: ipreferMode },
+      {
+        code: "choice",
+        name: "Choice Privileges points",
+        program: choiceMode,
+        tip: "Booking needs your Choice Privileges login: enter the portal from Start booking on the partner page, then the Book links open the hotel here (pick the dates there).",
+        tipLink: { url: PARTNER_PAGE_URL, text: "Partner page \u2197" }
+      }
+    ],
+    // The Choice points portal lives under /choicepoints
+    pageMode: () => location.pathname.startsWith("/choicepoints") ? "choice" : null
   };
 
   // src/entrypoint.js

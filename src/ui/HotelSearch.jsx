@@ -15,6 +15,7 @@ import { HotelPicker } from './HotelPicker.jsx'
 //   plus the hotel-finding functions listed in HotelPicker.jsx
 // It can also offer search modes, picked from a dropdown: modes: [{ code, name, program, tip?, tipLink? }],
 // each mode being a hotel program of its own (hotels, saved search and names kept apart by its id)
+//   pageMode()         mode the page the user is on calls for, if any (else the last one used)
 
 function monthISO(offset) {
   const d = new Date()
@@ -44,7 +45,9 @@ const modeKey = program => `award-buddy:${program.id}:mode`
 function initialMode(program) {
   let saved
   try { saved = localStorage.getItem(modeKey(program)) } catch {}
-  return program.modes.some(m => m.code === saved) ? saved : program.modes[0].code
+  const valid = code => program.modes.some(m => m.code === code)
+  const page = program.pageMode?.()
+  return valid(page) ? page : valid(saved) ? saved : program.modes[0].code
 }
 
 export function HotelSearch({ program, session }) {

@@ -1,4 +1,4 @@
-import { PTG_API, CODE_RE, ipreferDirectory, ipreferSuggest, ipreferHotelsAt, ipreferPageHotels, ptgCalendar } from './iprefer.js'
+import { PTG_API, CODE_RE, ipreferDirectory, ipreferSuggest, ipreferHotelsAt, ptgCalendar } from './iprefer.js'
 
 // Preferred Hotels & Resorts booked with Choice Privileges points – a search mode of the Choice program
 // (choicehotels.com/ascend/preferred-hotels-partner). Searching needs no login; it uses the same
@@ -10,8 +10,7 @@ import { PTG_API, CODE_RE, ipreferDirectory, ipreferSuggest, ipreferHotelsAt, ip
 // Booking happens on preferredhotels.com/choicepoints, which needs a Choice Privileges session handed over
 // from choicehotels.com ("Start booking" on the partner page); without one it shows a login wall. Its
 // booking page doesn't take dates from the URL.
-// The panel also runs on that portal (preferredhotels.com), where it can pick from the search result cards
-// (the same markup as iprefer.com's) and the hotel being booked (/choicepoints/book/hotel/<synxisId>).
+// It's also a search mode on preferredhotels.com (preferred.js).
 
 export const PARTNER_PAGE_URL = 'https://www.choicehotels.com/ascend/preferred-hotels-partner'
 
@@ -20,7 +19,7 @@ export const preferredChoiceCalendarUrl = hotel =>
 
 export const preferredChoiceBookUrl = synxisId => `https://preferredhotels.com/choicepoints/book/hotel/${synxisId}`
 
-const takesChoicePoints = h => h.choicePoints > 0
+export const takesChoicePoints = h => h.choicePoints > 0
 
 // One result per bookable night within the span, at the hotel's Choice points rate; the night's taxes and
 // fees (paid in cash) go in the room column. info: the hotel's directory entry; a hotel that doesn't take
@@ -40,19 +39,6 @@ export function preferredChoiceParseCalendar(data, { hotel, start, end }, info) 
     })
   }
   return results.sort((a, b) => a.date.localeCompare(b.date))
-}
-
-// SynXis id from a portal booking page URL: /choicepoints/book/hotel/26919
-export function preferredChoiceSynxisFromUrl(url) {
-  return new URL(url).pathname.match(/^\/choicepoints\/book\/hotel\/(\d+)\/?$/)?.[1] ?? null
-}
-
-// Search result cards, plus the hotel being booked, as codes (hotels that take Choice points only)
-export function preferredChoicePageHotels(doc, directory, url) {
-  const bookable = (directory ?? []).filter(takesChoicePoints)
-  const synxisId = preferredChoiceSynxisFromUrl(url)
-  const current = synxisId ? bookable.find(h => h.synxisId === synxisId)?.code : null
-  return ipreferPageHotels(doc, bookable, current)
 }
 
 export const preferredChoiceProgram = {
@@ -81,12 +67,4 @@ export const preferredChoiceProgram = {
     const [data, dir] = await Promise.all([ptgCalendar(preferredChoiceCalendarUrl(params.hotel)), ipreferDirectory()])
     return data === 'SESSION_EXPIRED' ? data : preferredChoiceParseCalendar(data, params, dir.find(h => h.code === params.hotel))
   },
-}
-
-// On the portal itself
-export const preferredHotelsProgram = {
-  ...preferredChoiceProgram,
-  color: '#1B2A3A',
-  matches: ['preferredhotels.com'],
-  pageHotels: async () => preferredChoicePageHotels(document, await ipreferDirectory(), location.href),
 }

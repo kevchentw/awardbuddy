@@ -15,7 +15,7 @@ import { hiltonProgram } from './programs/hilton.js'
 import { hyattProgram } from './programs/hyatt.js'
 import { choiceProgram } from './programs/choice.js'
 import { ipreferProgram } from './programs/iprefer.js'
-import { preferredHotelsProgram } from './programs/preferred-choice.js'
+import { preferredHotelsProgram } from './programs/preferred.js'
 
 // Dispatch: pick the right program (airline or hotel) for this hostname and mount the panel (session wiring lives in the UI)
 
