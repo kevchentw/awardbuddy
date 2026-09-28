@@ -4786,11 +4786,12 @@
     d3.setMonth(d3.getMonth() + offset);
     return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
   }
-  var storeKey = (program2) => `award-buddy:${program2.id}`;
-  function initialForm(program2) {
+  var storeKey = (id) => `award-buddy:${id}`;
+  function initialForm(program2, storeId, carried) {
+    if (carried) return carried;
     let saved = {};
     try {
-      saved = JSON.parse(localStorage.getItem(storeKey(program2))) || {};
+      saved = JSON.parse(localStorage.getItem(storeKey(storeId))) || {};
     } catch {
     }
     const current = program2.currentHotel?.();
@@ -4802,9 +4803,9 @@
       toMonth: monthISO(2)
     };
   }
-  function initialNames(program2) {
+  function initialNames(storeId) {
     try {
-      const n2 = JSON.parse(localStorage.getItem(storeKey(program2)))?.names;
+      const n2 = JSON.parse(localStorage.getItem(storeKey(storeId)))?.names;
       return n2 && typeof n2 === "object" ? n2 : {};
     } catch {
       return {};
@@ -4827,6 +4828,7 @@
   }
   function HotelSearchModes({ program: program2, session }) {
     const [mode, setMode] = d2(() => initialMode(program2));
+    const query = A2(null);
     h2(() => {
       try {
         localStorage.setItem(modeKey(program2), mode);
@@ -4847,18 +4849,31 @@
           /* @__PURE__ */ u3("a", { href: active.tipLink.url, target: "_blank", style: { color: "var(--ab-color)" }, children: active.tipLink.text })
         ] })
       ] }),
-      /* @__PURE__ */ u3(HotelSearchForm, { program: active.program, session }, active.code)
+      /* @__PURE__ */ u3(
+        HotelSearchForm,
+        {
+          program: active.program,
+          session,
+          storeId: program2.id,
+          carried: query.current,
+          onFormChange: (f4) => {
+            query.current = f4;
+          }
+        },
+        active.code
+      )
     ] });
   }
-  function HotelSearchForm({ program: program2, session }) {
-    const [form, setForm] = d2(() => initialForm(program2));
+  function HotelSearchForm({ program: program2, session, storeId = program2.id, carried, onFormChange }) {
+    const [form, setForm] = d2(() => initialForm(program2, storeId, carried));
     const set = (patch) => setForm((f4) => ({ ...f4, ...patch }));
-    const [names, setNames] = d2(() => initialNames(program2));
+    const [names, setNames] = d2(() => initialNames(storeId));
     h2(() => {
       try {
-        localStorage.setItem(storeKey(program2), JSON.stringify({ hotels: form.hotels, names }));
+        localStorage.setItem(storeKey(storeId), JSON.stringify({ hotels: form.hotels, names }));
       } catch {
       }
+      onFormChange?.(form);
     }, [form, names]);
     h2(() => {
       if (!program2.hotelName) return;
@@ -4869,6 +4884,10 @@
     }, [form.hotels]);
     const run = useSearchRun(form);
     const { ctl, setStatus, setProgress } = run;
+    h2(() => () => {
+      ctl.stop = true;
+      ctl.rerun = false;
+    }, []);
     const [results, setResults] = d2([]);
     const [shown, setShown] = d2(null);
     const [date, setDate] = d2(null);
