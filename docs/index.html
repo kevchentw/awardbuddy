@@ -11,6 +11,16 @@
 <meta property="og:description" content="Search award flights and hotel reward nights across many dates at once, right on the airline and hotel sites.">
 <meta property="og:image" content="icon-128.png">
 <script>if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) document.documentElement.classList.add('js')</script>
+<script>
+  // Page language: ?lang= in the URL, then the viewer's last choice, then the browser language
+  window.AB_LANG = (() => {
+    const q = new URLSearchParams(location.search).get('lang')
+    if (q) return /^zh/i.test(q) ? 'zh' : 'en'
+    try { const saved = localStorage.getItem('ab-lang'); if (saved === 'zh' || saved === 'en') return saved } catch {}
+    return /^zh/i.test(navigator.language || '') ? 'zh' : 'en'
+  })()
+  if (AB_LANG === 'zh') document.documentElement.lang = 'zh-Hant-TW'
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -84,7 +94,7 @@
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 16px/1.6 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font: 16px/1.6 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
@@ -123,6 +133,18 @@
   nav.links a.pill:hover { color: var(--accent-ink); opacity: .88; }
   :root nav.links a.pill { color: var(--bg); }
   @media (max-width: 640px) { nav.links a.opt { display: none; } nav.links { gap: 14px; } }
+  .lang-btn {
+    font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--muted); background: transparent;
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; transition: color .15s, border-color .15s;
+  }
+  .lang-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* Traditional Chinese: CJK glyphs are full width, so loosen headings and widen measures */
+  :lang(zh) .hero h1 { max-width: 12em; letter-spacing: 0; line-height: 1.15; }
+  :lang(zh) section h2, :lang(zh) .final-card h2 { letter-spacing: 0; line-height: 1.25; }
+  :lang(zh) .hero p.lede, :lang(zh) section p.sub { max-width: 36em; }
+  :lang(zh) .final-card h2 { max-width: 14em; }
+  @media (max-width: 640px) { :lang(zh) .programs td.cal::before { content: "月曆模式 "; } }
 
   /* Hero */
   .hero-bg { position: relative; isolation: isolate; }
@@ -580,11 +602,12 @@
   <div class="wrap">
     <a class="brand" href="#top"><img src="icon-128.png" alt="">Award Buddy</a>
     <nav class="links">
-      <a class="opt" href="#why">Features</a>
-      <a class="opt" href="#programs">Programs</a>
-      <a class="opt" href="#changelog">Changelog</a>
+      <a class="opt" href="#why" data-i18n="nav.features">Features</a>
+      <a class="opt" href="#programs" data-i18n="nav.programs">Programs</a>
+      <a class="opt" href="#changelog" data-i18n="nav.changelog">Changelog</a>
       <a href="https://github.com/kevchentw/awardbuddy">GitHub</a>
-      <a class="pill" href="#install">Install</a>
+      <button class="lang-btn" id="lang-btn" type="button" lang="zh-Hant-TW" aria-label="切換為繁體中文">中文</button>
+      <a class="pill" href="#install" data-i18n="nav.install">Install</a>
     </nav>
   </div>
 </header>
@@ -592,25 +615,25 @@
 <main id="top">
   <div class="hero-bg">
     <div class="wrap hero">
-      <a class="badge" href="#changelog"><b>New</b> I Prefer hotel search in <span id="cur-ver">v1.6.0</span> <span class="arrow">→</span></a>
-      <h1>Search award space across <span class="grad">every date at once.</span></h1>
-      <p class="lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
+      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> I Prefer hotel search in <span id="cur-ver">v1.6.0</span> <span class="arrow">→</span></a>
+      <h1 data-i18n="hero.h1">Search award space across <span class="grad">every date at once.</span></h1>
+      <p class="lede" data-i18n="hero.lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
       <div class="cta">
         <a class="btn primary" href="#install">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
-          Install Award Buddy
+          <span data-i18n="hero.install">Install Award Buddy</span>
         </a>
-        <a class="btn" href="#programs">See supported programs</a>
+        <a class="btn" href="#programs" data-i18n="hero.see">See supported programs</a>
       </div>
-      <div class="meta"><span>Free and open source (MIT)</span><span>No account, no server</span><span>Chrome, Edge, or any browser with Tampermonkey</span></div>
+      <div class="meta"><span data-i18n="meta.free">Free and open source (MIT)</span><span data-i18n="meta.noacct">No account, no server</span><span data-i18n="meta.browsers">Chrome, Edge, or any browser with Tampermonkey</span></div>
 
       <div class="demo-frame">
-      <div class="demo-pick" role="group" aria-label="Show the demo on">
-        <span class="demo-pick-label">Try it on</span>
+      <div class="demo-pick" role="group" aria-label="Show the demo on" data-i18n-aria="demo.pickaria">
+        <span class="demo-pick-label" data-i18n="demo.pick">Try it on</span>
         <div class="demo-pick-list" id="demo-pick"></div>
       </div>
       <div class="demo-glow">
-      <div class="demo-scale" id="demo-scale" role="img" aria-label="Animated example: on an airline or hotel award search page, the Award Buddy button in the bottom-right corner opens a panel that searches several routes over two months and lists the award seats it finds.">
+      <div class="demo-scale" id="demo-scale" role="img" data-i18n-aria="demo.aria" aria-label="Animated example: on an airline or hotel award search page, the Award Buddy button in the bottom-right corner opens a panel that searches several routes over two months and lists the award seats it finds.">
         <div class="stage" id="stage" aria-hidden="true">
           <div class="chrome"><i></i><i></i><i></i><div class="url" id="d-url"></div></div>
           <div class="site">
@@ -663,16 +686,16 @@
     </div>
 
     <div class="marquee-wrap reveal">
-      <p>Works on 16 airline and hotel programs</p>
+      <p data-i18n="mq">Works on 16 airline and hotel programs</p>
       <div class="marquee"><div class="marquee-track" id="marquee"></div></div>
     </div>
 
     <div class="wrap">
       <div class="stats reveal">
-        <div class="stat"><strong class="grad">10</strong><span>airline programs</span></div>
-        <div class="stat"><strong class="grad">6</strong><span>hotel programs</span></div>
-        <div class="stat"><strong class="grad">0</strong><span>servers or accounts</span></div>
-        <div class="stat"><strong class="grad">100%</strong><span>free and open source</span></div>
+        <div class="stat"><strong class="grad">10</strong><span data-i18n="st.air">airline programs</span></div>
+        <div class="stat"><strong class="grad">6</strong><span data-i18n="st.hotel">hotel programs</span></div>
+        <div class="stat"><strong class="grad">0</strong><span data-i18n="st.srv">servers or accounts</span></div>
+        <div class="stat"><strong class="grad">100%</strong><span data-i18n="st.free">free and open source</span></div>
       </div>
     </div>
   </div>
@@ -680,49 +703,49 @@
   <section id="why">
     <div class="wrap">
       <div class="head-c reveal">
-        <span class="kicker grad">Features</span>
-        <h2>What makes it different</h2>
-        <p class="sub">Award search sites mostly let you check one route on one day. Award Buddy checks all your dates and routes in one go, on the airline's or hotel's own site.</p>
+        <span class="kicker grad" data-i18n="f.kicker">Features</span>
+        <h2 data-i18n="f.h2">What makes it different</h2>
+        <p class="sub" data-i18n="f.sub">Award search sites mostly let you check one route on one day. Award Buddy checks all your dates and routes in one go, on the airline's or hotel's own site.</p>
       </div>
       <div class="bento">
         <div class="card wide reveal">
           <div>
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></div>
-            <h3>Many dates, one table</h3>
-            <p>Every origin × destination × date runs through the site's own search. Sort by date, duration or miles, and filter by cabin, stops or day of the week.</p>
+            <h3 data-i18n="f.1h">Many dates, one table</h3>
+            <p data-i18n="f.1p">Every origin × destination × date runs through the site's own search. Sort by date, duration or miles, and filter by cabin, stops or day of the week.</p>
           </div>
           <div class="viz" aria-hidden="true">
-            <div class="viz-math"><span>3 routes</span><em>×</em><span>61 days</span><em>=</em><strong>183 searches</strong></div>
+            <div class="viz-math"><span data-i18n="v.routes">3 routes</span><em>×</em><span data-i18n="v.days">61 days</span><em>=</em><strong data-i18n="v.searches">183 searches</strong></div>
             <div class="viz-rows">
-              <div><span>2026-11-03</span><small>TPE → SFO · direct</small><b>75k</b></div>
-              <div><span>2026-11-09</span><small>TPE → LAX · direct</small><b>75k</b></div>
-              <div><span>2026-11-14</span><small>TPE → SEA · 1 stop</small><b>82k</b></div>
+              <div><span>2026-11-03</span><small data-i18n="v.r1">TPE → SFO · direct</small><b>75k</b></div>
+              <div><span>2026-11-09</span><small data-i18n="v.r2">TPE → LAX · direct</small><b>75k</b></div>
+              <div><span>2026-11-14</span><small data-i18n="v.r3">TPE → SEA · 1 stop</small><b>82k</b></div>
             </div>
           </div>
         </div>
         <div class="card reveal">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
-          <h3>Live data from the source</h3>
-          <p>Results come straight from the program's site, so you see what you could book right now. Nothing comes from a cached third-party database.</p>
+          <h3 data-i18n="f.2h">Live data from the source</h3>
+          <p data-i18n="f.2p">Results come straight from the program's site, so you see what you could book right now. Nothing comes from a cached third-party database.</p>
         </div>
         <div class="card reveal">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></div>
-          <h3>No server, no account</h3>
-          <p>It runs in your browser with your own session on the airline's or hotel's page. Nothing is sent anywhere else, and it doesn't collect any data.</p>
+          <h3 data-i18n="f.3h">No server, no account</h3>
+          <p data-i18n="f.3p">It runs in your browser with your own session on the airline's or hotel's page. Nothing is sent anywhere else, and it doesn't collect any data.</p>
         </div>
         <div class="card wide reveal">
           <div>
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
-            <h3>Calendar views</h3>
-            <p>Calendar mode shows the lowest price per day for whole months. Hotel searches show points per night for each hotel, one color per hotel.</p>
+            <h3 data-i18n="f.4h">Calendar views</h3>
+            <p data-i18n="f.4p">Calendar mode shows the lowest price per day for whole months. Hotel searches show points per night for each hotel, one color per hotel.</p>
           </div>
           <div class="viz" aria-hidden="true"><div class="viz-cal" id="viz-cal"></div></div>
         </div>
         <div class="card wide full reveal">
           <div>
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
-            <h3>Flights and hotels</h3>
-            <p>10 airline programs and 6 hotel programs, including partner awards, stopovers and Choice points at Preferred Hotels.</p>
+            <h3 data-i18n="f.5h">Flights and hotels</h3>
+            <p data-i18n="f.5p">10 airline programs and 6 hotel programs, including partner awards, stopovers and Choice points at Preferred Hotels.</p>
           </div>
           <div class="logo-cloud" id="logo-cloud" aria-hidden="true"></div>
         </div>
@@ -732,45 +755,45 @@
   <section id="install" class="alt">
     <div class="wrap">
       <div class="head-c reveal">
-        <span class="kicker grad">Get started</span>
-        <h2>Install in under a minute</h2>
-        <p class="sub">Install it as a userscript today. It updates itself automatically. A Chrome / Edge extension is coming soon.</p>
+        <span class="kicker grad" data-i18n="i.kicker">Get started</span>
+        <h2 data-i18n="i.h2">Install in under a minute</h2>
+        <p class="sub" data-i18n="i.sub">Install it as a userscript today. It updates itself automatically. A Chrome / Edge extension is coming soon.</p>
       </div>
       <div class="install-grid">
         <div class="card feature reveal">
-          <h3>Userscript <span class="rec">Recommended</span></h3>
+          <h3 data-i18n="i.us">Userscript <span class="rec">Recommended</span></h3>
           <ol class="steps">
-            <li>Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> or <a href="https://violentmonkey.github.io/">Violentmonkey</a>.</li>
-            <li>Open <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a> and click <strong>Install</strong>.</li>
+            <li data-i18n="i.s1">Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> or <a href="https://violentmonkey.github.io/">Violentmonkey</a>.</li>
+            <li data-i18n="i.s2">Open <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a> and click <strong>Install</strong>.</li>
           </ol>
-          <p class="note">Updates arrive on their own through Tampermonkey.</p>
+          <p class="note" data-i18n="i.upd">Updates arrive on their own through Tampermonkey.</p>
           <p style="margin:20px 0 0"><a class="btn primary" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
-            Install userscript</a></p>
+            <span data-i18n="i.btn">Install userscript</span></a></p>
         </div>
         <div class="card soon-box reveal">
-          <h3>Chrome / Edge extension <span class="soon">Coming soon</span></h3>
-          <p class="note" style="margin-top:0">A one-click install from the Chrome Web Store and Edge Add-ons is on the way. The link will be posted here.</p>
-          <div class="browsers" aria-hidden="true"><span>Chrome Web Store</span><span>Edge Add-ons</span></div>
-          <p class="note">Until then, the userscript works in Chrome and Edge with Tampermonkey.</p>
+          <h3 data-i18n="i.ext">Chrome / Edge extension <span class="soon">Coming soon</span></h3>
+          <p class="note" style="margin-top:0" data-i18n="i.extp">A one-click install from the Chrome Web Store and Edge Add-ons is on the way. The link will be posted here.</p>
+          <div class="browsers" aria-hidden="true"><span data-i18n="i.cws">Chrome Web Store</span><span data-i18n="i.edge">Edge Add-ons</span></div>
+          <p class="note" data-i18n="i.until">Until then, the userscript works in Chrome and Edge with Tampermonkey.</p>
         </div>
       </div>
 
       <div class="how">
         <div class="card reveal">
           <div class="num">01</div>
-          <h3>Open a supported site</h3>
-          <p>Pick one from the <a href="#programs">list below</a>. A button appears in the corner of the page: ✈ on airline sites, 🏨 on hotel sites.</p>
+          <h3 data-i18n="h1.h">Open a supported site</h3>
+          <p data-i18n="h1.p">Pick one from the <a href="#programs">list below</a>. A button appears in the corner of the page: ✈ on airline sites, 🏨 on hotel sites.</p>
         </div>
         <div class="card reveal">
           <div class="num">02</div>
-          <h3>Open the panel</h3>
-          <p>Click the button. If it asks for a session, log in or follow its <strong>Get session</strong> link.</p>
+          <h3 data-i18n="h2.h">Open the panel</h3>
+          <p data-i18n="h2.p">Click the button. If it asks for a session, log in or follow its <strong>Get session</strong> link.</p>
         </div>
         <div class="card reveal">
           <div class="num">03</div>
-          <h3>Search everything</h3>
-          <p>Enter your routes or hotels and dates, then click <strong>Search</strong>. Results appear as each request finishes.</p>
+          <h3 data-i18n="h3.h">Search everything</h3>
+          <p data-i18n="h3.p">Enter your routes or hotels and dates, then click <strong>Search</strong>. Results appear as each request finishes.</p>
         </div>
       </div>
     </div>
@@ -779,71 +802,71 @@
   <section id="programs">
     <div class="wrap">
       <div class="reveal">
-      <span class="kicker grad">Programs</span>
-      <h2>Supported programs</h2>
-      <p class="sub">Click <strong>Start search</strong> to open the page where the panel works. Some programs need you to log in or run one search first. The <strong>Before you search</strong> column says which.</p>
+      <span class="kicker grad" data-i18n="p.kicker">Programs</span>
+      <h2 data-i18n="p.h2">Supported programs</h2>
+      <p class="sub" data-i18n="p.sub">Click <strong>Start search</strong> to open the page where the panel works. Some programs need you to log in or run one search first. The <strong>Before you search</strong> column says which.</p>
       </div>
 
       <div class="tabs-row">
         <div class="tabs" role="tablist">
-          <button role="tab" aria-selected="true" aria-controls="tab-air" id="btn-air">✈ Airlines (10)</button>
-          <button role="tab" aria-selected="false" aria-controls="tab-hotel" id="btn-hotel">🏨 Hotels (6)</button>
+          <button role="tab" aria-selected="true" aria-controls="tab-air" id="btn-air" data-i18n="p.tabair">✈ Airlines (10)</button>
+          <button role="tab" aria-selected="false" aria-controls="tab-hotel" id="btn-hotel" data-i18n="p.tabhotel">🏨 Hotels (6)</button>
         </div>
-        <div class="legend" aria-label="Session legend">
-          <span><span class="need need-none">No login</span>works right away</span>
-          <span><span class="need need-page">Open page</span>no login, start on a page</span>
-          <span><span class="need need-login">Log in</span>member login first</span>
+        <div class="legend" aria-label="Session legend" data-i18n-aria="lg.aria">
+          <span data-i18n="lg.none"><span class="need need-none">No login</span>works right away</span>
+          <span data-i18n="lg.page"><span class="need need-page">Open page</span>no login, start on a page</span>
+          <span data-i18n="lg.login"><span class="need need-login">Log in</span>member login first</span>
         </div>
       </div>
 
       <div id="tab-air" role="tabpanel" aria-labelledby="btn-air">
         <table class="programs">
-          <thead><tr><th>Program</th><th class="cal">Calendar</th><th>Before you search</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="th.prog">Program</th><th class="cal" data-i18n="th.cal">Calendar</th><th data-i18n="th.before">Before you search</th><th></th></tr></thead>
           <tbody>
-            <tr><td class="name"><img class="plogo" src="logos/as.png" alt=""><strong>Alaska Airlines</strong><small>Atmos Rewards · alaskaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.alaskaair.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/aa.png" alt=""><strong>American Airlines</strong><small>AAdvantage · aa.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page">Run one search</span><span class="hint">Run an award search on the page, then Get session</span></td><td class="go"><a href="https://www.aa.com/">Start search →</a></td></tr>
-            <tr><td class="name"><i class="plogo" style="background:#d2001f">AC</i><strong>Air Canada</strong><small>Aeroplan · aircanada.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page">Open search page</span></td><td class="go"><a href="https://www.aircanada.com/aeroplan/redeem/availability/outbound">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/nh.png" alt=""><strong>ANA</strong><small>ANA Mileage Club · ana.co.jp</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login">Log in</span><span class="hint">Then open the award booking page</span></td><td class="go"><a href="https://aswbe-i.ana.co.jp/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml?aswcid=1">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/cx.png" alt=""><strong>Cathay Pacific</strong><small>Asia Miles · cathaypacific.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page">Open booking page</span></td><td class="go"><a href="https://www.cathaypacific.com/cx/en_HK/book-a-trip/redeem-flights/redeem-flight-awards.html">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/br.png" alt=""><strong>EVA Air</strong><small>Infinity MileageLands · evaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login">Log in</span><span class="hint">Then run one search by hand</span></td><td class="go"><a href="https://booking.evaair.com/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability/login.aspx?lang=en-us">Start search →</a></td></tr>
-            <tr><td class="name"><i class="plogo" style="background:#002157">AF</i><strong>Flying Blue</strong><small>Air France / KLM · airfrance.us, klm.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page">Open search page</span></td><td class="go"><a href="https://wwws.airfrance.us/search/flights/0">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/jl.png" alt=""><strong>Japan Airlines</strong><small>JAL Mileage Bank · jal.co.jp</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span><small>JAL flights</small></td><td class="sess"><span class="need need-login">Log in</span></td><td class="go"><a href="https://www.jal.co.jp/jp/en/jmb/award-inter/booking/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/av.png" alt=""><strong>LifeMiles</strong><small>Avianca · lifemiles.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login">Log in</span></td><td class="go"><a href="https://www.lifemiles.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/jx.png" alt=""><strong>Starlux Airlines</strong><small>COSMILE · starlux-airlines.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login">Log in</span></td><td class="go"><a href="https://www.starlux-airlines.com/en-US/redeem-award-ticket/index">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/as.png" alt=""><strong data-i18n="n.AS">Alaska Airlines</strong><small>Atmos Rewards · alaskaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.alaskaair.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/aa.png" alt=""><strong data-i18n="n.AA">American Airlines</strong><small>AAdvantage · aa.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page" data-i18n="p.runone">Run one search</span><span class="hint" data-i18n="h.aa">Run an award search on the page, then Get session</span></td><td class="go"><a href="https://www.aa.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><i class="plogo" style="background:#d2001f">AC</i><strong data-i18n="n.AC">Air Canada</strong><small>Aeroplan · aircanada.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page" data-i18n="p.opensearch">Open search page</span></td><td class="go"><a href="https://www.aircanada.com/aeroplan/redeem/availability/outbound" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/nh.png" alt=""><strong data-i18n="n.NH">ANA</strong><small>ANA Mileage Club · ana.co.jp</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span><span class="hint" data-i18n="h.nh">Then open the award booking page</span></td><td class="go"><a href="https://aswbe-i.ana.co.jp/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml?aswcid=1" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/cx.png" alt=""><strong data-i18n="n.CX">Cathay Pacific</strong><small>Asia Miles · cathaypacific.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page" data-i18n="p.openbooking">Open booking page</span></td><td class="go"><a href="https://www.cathaypacific.com/cx/en_HK/book-a-trip/redeem-flights/redeem-flight-awards.html" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/br.png" alt=""><strong data-i18n="n.BR">EVA Air</strong><small>Infinity MileageLands · evaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span><span class="hint" data-i18n="h.br">Then run one search by hand</span></td><td class="go"><a href="https://booking.evaair.com/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability/login.aspx?lang=en-us" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><i class="plogo" style="background:#002157">AF</i><strong>Flying Blue</strong><small>Air France / KLM · airfrance.us, klm.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page" data-i18n="p.opensearch">Open search page</span></td><td class="go"><a href="https://wwws.airfrance.us/search/flights/0" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/jl.png" alt=""><strong data-i18n="n.JL">Japan Airlines</strong><small>JAL Mileage Bank · jal.co.jp</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span><small data-i18n="p.jalonly">JAL flights</small></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span></td><td class="go"><a href="https://www.jal.co.jp/jp/en/jmb/award-inter/booking/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/av.png" alt=""><strong>LifeMiles</strong><small>Avianca · lifemiles.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span></td><td class="go"><a href="https://www.lifemiles.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/jx.png" alt=""><strong data-i18n="n.JX">Starlux Airlines</strong><small>COSMILE · starlux-airlines.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span></td><td class="go"><a href="https://www.starlux-airlines.com/en-US/redeem-award-ticket/index" data-i18n="p.go">Start search →</a></td></tr>
           </tbody>
         </table>
       </div>
 
       <div id="tab-hotel" role="tabpanel" aria-labelledby="btn-hotel" hidden>
         <table class="programs">
-          <thead><tr><th>Program</th><th>Before you search</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="th.prog">Program</th><th data-i18n="th.before">Before you search</th><th></th></tr></thead>
           <tbody>
-            <tr><td class="name"><img class="plogo" src="logos/ihg.png" alt=""><strong>IHG One Rewards</strong><small>ihg.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.ihg.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/marriott.png" alt=""><strong>Marriott Bonvoy</strong><small>marriott.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.marriott.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/hilton.png" alt=""><strong>Hilton Honors</strong><small>hilton.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.hilton.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/hyatt.png" alt=""><strong>World of Hyatt</strong><small>hyatt.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.hyatt.com/">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>Choice Privileges</strong><small>choicehotels.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://www.choicehotels.com/">Start search →</a></td></tr>
-            <tr class="has-sub"><td class="name"><img class="plogo" src="logos/iprefer.png" alt=""><strong>I Prefer</strong><small>Preferred Hotels &amp; Resorts · iprefer.com</small></td><td class="sess"><span class="need need-none">No login</span></td><td class="go"><a href="https://iprefer.com/">Start search →</a></td></tr>
-            <tr class="sub"><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>with Choice points</strong><small>preferredhotels.com/choicepoints</small></td><td class="sess"><span class="need need-none">No login</span><span class="hint">To book, <a href="https://www.choicehotels.com/ascend/preferred-hotels-partner">start from Choice</a> while logged in</span></td><td class="go"><a href="https://preferredhotels.com/choicepoints">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/ihg.png" alt=""><strong>IHG One Rewards</strong><small>ihg.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.ihg.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/marriott.png" alt=""><strong>Marriott Bonvoy</strong><small>marriott.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.marriott.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/hilton.png" alt=""><strong>Hilton Honors</strong><small>hilton.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.hilton.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/hyatt.png" alt=""><strong>World of Hyatt</strong><small>hyatt.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.hyatt.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>Choice Privileges</strong><small>choicehotels.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.choicehotels.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr class="has-sub"><td class="name"><img class="plogo" src="logos/iprefer.png" alt=""><strong>I Prefer</strong><small>Preferred Hotels &amp; Resorts · iprefer.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://iprefer.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr class="sub"><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong data-i18n="p.withchoice">with Choice points</strong><small>preferredhotels.com/choicepoints</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span><span class="hint" data-i18n="h.ipc">To book, <a href="https://www.choicehotels.com/ascend/preferred-hotels-partner">start from Choice</a> while logged in</span></td><td class="go"><a href="https://preferredhotels.com/choicepoints" data-i18n="p.go">Start search →</a></td></tr>
           </tbody>
         </table>
-        <p class="note">Hotel search covers standard reward nights paid in points. Add hotels by name, city or airport, pick them from the page you're on, or type a hotel code (for example IHG <code>TPEKM</code>, Hyatt <code>TYOPH</code>). More hotel chains are planned.</p>
+        <p class="note" data-i18n="p.hotelnote">Hotel search covers standard reward nights paid in points. Add hotels by name, city or airport, pick them from the page you're on, or type a hotel code (for example IHG <code>TPEKM</code>, Hyatt <code>TYOPH</code>). More hotel chains are planned.</p>
       </div>
 
-      <h3 class="section-h3 reveal">Extra search modes</h3>
-      <p class="section-sub reveal">Program-specific options that show up in the panel.</p>
+      <h3 class="section-h3 reveal" data-i18n="m.h">Extra search modes</h3>
+      <p class="section-sub reveal" data-i18n="m.sub">Program-specific options that show up in the panel.</p>
       <dl class="modes">
-        <div class="reveal"><dt><i class="plogo" style="background:#d2001f">AC</i><span class="prog">Air Canada</span>One-way with stopover</dt>
-        <dd>Enter stopover cities and stay lengths (for example <code>3-5, 7</code> days). Every city × stay length is searched for each route and date.</dd></div>
-        <div class="reveal"><dt><img class="plogo" src="logos/jl.png" alt=""><span class="prog">Japan Airlines</span>Partner awards</dt>
-        <dd>Search JMB partner space on oneworld and other partners.</dd>
-        <dd class="chips"><span>Alaska / Hawaiian</span><span>American</span><span>British Airways</span><span>Cathay Pacific</span><span>Qatar</span><span>Emirates</span><span>Finnair</span><span>Iberia</span><span>Qantas</span><span>Korean Air</span><span>+ more</span></dd></div>
-        <div class="reveal"><dt><img class="plogo" src="logos/av.png" alt=""><span class="prog">LifeMiles</span>Carrier filter</dt>
-        <dd>Search all of Star Alliance, use Smart Search, or pick one airline.</dd>
-        <dd class="chips"><span>Thai</span><span>Avianca + Gol</span><span>Aegean</span><span>ANA</span><span>Lufthansa</span><span>Singapore Airlines</span><span>United</span></dd></div>
-        <div class="reveal"><dt><img class="plogo" src="logos/iprefer.png" alt=""><span class="prog">I Prefer</span>I Prefer or Choice points</dt>
-        <dd>Search Preferred Hotels &amp; Resorts priced in I Prefer points, or the 300+ hotels bookable with Choice Privileges points.</dd>
-        <dd class="chips"><span>I Prefer points</span><span>Choice points</span></dd></div>
+        <div class="reveal"><dt><i class="plogo" style="background:#d2001f">AC</i><span class="prog" data-i18n="n.AC">Air Canada</span><span data-i18n="m.ac">One-way with stopover</span></dt>
+        <dd data-i18n="m.acd">Enter stopover cities and stay lengths (for example <code>3-5, 7</code> days). Every city × stay length is searched for each route and date.</dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/jl.png" alt=""><span class="prog" data-i18n="n.JL">Japan Airlines</span><span data-i18n="m.jl">Partner awards</span></dt>
+        <dd data-i18n="m.jld">Search JMB partner space on oneworld and other partners.</dd>
+        <dd class="chips" data-i18n="m.jlc"><span>Alaska / Hawaiian</span><span>American</span><span>British Airways</span><span>Cathay Pacific</span><span>Qatar</span><span>Emirates</span><span>Finnair</span><span>Iberia</span><span>Qantas</span><span>Korean Air</span><span>+ more</span></dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/av.png" alt=""><span class="prog">LifeMiles</span><span data-i18n="m.lm">Carrier filter</span></dt>
+        <dd data-i18n="m.lmd">Search all of Star Alliance, use Smart Search, or pick one airline.</dd>
+        <dd class="chips" data-i18n="m.lmc"><span>Thai</span><span>Avianca + Gol</span><span>Aegean</span><span>ANA</span><span>Lufthansa</span><span>Singapore Airlines</span><span>United</span></dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/iprefer.png" alt=""><span class="prog">I Prefer</span><span data-i18n="m.ip">I Prefer or Choice points</span></dt>
+        <dd data-i18n="m.ipd">Search Preferred Hotels &amp; Resorts priced in I Prefer points, or the 300+ hotels bookable with Choice Privileges points.</dd>
+        <dd class="chips" data-i18n="m.ipc"><span>I Prefer points</span><span>Choice points</span></dd></div>
       </dl>
     </div>
   </section>
@@ -851,16 +874,16 @@
   <section id="changelog" class="alt">
     <div class="wrap">
       <div class="reveal">
-        <span class="kicker grad">Changelog</span>
-        <h2>What's new</h2>
-        <p class="sub">Downloads for every version are on <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a>.</p>
+        <span class="kicker grad" data-i18n="c.kicker">Changelog</span>
+        <h2 data-i18n="c.h2">What's new</h2>
+        <p class="sub" data-i18n="c.sub">Downloads for every version are on <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a>.</p>
       </div>
       <ul class="log" id="log">
         <li class="reveal">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.6.0">1.6.0</a><small>Sep 27, 2026</small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.6.0">1.6.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
-            <h3>I Prefer hotel search <span class="latest">Latest</span></h3>
-            <ul>
+            <h3 data-i18n="c160h">I Prefer hotel search <span class="latest">Latest</span></h3>
+            <ul data-i18n="c160u">
               <li>New hotel program: I Prefer (Preferred Hotels &amp; Resorts) on iprefer.com and preferredhotels.com.</li>
               <li>Two search modes: I Prefer points, or Choice Privileges points at the 300+ hotels that take them. Choice's taxes and fees are shown in cash.</li>
               <li>Find hotels by name, code, city, state or country, or pick them from the page you're on.</li>
@@ -868,10 +891,10 @@
           </div>
         </li>
         <li class="reveal">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.1">1.5.1</a><small>Sep 27, 2026</small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.1">1.5.1</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
-            <h3>More reliable EVA Air search</h3>
-            <ul>
+            <h3 data-i18n="c151h">More reliable EVA Air search</h3>
+            <ul data-i18n="c151u">
               <li>Requests are spaced out and cached to avoid bot-check blocks. The panel now says when a session needs refreshing.</li>
               <li>Searching starts after you've run one search by hand in the tab.</li>
               <li>Works with EVA's new date header format.</li>
@@ -879,59 +902,59 @@
           </div>
         </li>
         <li class="reveal">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.0">1.5.0</a><small>Sep 27, 2026</small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.0">1.5.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
-            <h3>Choice Privileges hotel search</h3>
-            <ul>
+            <h3 data-i18n="c150h">Choice Privileges hotel search</h3>
+            <ul data-i18n="c150u">
               <li>Points per night by month, with rows that link to the hotel with the points rate picked.</li>
               <li>Find hotels by name, city or airport (nearest first), from the page, or by code.</li>
             </ul>
           </div>
         </li>
         <li class="more">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.4.0">1.4.0</a><small>Sep 27, 2026</small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.4.0">1.4.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
-            <h3>World of Hyatt hotel search</h3>
-            <ul>
+            <h3 data-i18n="c140h">World of Hyatt hotel search</h3>
+            <ul data-i18n="c140u">
               <li>Points for every room type with award space (Standard, Club Access, Standard and Premium Suite), with off-peak / peak level.</li>
               <li>A Room filter keeps one room type only.</li>
             </ul>
           </div>
         </li>
         <li class="more">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.3.0">1.3.0</a><small>Sep 27, 2026</small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.3.0">1.3.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
-            <h3>Hilton Honors hotel search</h3>
-            <ul>
+            <h3 data-i18n="c130h">Hilton Honors hotel search</h3>
+            <ul data-i18n="c130u">
               <li>Lowest points per night with rooms left, including Premium Room Rewards when they're the lowest.</li>
               <li>A Reward filter keeps Standard or Premium nights only.</li>
             </ul>
           </div>
         </li>
         <li class="more">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.2.0">1.2.0</a><small>Sep 27, 2026</small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.2.0">1.2.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
-            <h3>Marriott Bonvoy hotel search</h3>
-            <ul>
+            <h3 data-i18n="c120h">Marriott Bonvoy hotel search</h3>
+            <ul data-i18n="c120u">
               <li>Lowest points per night, with rows linking to the hotel's rate calendar.</li>
             </ul>
           </div>
         </li>
         <li class="more">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.1.0">1.1.0</a><small>Sep 27, 2026</small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.1.0">1.1.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
-            <h3>Hotel search, starting with IHG One Rewards</h3>
-            <ul>
+            <h3 data-i18n="c110h">Hotel search, starting with IHG One Rewards</h3>
+            <ul data-i18n="c110u">
               <li>New hotel panel: points per night over a range of months, on a calendar and in a sortable table.</li>
               <li>Hotel picker: search by name, city or airport, pick from the page, or type a hotel code.</li>
             </ul>
           </div>
         </li>
         <li class="more">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.0.0">1.0.0</a><small>Sep 26, 2026</small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.0.0">1.0.0</a><small><time datetime="2026-09-26">Sep 26, 2026</time></small></div>
           <div>
-            <h3>First release</h3>
-            <ul>
+            <h3 data-i18n="c100h">First release</h3>
+            <ul data-i18n="c100u">
               <li>Award flight search across many routes and dates on Alaska, American, Air Canada, ANA, Cathay Pacific, EVA Air, Flying Blue, Japan Airlines, LifeMiles and Starlux.</li>
               <li>Calendar mode, Air Canada stopovers, JAL partner awards and the LifeMiles carrier filter.</li>
               <li>Available as a userscript and a Chrome / Edge extension.</li>
@@ -946,11 +969,11 @@
   <section class="final">
     <div class="wrap">
       <div class="final-card reveal">
-        <h2>Stop checking one date at a time.</h2>
-        <p>Install Award Buddy, open your favorite program's site, and search two months of award space in a few minutes.</p>
+        <h2 data-i18n="fin.h">Stop checking one date at a time.</h2>
+        <p data-i18n="fin.p">Install Award Buddy, open your favorite program's site, and search two months of award space in a few minutes.</p>
         <div class="cta">
-          <a class="btn light" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js">Install userscript</a>
-          <a class="btn ghost" href="https://github.com/kevchentw/awardbuddy">Star on GitHub</a>
+          <a class="btn light" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js" data-i18n="i.btn">Install userscript</a>
+          <a class="btn ghost" href="https://github.com/kevchentw/awardbuddy" data-i18n="fin.star">Star on GitHub</a>
         </div>
       </div>
     </div>
@@ -960,12 +983,124 @@
 <footer>
   <div class="wrap">
     <span><a class="brand" href="#top"><img src="icon-128.png" alt="">Award Buddy</a></span>
-    <span><a href="https://github.com/kevchentw/awardbuddy/blob/main/LICENSE">MIT License</a> · Not affiliated with any airline, hotel or loyalty program.</span>
-    <span><a href="https://github.com/kevchentw/awardbuddy/issues">Report a problem</a> · <a href="https://github.com/kevchentw/awardbuddy">Source on GitHub</a></span>
+    <span><span data-i18n="ft.lic"><a href="https://github.com/kevchentw/awardbuddy/blob/main/LICENSE">MIT License</a> · Not affiliated with any airline, hotel or loyalty program.</span></span>
+    <span><a href="https://github.com/kevchentw/awardbuddy/issues" data-i18n="ft.issue">Report a problem</a> · <a href="https://github.com/kevchentw/awardbuddy" data-i18n="ft.src">Source on GitHub</a></span>
   </div>
 </footer>
 
 <script>
+  // Traditional Chinese (Taiwan) strings, keyed by data-i18n / data-i18n-aria. English stays in the markup.
+  // The demo stage (mock site and panel) stays in English, like the real sites and the Award Buddy panel.
+  const ZH = {
+    'nav.features': '功能', 'nav.programs': '支援計畫', 'nav.changelog': '更新紀錄', 'nav.install': '安裝',
+
+    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.6.0</span> 支援 I Prefer 點數房搜尋 <span class="arrow">→</span>',
+    'hero.h1': '哩程票、點數房<br><span class="grad">所有日期</span>一次查完',
+    'hero.lede': 'Award Buddy 會在航空公司和飯店官網上多加一個搜尋面板。選好航線或飯店、設定日期區間，它就會直接在官網上幫你把每種組合都查一遍，最後整理成一張可以排序的表格和月曆。',
+    'hero.install': '安裝 Award Buddy', 'hero.see': '看看支援哪些計畫',
+    'meta.free': '免費、開源（MIT）', 'meta.noacct': '不用註冊、不經過伺服器', 'meta.browsers': 'Chrome、Edge，或任何裝了 Tampermonkey 的瀏覽器',
+    'demo.pick': '選一個網站試試看', 'demo.pickaria': '選擇要示範的網站',
+    'demo.aria': '動畫示範：在航空公司或飯店的兌換搜尋頁面上，點右下角的 Award Buddy 按鈕打開面板，一次查兩個月內好幾條航線，並列出查到的哩程票空位。',
+    'mq': '支援 16 個航空公司和飯店計畫',
+    'st.air': '個航空哩程計畫', 'st.hotel': '個飯店點數計畫', 'st.srv': '台伺服器，也不用註冊', 'st.free': '免費開源',
+
+    'f.kicker': '功能', 'f.h2': '跟其他工具哪裡不一樣',
+    'f.sub': '官網的兌換搜尋通常一次只能查一條航線、一天。Award Buddy 直接在航空公司或飯店官網上，把你要的日期和航線一次查完。',
+    'f.1h': '一堆日期，一張表搞定',
+    'f.1p': '每個出發地 × 目的地 × 日期，都直接用官網自己的搜尋去查。結果可以依日期、飛行時間或哩程排序，也能用艙等、轉機次數或星期幾篩選。',
+    'v.routes': '3 條航線', 'v.days': '61 天', 'v.searches': '查 183 次',
+    'v.r1': 'TPE → SFO · 直飛', 'v.r2': 'TPE → LAX · 直飛', 'v.r3': 'TPE → SEA · 轉機 1 次',
+    'f.2h': '官網即時資料',
+    'f.2p': '結果直接來自各計畫官網，看到的就是現在訂得到的位子，不是第三方資料庫裡的舊資料。',
+    'f.3h': '不經過伺服器、不用註冊',
+    'f.3p': '全部在你的瀏覽器裡跑，用的是你自己在航空公司或飯店網站上的登入狀態。資料不會傳到別的地方，我們也不蒐集任何資料。',
+    'f.4h': '月曆檢視',
+    'f.4p': '月曆模式會列出整個月每天的最低哩程。查飯店時則顯示每家飯店每晚要多少點數，一家飯店一種顏色。',
+    'f.5h': '機票、飯店都能查',
+    'f.5p': '支援 10 個航空哩程計畫和 6 個飯店點數計畫，包括合作航空哩程票、中停（stopover），以及用 Choice 點數訂 Preferred Hotels。',
+    'cal.dow': '日一二三四五六',
+
+    'i.kicker': '開始使用', 'i.h2': '一分鐘就裝好',
+    'i.sub': '現在可以用油猴腳本（userscript）安裝，之後會自動更新。Chrome / Edge 擴充功能即將推出。',
+    'i.us': '油猴腳本 <span class="rec">推薦</span>',
+    'i.s1': '先安裝 <a href="https://www.tampermonkey.net/">Tampermonkey</a> 或 <a href="https://violentmonkey.github.io/">Violentmonkey</a>。',
+    'i.s2': '打開 <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a>，按下<strong>安裝</strong>（Install）。',
+    'i.upd': '之後有新版本，Tampermonkey 會自動幫你更新。',
+    'i.btn': '安裝油猴腳本',
+    'i.ext': 'Chrome / Edge 擴充功能 <span class="soon">即將推出</span>',
+    'i.extp': '之後可以從 Chrome 線上應用程式商店和 Edge 附加元件一鍵安裝，上架後連結會放在這裡。',
+    'i.cws': 'Chrome 線上應用程式商店', 'i.edge': 'Edge 附加元件',
+    'i.until': '在那之前，Chrome 和 Edge 裝 Tampermonkey 就能用油猴腳本。',
+    'h1.h': '打開支援的網站',
+    'h1.p': '從<a href="#programs">下面的清單</a>挑一個。頁面角落會出現一顆按鈕：航空公司網站是 ✈，飯店網站是 🏨。',
+    'h2.h': '打開面板',
+    'h2.p': '點一下按鈕。如果它說需要 session，就先登入，或照著面板上的 <strong>Get session</strong> 連結操作。',
+    'h3.h': '全部一次查',
+    'h3.p': '輸入航線或飯店和日期，按 <strong>Search</strong>。每查完一筆，結果就會馬上跳出來。',
+
+    'p.kicker': '支援計畫', 'p.h2': '支援的哩程和點數計畫',
+    'p.sub': '按<strong>開始搜尋</strong>會打開面板能用的頁面。有些計畫要先登入或先手動查一次，請看<strong>查詢前準備</strong>這一欄。',
+    'p.tabair': '✈ 航空公司（10）', 'p.tabhotel': '🏨 飯店（6）',
+    'lg.aria': '登入需求說明',
+    'lg.none': '<span class="need need-none">免登入</span>打開就能用',
+    'lg.page': '<span class="need need-page">開啟頁面</span>免登入，但要從指定頁面開始',
+    'lg.login': '<span class="need need-login">登入</span>要先登入會員',
+    'th.prog': '計畫', 'th.cal': '月曆', 'th.before': '查詢前準備',
+    'p.go': '開始搜尋 →', 'p.nologin': '免登入', 'p.runone': '先查一次', 'p.opensearch': '開啟搜尋頁',
+    'p.openbooking': '開啟訂位頁', 'p.login': '登入', 'p.jalonly': '限日航自家航班', 'p.withchoice': '用 Choice 點數',
+    'h.aa': '先在頁面上手動查一次哩程票，再按 Get session', 'h.nh': '登入後打開哩程兌換訂位頁', 'h.br': '登入後先手動查一次',
+    'h.ipc': '要訂房的話，請先登入 Choice，再<a href="https://www.choicehotels.com/ascend/preferred-hotels-partner">從 Choice 網站進入</a>',
+    'p.hotelnote': '飯店搜尋涵蓋用點數兌換的標準點數房。可以用飯店名稱、城市或機場加入飯店，直接從目前頁面挑，或輸入飯店代碼（例如 IHG <code>TPEKM</code>、Hyatt <code>TYOPH</code>）。之後會再支援更多飯店集團。',
+    'n.AS': '阿拉斯加航空', 'n.AA': '美國航空', 'n.AC': '加拿大航空', 'n.NH': '全日空', 'n.CX': '國泰航空',
+    'n.BR': '長榮航空', 'n.JL': '日本航空', 'n.JX': '星宇航空',
+    'yes': '支援', 'no': '不支援',
+
+    'm.h': '進階搜尋模式', 'm.sub': '各計畫專屬、會出現在面板裡的選項。',
+    'm.ac': '單程加中停',
+    'm.acd': '輸入中停城市和停留天數（例如 <code>3-5, 7</code> 天）。每條航線、每個日期都會把所有城市 × 停留天數的組合查一遍。',
+    'm.jl': '合作航空哩程票',
+    'm.jld': '查 JAL 哩程（JMB）可以換的寰宇一家和其他合作航空機位。',
+    'm.jlc': '<span>阿拉斯加 / 夏威夷航空</span><span>美國航空</span><span>英國航空</span><span>國泰航空</span><span>卡達航空</span><span>阿聯酋航空</span><span>芬蘭航空</span><span>伊比利亞航空</span><span>澳洲航空</span><span>大韓航空</span><span>還有更多</span>',
+    'm.lm': '指定航空公司',
+    'm.lmd': '查整個星空聯盟、用 Smart Search，或只查某一家航空公司。',
+    'm.lmc': '<span>泰國航空</span><span>Avianca + Gol</span><span>愛琴海航空</span><span>全日空</span><span>漢莎航空</span><span>新加坡航空</span><span>聯合航空</span>',
+    'm.ip': 'I Prefer 或 Choice 點數',
+    'm.ipd': '查 Preferred Hotels &amp; Resorts 旗下飯店要多少 I Prefer 點數，或 300 多家可以用 Choice Privileges 點數訂的飯店。',
+    'm.ipc': '<span>I Prefer 點數</span><span>Choice 點數</span>',
+
+    'c.kicker': '更新紀錄', 'c.h2': '最近更新了什麼',
+    'c.sub': '每個版本都可以到 <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a> 下載。',
+    'c.older': '看更早的版本', 'c.fewer': '收起更早的版本',
+    'c160h': 'I Prefer 點數房搜尋 <span class="latest">最新</span>',
+    'c160u': '<li>新增飯店計畫：I Prefer（Preferred Hotels &amp; Resorts），支援 iprefer.com 和 preferredhotels.com。</li><li>兩種查法：用 I Prefer 點數，或在 300 多家接受 Choice Privileges 點數的飯店用 Choice 點數。Choice 的稅費會以現金顯示。</li><li>可以用名稱、代碼、城市、州或國家找飯店，也能直接從目前頁面挑。</li>',
+    'c151h': '長榮航空搜尋更穩定',
+    'c151u': '<li>查詢會拉開間隔並暫存結果，比較不會被機器人驗證擋下。session 需要更新時，面板會提醒你。</li><li>要先在分頁裡手動查一次，才會開始自動搜尋。</li><li>支援長榮官網新的日期標題格式。</li>',
+    'c150h': 'Choice Privileges 點數房搜尋',
+    'c150u': '<li>按月份列出每晚要幾點，點一下就會打開已選好點數房價的飯店頁面。</li><li>可以用名稱、城市或機場（由近到遠排序）找飯店，也能從頁面挑或輸入代碼。</li>',
+    'c140h': 'World of Hyatt 點數房搜尋',
+    'c140u': '<li>列出每種還有點數房的房型要幾點（Standard、Club Access、Standard Suite 和 Premium Suite），並標示離峰 / 尖峰。</li><li>可以用房型篩選，只看某一種房型。</li>',
+    'c130h': 'Hilton Honors 點數房搜尋',
+    'c130u': '<li>每晚最低點數（只列還有房的），如果 Premium Room Rewards 比較便宜也會列出來。</li><li>可以篩選只看 Standard 或 Premium 點數房。</li>',
+    'c120h': 'Marriott Bonvoy 點數房搜尋',
+    'c120u': '<li>每晚最低點數，點一下就會打開該飯店的房價月曆。</li>',
+    'c110h': '開始支援飯店，第一站是 IHG One Rewards',
+    'c110u': '<li>新的飯店面板：好幾個月內每晚要幾點，用月曆和可排序的表格呈現。</li><li>飯店選擇器：用名稱、城市或機場搜尋、從頁面挑，或輸入飯店代碼。</li>',
+    'c100h': '第一版上線',
+    'c100u': '<li>可以在阿拉斯加航空、美國航空、加拿大航空、全日空、國泰航空、長榮航空、Flying Blue、日本航空、LifeMiles 和星宇航空，一次查好幾條航線、好幾個日期的哩程票。</li><li>月曆模式、加拿大航空中停、日航合作航空哩程票，以及 LifeMiles 指定航空公司。</li><li>提供油猴腳本和 Chrome / Edge 擴充功能兩種版本。</li>',
+
+    'fin.h': '別再一天一天慢慢查了',
+    'fin.p': '裝好 Award Buddy，打開你常用的哩程或點數計畫官網，幾分鐘就能把兩個月的空位查完。',
+    'fin.star': '到 GitHub 按個星星',
+    'ft.lic': '<a href="https://github.com/kevchentw/awardbuddy/blob/main/LICENSE">MIT 授權</a> · 與任何航空公司、飯店或會員計畫都沒有合作關係。',
+    'ft.issue': '回報問題', 'ft.src': 'GitHub 原始碼',
+  }
+  // Strings only the script needs in English
+  const EN = { 'cal.dow': 'SMTWTFS', 'c.older': 'Show older releases', 'c.fewer': 'Show fewer releases', 'yes': 'Yes', 'no': 'No' }
+  let LANG = window.AB_LANG ?? 'en'
+  const t = key => (LANG === 'zh' ? ZH : EN)[key]
+  // Program name for the picker and logo strip
+  const pname = p => (LANG === 'zh' && ZH[`n.${p.code}`]) || p.short || p.name
+
   // Hero demo: a mock award page per airline with the Award Buddy panel on top.
   // Scale the fixed-size stage to the column width, then play the search on a loop
   const stage = document.getElementById('stage'), scaleBox = document.getElementById('demo-scale')
@@ -1172,8 +1307,11 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
   const start = () => reduced ? finalState() : play()
 
-  $('demo-pick').innerHTML = DEMOS.map(a =>
-    `<button type="button" data-code="${a.code}" aria-pressed="false" title="${a.name}">${a.logo ? `<img src="${a.logo}" alt="">` : `<i style="background:${a.color}">${a.code}</i>`}${a.short ?? a.name}</button>`).join('')
+  // Picker names stay in English to match the English demo it controls
+  function renderPicker() {
+    $('demo-pick').innerHTML = DEMOS.map(a =>
+      `<button type="button" data-code="${a.code}" aria-pressed="${a === cur}" title="${a.name}">${a.logo ? `<img src="${a.logo}" alt="">` : `<i style="background:${a.color}">${a.code}</i>`}${a.short ?? a.name}</button>`).join('')
+  }
   $('demo-pick').addEventListener('click', e => {
     const b = e.target.closest('button')
     if (!b) return
@@ -1182,6 +1320,7 @@
   })
   fab.addEventListener('click', () => panel.classList.toggle('closed'))
 
+  renderPicker()
   load(AIRLINES.find(a => a.code === 'BR'))
   if (reduced) finalState()
   else new IntersectionObserver(es => {
@@ -1203,15 +1342,17 @@
   // Logo strip and feature-card logo cloud
   const ALL = DEMOS
   const mark = p => p.logo ? `<img src="${p.logo}" alt="">` : `<i style="background:${p.color}">${p.code}</i>`
-  const chipsHtml = ALL.map(p => `<span class="logo-chip">${mark(p)}${p.short ?? p.name}</span>`).join('')
-  $('marquee').innerHTML = chipsHtml + `<span class="dup" aria-hidden="true">${chipsHtml}</span>`
-  $('logo-cloud').innerHTML = ALL.map(p => mark(p).replace('<img', `<img title="${p.short ?? p.name}"`)).join('')
+  function renderLogos() {
+    const chipsHtml = ALL.map(p => `<span class="logo-chip">${mark(p)}${pname(p)}</span>`).join('')
+    $('marquee').innerHTML = chipsHtml + `<span class="dup" aria-hidden="true">${chipsHtml}</span>`
+    $('logo-cloud').innerHTML = ALL.map(p => mark(p).replace('<img', `<img title="${pname(p)}"`)).join('')
+  }
 
   // Mini calendar for the Calendar views card (made-up prices)
-  {
+  function renderCal() {
     let seed = 7
     const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280
-    let html = 'SMTWTFS'.split('').map(d => `<div class="dow">${d}</div>`).join('')
+    let html = [...t('cal.dow')].map(d => `<div class="dow">${d}</div>`).join('')
     for (let d = 1; d <= 21; d++) {
       const r = rnd()
       const [cls, v] = r < .3 ? ['lo', '60k'] : r < .75 ? ['mid', `${70 + Math.floor(rnd() * 4) * 5}k`] : ['x', '—']
@@ -1229,8 +1370,42 @@
   $('log-toggle').addEventListener('click', e => {
     const open = $('log').classList.toggle('open')
     e.currentTarget.setAttribute('aria-expanded', open)
-    e.currentTarget.textContent = open ? 'Show fewer releases' : 'Show older releases'
+    e.currentTarget.textContent = t(open ? 'c.fewer' : 'c.older')
   })
+
+  // Language: swap every [data-i18n] element between its English markup and the zh-TW dictionary
+  const ORIG = new Map(), ORIG_ARIA = new Map()
+  function setLang(lang) {
+    LANG = lang
+    document.documentElement.lang = lang === 'zh' ? 'zh-Hant-TW' : 'en'
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      if (!ORIG.has(el)) ORIG.set(el, el.innerHTML)
+      el.innerHTML = lang === 'zh' ? ZH[el.dataset.i18n] ?? ORIG.get(el) : ORIG.get(el)
+    })
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      if (!ORIG_ARIA.has(el)) ORIG_ARIA.set(el, el.getAttribute('aria-label'))
+      el.setAttribute('aria-label', lang === 'zh' ? ZH[el.dataset.i18nAria] : ORIG_ARIA.get(el))
+    })
+    document.querySelectorAll('.programs .yes').forEach(el => el.setAttribute('aria-label', t('yes')))
+    document.querySelectorAll('.programs .no').forEach(el => el.setAttribute('aria-label', t('no')))
+    const dateFmt = new Intl.DateTimeFormat(lang === 'zh' ? 'zh-TW' : 'en-US', { dateStyle: 'medium', timeZone: 'UTC' })
+    document.querySelectorAll('.log time').forEach(el => { el.textContent = dateFmt.format(new Date(el.dateTime)) })
+    $('log-toggle').textContent = t($('log').classList.contains('open') ? 'c.fewer' : 'c.older')
+    const btn = $('lang-btn')
+    btn.textContent = lang === 'zh' ? 'EN' : '中文'
+    btn.lang = lang === 'zh' ? 'en' : 'zh-Hant-TW'
+    btn.setAttribute('aria-label', lang === 'zh' ? 'Switch to English' : '切換為繁體中文')
+    renderPicker(); renderLogos(); renderCal()
+  }
+  $('lang-btn').addEventListener('click', () => {
+    const next = LANG === 'zh' ? 'en' : 'zh'
+    try { localStorage.setItem('ab-lang', next) } catch {}
+    // Drop a ?lang= override so the saved choice sticks on reload
+    const url = new URL(location.href)
+    if (url.searchParams.has('lang')) { url.searchParams.delete('lang'); history.replaceState(null, '', url) }
+    setLang(next)
+  })
+  setLang(LANG)
 
   // Fade sections in as they scroll into view
   if (!reduced && 'IntersectionObserver' in window) {
