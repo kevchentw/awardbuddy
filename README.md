@@ -7,6 +7,8 @@ A search panel that sits on top of airline and hotel award booking sites and sea
 - **Flights:** pick origins, destinations, a date range and cabins. Award Buddy runs every route × date combination through the airline's own site and puts the results in one sortable table.
 - **Hotels:** pick hotels by name, city or from the page you're on, and a range of months. Award Buddy finds the points per night for every date and shows them on a calendar and in a table.
 
+**Website:** [kevchentw.github.io/awardbuddy](https://kevchentw.github.io/awardbuddy/)
+
 It runs in your browser on the airline's or hotel's page, using your own session. There's no server, and it doesn't collect any data.
 
 ## Supported programs
@@ -129,7 +131,7 @@ For bigger changes, you can [open an issue](https://github.com/kevchentw/awardbu
 
 ## Releasing
 
-1. Bump `version` in `package.json`, run `npm run build`, and commit the result.
+1. Bump `version` in `package.json`, run `npm run build`, add the release to the changelog in `docs/index.html` (and the version next to it in the page header), and commit the result.
 2. Tag and push: `git tag v<version> && git push origin main v<version>`.
 
 The [Release workflow](.github/workflows/release.yml) checks that the tag matches `package.json`, runs the tests, makes sure the committed build is up to date, and publishes a GitHub release with `award-buddy.user.js` and the extension ZIP attached.

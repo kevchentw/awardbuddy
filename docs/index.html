@@ -1,0 +1,1422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Award Buddy</title>
+<meta name="description" content="Search award flights and hotel reward nights across many dates at once, right on the airline and hotel sites. Free, open source, no server.">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="apple-touch-icon" href="icon-128.png">
+<meta property="og:title" content="Award Buddy">
+<meta property="og:description" content="Search award flights and hotel reward nights across many dates at once, right on the airline and hotel sites.">
+<meta property="og:image" content="icon-128.png">
+<script>if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) document.documentElement.classList.add('js')</script>
+<script>
+  // Page language: ?lang= in the URL, then the viewer's last choice, then the browser language
+  window.AB_LANG = (() => {
+    const q = new URLSearchParams(location.search).get('lang')
+    if (q) return /^zh/i.test(q) ? 'zh' : 'en'
+    try { const saved = localStorage.getItem('ab-lang'); if (saved === 'zh' || saved === 'en') return saved } catch {}
+    return /^zh/i.test(navigator.language || '') ? 'zh' : 'en'
+  })()
+  if (AB_LANG === 'zh') document.documentElement.lang = 'zh-Hant-TW'
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --bg-2: #f4f2ed;
+    --surface: #ffffff;
+    --surface-2: #f3f1ec;
+    --text: #17161a;
+    --muted: #625f68;
+    --border: #e6e2da;
+    --accent: #1f5fbf;
+    --accent-2: #7c3aed;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6eefa;
+    --ok: #1f7a4d;
+    --warn: #a25a00;
+    --code-bg: #f0ede6;
+    --glow-1: rgba(31, 95, 191, .18);
+    --glow-2: rgba(124, 58, 237, .14);
+    --shadow: 0 1px 2px rgba(20, 20, 30, .04), 0 8px 24px rgba(20, 20, 30, .06);
+    --shadow-lg: 0 2px 6px rgba(20, 20, 30, .05), 0 30px 80px rgba(31, 60, 120, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f0f12;
+      --bg-2: #15151a;
+      --surface: #1a1a20;
+      --surface-2: #22222a;
+      --text: #eeedf2;
+      --muted: #a09eaa;
+      --border: #2e2d36;
+      --accent: #7aa7f0;
+      --accent-2: #b495ff;
+      --accent-ink: #0e1a2e;
+      --accent-soft: #1d2a40;
+      --ok: #6cc596;
+      --warn: #f0b458;
+      --code-bg: #2a2931;
+      --glow-1: rgba(90, 140, 240, .22);
+      --glow-2: rgba(160, 110, 255, .18);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+      --shadow-lg: 0 2px 6px rgba(0, 0, 0, .3), 0 30px 80px rgba(0, 0, 0, .5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f0f12;
+    --bg-2: #15151a;
+    --surface: #1a1a20;
+    --surface-2: #22222a;
+    --text: #eeedf2;
+    --muted: #a09eaa;
+    --border: #2e2d36;
+    --accent: #7aa7f0;
+    --accent-2: #b495ff;
+    --accent-ink: #0e1a2e;
+    --accent-soft: #1d2a40;
+    --ok: #6cc596;
+    --warn: #f0b458;
+    --code-bg: #2a2931;
+    --glow-1: rgba(90, 140, 240, .22);
+    --glow-2: rgba(160, 110, 255, .18);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+    --shadow-lg: 0 2px 6px rgba(0, 0, 0, .3), 0 30px 80px rgba(0, 0, 0, .5);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  code, kbd {
+    font: 0.88em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  .grad {
+    background: linear-gradient(100deg, var(--accent) 10%, var(--accent-2) 90%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* Nav */
+  header.nav {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: saturate(1.6) blur(14px);
+    -webkit-backdrop-filter: saturate(1.6) blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: border-color .2s, background .2s;
+  }
+  header.nav.scrolled { border-bottom-color: var(--border); }
+  header.nav .wrap { display: flex; align-items: center; gap: 16px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.01em; color: var(--text); text-decoration: none; }
+  .brand img { width: 28px; height: 28px; }
+  nav.links { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: 14.5px; font-weight: 500; }
+  nav.links a { color: var(--muted); text-decoration: none; transition: color .15s; }
+  nav.links a:hover { color: var(--text); }
+  nav.links a.pill {
+    color: var(--accent-ink); background: var(--text); padding: 7px 14px; border-radius: 999px; font-weight: 600;
+  }
+  nav.links a.pill:hover { color: var(--accent-ink); opacity: .88; }
+  :root nav.links a.pill { color: var(--bg); }
+  @media (max-width: 640px) { nav.links a.opt { display: none; } nav.links { gap: 14px; } }
+  .lang-btn {
+    font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--muted); background: transparent;
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; transition: color .15s, border-color .15s;
+  }
+  .lang-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* Traditional Chinese: CJK glyphs are full width, so loosen headings and widen measures */
+  :lang(zh) .hero h1 { max-width: 12em; letter-spacing: 0; line-height: 1.15; }
+  :lang(zh) section h2, :lang(zh) .final-card h2 { letter-spacing: 0; line-height: 1.25; }
+  :lang(zh) .hero p.lede, :lang(zh) section p.sub { max-width: 36em; }
+  :lang(zh) .final-card h2 { max-width: 14em; }
+  @media (max-width: 640px) { :lang(zh) .programs td.cal::before { content: "月曆模式 "; } }
+
+  /* Hero */
+  .hero-bg { position: relative; isolation: isolate; }
+  .hero-bg::before {
+    content: ""; position: absolute; inset: -60px 0 auto 0; height: 760px; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(600px 340px at 22% 18%, var(--glow-1), transparent 70%),
+      radial-gradient(560px 320px at 80% 10%, var(--glow-2), transparent 70%);
+  }
+  .hero-bg::after {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 700px; z-index: -1; pointer-events: none;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+    opacity: .55;
+  }
+  .hero { padding: 72px 16px 24px; text-align: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 22px;
+    padding: 5px 12px 5px 6px; border-radius: 999px; font-size: 13.5px; font-weight: 500;
+    color: var(--text); text-decoration: none; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+    transition: transform .15s, border-color .15s;
+  }
+  .badge:hover { transform: translateY(-1px); border-color: var(--accent); }
+  .badge b { font-size: 12px; font-weight: 700; color: var(--accent-ink); background: linear-gradient(100deg, var(--accent), var(--accent-2)); padding: 2px 8px; border-radius: 999px; }
+  .badge span.arrow { color: var(--muted); }
+  .hero h1 {
+    font-size: clamp(38px, 7vw, 72px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 800;
+    margin: 0 auto 20px; max-width: 17ch;
+  }
+  .hero p.lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); max-width: 58ch; margin: 0 auto 32px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 20px; border-radius: 999px; font-weight: 600; font-size: 15px;
+    text-decoration: none; border: 1px solid var(--border); color: var(--text); background: var(--surface);
+    box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s, filter .15s;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary {
+    border-color: transparent; color: #fff;
+    background: linear-gradient(100deg, #1f5fbf, #6d3ae0);
+    box-shadow: 0 8px 24px rgba(60, 70, 200, .32), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .btn.primary:hover { box-shadow: 0 12px 30px rgba(60, 70, 200, .42), inset 0 1px 0 rgba(255,255,255,.2); filter: brightness(1.06); }
+  .btn svg { width: 16px; height: 16px; }
+  .meta { margin-top: 20px; font-size: 13.5px; color: var(--muted); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+  .meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .meta span::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+
+
+  /* Demo: a made-up airline site with the Award Buddy panel on top. Panel styles mirror src/ui/styles.js */
+  .demo-frame { margin-top: 40px; position: relative; }
+  .demo-scale { position: relative; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 12px 40px rgba(0,0,0,.10); }
+  .stage {
+    position: absolute; top: 0; left: 0; width: 960px; height: 600px; transform-origin: 0 0;
+    background: #fff; color: #1f2933; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden;
+  }
+  .stage * { box-sizing: border-box; }
+  .chrome { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #eceae6; border-bottom: 1px solid #dcd9d3; }
+  .chrome i { width: 11px; height: 11px; border-radius: 50%; background: #d3d0ca; display: block; }
+  .chrome .url { margin-left: 14px; flex: 1; max-width: 520px; background: #fff; border-radius: 6px; padding: 5px 12px; font-size: 13px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chrome .url b { color: #1f2933; font-weight: 500; }
+
+  .site { height: 560px; background: #f4f6f7; }
+  .site-nav { height: 52px; background: var(--air); color: #fff; display: flex; align-items: center; gap: 28px; padding: 0 32px; font-size: 14px; }
+  .site-nav .logo { font-weight: 700; font-size: 18px; letter-spacing: .01em; margin-right: 12px; }
+  .site-nav span:not(.logo) { opacity: .85; }
+  .site-hero { padding: 34px 32px 26px; background: linear-gradient(180deg, color-mix(in srgb, var(--air) 88%, #fff) 0%, color-mix(in srgb, var(--air) 70%, #fff) 100%); color: #fff; }
+  .site-hero h4 { margin: 0 0 18px; font-size: 26px; font-weight: 650; }
+  .site-form { display: flex; gap: 10px; background: #fff; border-radius: 10px; padding: 12px; width: 640px; }
+  .site-form div { flex: 1; border: 1px solid #d5dbe0; border-radius: 6px; padding: 5px 10px; }
+  .site-form small { display: block; font-size: 10px; color: #7b8794; text-transform: uppercase; letter-spacing: .05em; }
+  .site-form strong { font-size: 15px; color: #1f2933; font-weight: 600; }
+  .site-form button { border: 0; border-radius: 6px; background: #f2a31b; color: #1f2933; font-weight: 700; padding: 0 22px; font-size: 14px; }
+  .site-list { padding: 20px 32px; }
+  .site-list .day { font-size: 13px; color: #52606d; margin-bottom: 10px; }
+  .site-card { background: #fff; border: 1px solid #e1e5e9; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; width: 520px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .site-card .t { font-weight: 600; }
+  .site-card .s { color: #7b8794; font-size: 12px; }
+  .site-card .m { font-weight: 700; color: var(--air); }
+  .site-card.na .m { color: #9aa5b1; font-weight: 500; }
+
+  /* Award Buddy panel (same look as the real one) */
+  .ab-fab {
+    position: absolute; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%;
+    color: #fff; font-size: 22px; border: none; cursor: pointer; background: var(--ab-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center;
+    transition: transform .15s;
+  }
+  .ab-fab.press { transform: scale(.9); }
+  .ab-fab.hint { animation: ab-ring 1.6s ease-out 2; }
+  @keyframes ab-ring { 0% { box-shadow: 0 4px 12px rgba(0,0,0,.3), 0 0 0 0 color-mix(in srgb, var(--ab-color) 50%, transparent); } 100% { box-shadow: 0 4px 12px rgba(0,0,0,.3), 0 0 0 18px transparent; } }
+  .ab-panel {
+    position: absolute; bottom: 86px; right: 24px; width: 440px; height: 440px; background: #fff; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden;
+    transform-origin: bottom right; transition: transform .25s cubic-bezier(.2,.8,.3,1.1), opacity .2s;
+    font-size: 13px; color: #111;
+  }
+  .ab-panel.closed { transform: scale(.2); opacity: 0; pointer-events: none; }
+  .ab-header { color: #fff; padding: 12px 16px; font-size: 15px; font-weight: 600; display: flex; justify-content: space-between; background: var(--ab-color); }
+  .ab-session { padding: 6px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e5e7eb; background: #f0fdf4; color: #166534; }
+  .ab-session i { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; display: block; }
+  .ab-body { padding: 14px 16px; flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .ab-toggle { display: flex; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+  .ab-toggle span { flex: 1; padding: 5px; font-size: 12px; text-align: center; color: #666; }
+  .ab-toggle span.on { background: var(--ab-color); color: #fff; }
+  .ab-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .ab-row > div { flex: 1; }
+  .ab-row label, .ab-lbl { font-size: 12px; color: #666; display: block; margin-bottom: 3px; }
+  .ab-box { min-height: 34px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 6px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .ab-chip { background: var(--ab-color); color: #fff; border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+  .ab-cabins { display: flex; gap: 6px; margin-bottom: 8px; }
+  .ab-cabins span { padding: 4px 10px; border-radius: 20px; border: 1.5px solid #ddd; font-size: 12px; }
+  .ab-cabins span.j { background: #0369a1; color: #fff; border-color: transparent; }
+  .ab-cabins span.f { background: #7c3aed; color: #fff; border-color: transparent; }
+  .ab-hint { font-size: 11px; color: #888; margin-bottom: 6px; }
+  .ab-summary { display: none; align-items: center; gap: 8px; padding: 7px 10px; margin-bottom: 4px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12px; color: #333; }
+  .ab-summary span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ab-summary b { color: var(--ab-color); font-size: 12px; }
+  .ab-panel.running .ab-form { display: none; }
+  .ab-panel.running .ab-summary { display: flex; }
+  .ab-btn { width: 100%; padding: 9px; color: #fff; border: none; border-radius: 7px; font-size: 14px; font-weight: 600; margin-top: 6px; background: var(--ab-color); transition: transform .1s; }
+  .ab-btn.press { transform: scale(.97); }
+  .ab-status { font-size: 12px; color: #666; margin-top: 8px; min-height: 16px; }
+  .ab-progress { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 6px; }
+  .ab-progress div { height: 100%; width: 0; border-radius: 2px; background: var(--ab-color); transition: width .3s; }
+  .ab-results { margin-top: 10px; overflow: hidden; flex: 1; }
+  .ab-tbl { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  .ab-tbl th { text-align: left; font-size: 11px; font-weight: 600; color: #888; padding: 4px 8px; border-bottom: 2px solid #e5e7eb; background: #fafafa; }
+  .ab-tbl td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; }
+  .ab-tbl tr.new td { animation: ab-in .35s ease-out; }
+  @keyframes ab-in { from { background: #eef6f8; opacity: 0; } to { background: transparent; opacity: 1; } }
+  .ab-tbl .rt { color: #666; font-size: 11px; }
+  .ab-tbl .na { color: #bbb; font-size: 11px; }
+  .ab-tbl .st { font-size: 10px; color: #888; }
+  .ab-tbl .mi { font-weight: 600; }
+  .ab-tbl .ht, .ab-tbl .rm { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .ab-tbl .ht { font-weight: 500; }
+  .ab-tbl .rm { max-width: 95px; }
+
+  .cursor { position: absolute; left: 600px; top: 330px; width: 22px; height: 22px; pointer-events: none; transition: left .7s cubic-bezier(.4,0,.2,1), top .7s cubic-bezier(.4,0,.2,1); filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); z-index: 5; }
+  .demo-pick { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .demo-pick-label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .demo-pick-list { display: flex; gap: 6px; overflow-x: auto; padding: 2px; scrollbar-width: thin; flex-wrap: wrap; }
+  .demo-pick-list button {
+    display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
+    font: inherit; font-size: 13px; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px 4px 4px; cursor: pointer;
+  }
+  .demo-pick-list button:hover { border-color: var(--muted); }
+  .demo-pick-list button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); font-weight: 600; }
+  .demo-pick-list img { width: 24px; height: 24px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+  .demo-pick-list i {
+    font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .02em; color: #fff;
+    width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  }
+  @media (max-width: 640px) {
+    .demo-pick { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .demo-pick-list { flex-wrap: nowrap; max-width: 100%; }
+  }
+  .soon { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; vertical-align: 2px; }
+
+  /* Demo frame overrides: float the mock browser with a glow */
+  .demo-frame { margin: 56px auto 0; max-width: 1000px; text-align: left; }
+  .demo-pick { justify-content: center; }
+  .demo-scale {
+    border-radius: 16px; box-shadow: var(--shadow-lg);
+    outline: 6px solid color-mix(in srgb, var(--surface) 60%, transparent); outline-offset: 0;
+  }
+  .demo-glow { position: relative; }
+  .demo-glow::before {
+    content: ""; position: absolute; inset: 8% 6% -4%; z-index: -1; border-radius: 40px; filter: blur(60px);
+    background: linear-gradient(100deg, var(--glow-1), var(--glow-2)); opacity: .9;
+  }
+
+  /* Logo marquee */
+  .marquee-wrap { padding: 56px 0 8px; text-align: center; }
+  .marquee-wrap p { margin: 0 0 18px; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .marquee {
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+  .marquee-track { display: flex; gap: 14px; width: max-content; animation: marquee 40s linear infinite; }
+  .marquee:hover .marquee-track { animation-play-state: paused; }
+  @keyframes marquee { to { transform: translateX(calc(-50% - 7px)); } }
+  .logo-chip {
+    display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 600; white-space: nowrap;
+  }
+  .logo-chip img, .logo-chip i {
+    width: 28px; height: 28px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border);
+  }
+  .logo-chip i { font-style: normal; font-size: 10px; font-weight: 700; color: #fff; border: 0; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 56px auto 0; max-width: 900px; }
+  .stat { text-align: center; padding: 8px 12px; border-left: 1px solid var(--border); }
+  .stat:first-child { border-left: 0; }
+  .stat strong { display: block; font-size: clamp(30px, 4.5vw, 44px); font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
+  .stat span { font-size: 14px; color: var(--muted); }
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
+    .stat:nth-child(3) { border-left: 0; }
+  }
+
+  /* Sections */
+  section { padding: 96px 0; }
+  section.alt { background: var(--bg-2); border-block: 1px solid var(--border); }
+  .kicker { display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 12px; }
+  section h2 { font-size: clamp(30px, 4.4vw, 44px); line-height: 1.1; letter-spacing: -0.03em; font-weight: 800; margin: 0 0 14px; }
+  section p.sub { color: var(--muted); font-size: 17.5px; margin: 0 0 40px; max-width: 60ch; }
+  .head-c { text-align: center; }
+  .head-c p.sub { margin-inline: auto; }
+  h3 { font-size: 18px; letter-spacing: -.01em; margin: 0 0 8px; }
+
+  /* Bento feature grid */
+  .bento { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+  .bento .card.wide { grid-column: span 2; }
+  .bento .card.full { grid-column: 1 / -1; }
+  @media (max-width: 860px) { .bento { grid-template-columns: 1fr; } .bento .card.wide { grid-column: auto; } }
+  .card {
+    position: relative; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 26px;
+    box-shadow: var(--shadow); transition: transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .ico {
+    width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 16px;
+    color: var(--accent); background: var(--accent-soft);
+  }
+  .ico svg { width: 22px; height: 22px; }
+  .card.wide { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+  @media (max-width: 1000px) { .card.wide { grid-template-columns: 1fr; } }
+
+  .viz { border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); padding: 14px; font-size: 12.5px; }
+  .viz-math { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; font-weight: 600; }
+  .viz-math span { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+  .viz-math em { font-style: normal; color: var(--muted); }
+  .viz-math strong { background: linear-gradient(100deg, var(--accent), var(--accent-2)); color: #fff; border-radius: 8px; padding: 6px 10px; }
+  .viz-rows { margin-top: 10px; display: grid; gap: 5px; }
+  .viz-rows div { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; background: var(--surface); border-radius: 7px; padding: 5px 9px; }
+  .viz-rows b { color: #0369a1; }
+  .viz-rows small { color: var(--muted); }
+  .viz-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .viz-cal div {
+    min-width: 0; min-height: 34px; border-radius: 6px; background: var(--surface); font-size: 10px; color: var(--muted);
+    display: flex; flex-direction: column; justify-content: space-between; padding: 3px 5px;
+  }
+  .viz-cal div b { font-size: 11px; font-weight: 700; align-self: flex-end; }
+  .viz-cal .lo { background: color-mix(in srgb, #16a34a 18%, var(--surface)); }
+  .viz-cal .lo b { color: #15803d; }
+  .viz-cal .mid b { color: #0369a1; }
+  .viz-cal .x { opacity: .45; }
+  .viz-cal .dow { background: transparent; min-height: 0; text-align: center; align-items: center; font-weight: 600; }
+  .logo-cloud { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .logo-cloud img, .logo-cloud i {
+    width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .logo-cloud i { font-style: normal; font-size: 12px; font-weight: 700; color: #fff; border: 0; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* Install */
+  .install-grid { display: grid; gap: 16px; grid-template-columns: 1.3fr 1fr; }
+  @media (max-width: 860px) { .install-grid { grid-template-columns: 1fr; } }
+  .card.feature { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .card.feature::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  }
+  .rec { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); font-size: 12px; font-weight: 600; vertical-align: 2px; }
+  .steps { margin: 12px 0 0; padding: 0; list-style: none; counter-reset: s; }
+  .steps li { counter-increment: s; position: relative; padding-left: 40px; margin-bottom: 14px; color: var(--muted); }
+  .steps li strong { color: var(--text); }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: -1px; width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--accent); background: var(--accent-soft);
+  }
+  .note { font-size: 14px; color: var(--muted); margin-top: 12px; }
+  .soon-box { display: flex; flex-direction: column; }
+  .browsers { display: flex; gap: 10px; margin: 18px 0 6px; }
+  .browsers span { flex: 1; text-align: center; padding: 14px 8px; border: 1px dashed var(--border); border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+
+  .how { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); margin-top: 56px; }
+  @media (max-width: 860px) { .how { grid-template-columns: 1fr; } }
+  .how .card { padding: 24px; }
+  .how .num {
+    font-size: 44px; font-weight: 800; letter-spacing: -.04em; line-height: 1; margin-bottom: 14px;
+    background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent-2) 50%, transparent));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* Programs */
+  .tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; margin-bottom: 20px; box-shadow: var(--shadow); }
+  .tabs button {
+    font: inherit; font-size: 15px; font-weight: 600; border: 0; background: transparent; color: var(--muted);
+    padding: 8px 18px; border-radius: 999px; cursor: pointer; transition: background .2s, color .2s;
+  }
+  .tabs button[aria-selected="true"] { background: var(--text); color: var(--bg); }
+  .programs { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); }
+  .programs th, .programs td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 15px; }
+  .programs th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); background: var(--surface-2); }
+  .programs th.cal { text-align: center; }
+  .programs tbody tr { transition: background .15s; }
+  .programs tbody tr:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+  .programs tr:last-child td { border-bottom: 0; }
+  .programs td.name { padding-left: 64px; position: relative; width: 38%; }
+  .programs td.name strong { display: block; }
+  .plogo { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+  i.plogo { font-style: normal; font-size: 11px; font-weight: 700; color: #fff; border: 0; display: flex; align-items: center; justify-content: center; }
+  .programs td.name small { color: var(--muted); font-size: 13px; }
+  .programs td.cal { text-align: center; width: 110px; }
+  .yes { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); font-size: 13px; font-weight: 800; }
+  .programs td.cal small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+  .no { color: color-mix(in srgb, var(--muted) 55%, transparent); }
+  .programs td.go { white-space: nowrap; text-align: right; width: 1%; }
+  .programs td.go a {
+    display: inline-block; font-weight: 600; font-size: 14px; text-decoration: none; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text); transition: border-color .15s, color .15s, background .15s;
+  }
+  .programs td.go a:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .programs tr:hover td.go a { border-color: var(--accent); color: var(--accent); }
+  .programs td.sess { color: var(--muted); font-size: 13.5px; }
+  .programs td.sess .need { margin-right: 6px; }
+  .programs td.sess .hint { display: block; margin-top: 4px; }
+  .programs td.sess a { color: var(--accent); }
+  /* Session requirement pills */
+  .need { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .need::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .need-none { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .need-page { color: var(--accent); background: var(--accent-soft); }
+  .need-login { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .legend > span { display: inline-flex; align-items: center; gap: 6px; }
+  .tabs-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .tabs-row .tabs { margin-bottom: 0; }
+  .tabs-row .legend { margin: 0; }
+  /* Sub-row: a search mode of the program above it */
+  .programs tr.sub td { border-top: 0; }
+  .programs tr.sub td.name { padding-left: 88px; }
+  .programs tr.sub .plogo { left: 40px; width: 28px; height: 28px; }
+  .programs tr.sub td.name::before { content: ""; position: absolute; left: 32px; top: -20px; width: 9px; height: calc(50% + 20px); border-left: 1.5px solid var(--border); border-bottom: 1.5px solid var(--border); border-bottom-left-radius: 6px; }
+  .programs tr.has-sub td { border-bottom-color: transparent; }
+  @media (max-width: 640px) {
+    .tabs-row { flex-direction: column; align-items: stretch; }
+    .tabs-row .tabs { align-self: flex-start; }
+    .legend > span { flex-wrap: wrap; }
+    .programs thead { display: none; }
+    .programs, .programs tbody, .programs tr, .programs td { display: block; width: 100%; }
+    .programs tr { border-bottom: 1px solid var(--border); padding: 12px 0; position: relative; }
+    .programs tr:last-child { border-bottom: 0; }
+    .programs tr.has-sub { border-bottom: 0; padding-bottom: 0; }
+    .programs td { border: 0; padding: 4px 16px; text-align: left !important; width: auto !important; }
+    .programs td.name { padding-left: 64px; min-height: 40px; }
+    .programs tr.sub td.name { padding-left: 88px; }
+    .programs td.name::before { display: none; }
+    .plogo { top: 6px; transform: none; }
+    .programs td.cal, .programs td.sess { padding-left: 64px; }
+    .programs tr.sub td.cal, .programs tr.sub td.sess, .programs tr.sub td.go { padding-left: 88px; }
+    .programs td.cal:has(.no) { display: none; }
+    .programs td.cal::before { content: "Calendar mode "; color: var(--muted); font-size: 13px; }
+    .programs td.cal .yes { width: 20px; height: 20px; font-size: 11px; }
+    .programs td.cal small { display: inline; margin-left: 6px; }
+    .programs td.go { padding-top: 10px; padding-left: 64px; }
+  }
+  .modes { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); margin: 0; }
+  @media (max-width: 640px) { .modes { grid-template-columns: 1fr; } }
+  .modes > div { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px 20px 74px; transition: border-color .2s, transform .2s, box-shadow .2s; }
+  .modes > div:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: var(--shadow); transform: translateY(-2px); }
+  .modes .plogo { left: 22px; top: 22px; transform: none; width: 36px; height: 36px; }
+  .modes .prog { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .modes dt { font-weight: 700; font-size: 17px; }
+  .modes dd { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+  .modes .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .modes .chips span { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
+  .section-h3 { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 64px 0 6px; font-size: 24px; }
+  .section-sub { margin: 0 0 20px; color: var(--muted); font-size: 15px; }
+
+  /* Changelog timeline */
+  .log { list-style: none; margin: 0; padding: 0; position: relative; }
+  .log::before { content: ""; position: absolute; left: 131px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
+  .log > li { display: grid; grid-template-columns: 120px 1fr; gap: 40px; padding: 0 0 36px; position: relative; }
+  .log > li::before {
+    content: ""; position: absolute; left: 126px; top: 6px; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--muted);
+  }
+  .log > li:first-child::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5px var(--accent-soft); }
+  .log .ver { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+  .log .ver a { color: var(--text); text-decoration: none; }
+  .log .ver small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .log h3 { font-size: 17px; }
+  .log .latest { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; vertical-align: 2px; }
+  .log ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 15px; }
+  .log ul li { margin-bottom: 3px; }
+  .log > li.more { display: none; }
+  .log.open > li.more { display: grid; }
+  .dup { display: contents; }
+  .log-toggle { margin-left: 160px; }
+  @media (max-width: 640px) {
+    .log::before { left: 5px; }
+    .log > li { grid-template-columns: 1fr; gap: 4px; padding-left: 28px; }
+    .log > li::before { left: 0; }
+    .log .ver { text-align: left; }
+    .log-toggle { margin-left: 28px; }
+  }
+  button.btn { font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; }
+
+  /* Closing CTA */
+  .final { padding: 40px 0 96px; }
+  .final-card {
+    position: relative; overflow: hidden; text-align: center; border-radius: 28px; padding: 72px 24px; color: #fff;
+    background: radial-gradient(600px 300px at 15% 0%, rgba(255,255,255,.18), transparent 60%), linear-gradient(120deg, #1f4fa8, #5b2fd0 60%, #7c3aed);
+    box-shadow: var(--shadow-lg);
+  }
+  .final-card::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .18;
+    background-image: linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse at center, #000, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at center, #000, transparent 70%);
+  }
+  .final-card > * { position: relative; z-index: 1; }
+  .final-card h2 { font-size: clamp(30px, 4.6vw, 48px); line-height: 1.08; letter-spacing: -.03em; font-weight: 800; margin: 0 auto 14px; max-width: 18ch; }
+  .final-card p { margin: 0 auto 28px; max-width: 52ch; color: rgba(255,255,255,.82); font-size: 17px; }
+  .final-card .btn { border: 0; }
+  .final-card .btn.light { background: #fff; color: #1b1b3a; }
+  .final-card .btn.ghost { background: rgba(255,255,255,.12); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+
+  footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; align-items: center; }
+  footer .brand { font-size: 15px; }
+  footer .brand img { width: 22px; height: 22px; }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--text); }
+
+  /* Scroll reveal (only when JS runs and motion is allowed) */
+  .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+  .js .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .js .reveal { opacity: 1; transform: none; transition: none; }
+    .marquee-track { animation: none; flex-wrap: wrap; justify-content: center; width: auto; }
+    .marquee { mask-image: none; -webkit-mask-image: none; }
+    .marquee-track .dup { display: none; }
+    .card, .btn, .badge { transition: none; }
+  }
+</style>
+
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="icon-128.png" alt="">Award Buddy</a>
+    <nav class="links">
+      <a class="opt" href="#why" data-i18n="nav.features">Features</a>
+      <a class="opt" href="#programs" data-i18n="nav.programs">Programs</a>
+      <a class="opt" href="#changelog" data-i18n="nav.changelog">Changelog</a>
+      <a href="https://github.com/kevchentw/awardbuddy">GitHub</a>
+      <button class="lang-btn" id="lang-btn" type="button" lang="zh-Hant-TW" aria-label="切換為繁體中文">中文</button>
+      <a class="pill" href="#install" data-i18n="nav.install">Install</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="hero-bg">
+    <div class="wrap hero">
+      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> I Prefer hotel search in <span id="cur-ver">v1.6.0</span> <span class="arrow">→</span></a>
+      <h1 data-i18n="hero.h1">Search award space across <span class="grad">every date at once.</span></h1>
+      <p class="lede" data-i18n="hero.lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
+      <div class="cta">
+        <a class="btn primary" href="#install">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+          <span data-i18n="hero.install">Install Award Buddy</span>
+        </a>
+        <a class="btn" href="#programs" data-i18n="hero.see">See supported programs</a>
+      </div>
+      <div class="meta"><span data-i18n="meta.free">Free and open source (MIT)</span><span data-i18n="meta.noacct">No account, no server</span><span data-i18n="meta.browsers">Chrome, Edge, or any browser with Tampermonkey</span></div>
+
+      <div class="demo-frame">
+      <div class="demo-pick" role="group" aria-label="Show the demo on" data-i18n-aria="demo.pickaria">
+        <span class="demo-pick-label" data-i18n="demo.pick">Try it on</span>
+        <div class="demo-pick-list" id="demo-pick"></div>
+      </div>
+      <div class="demo-glow">
+      <div class="demo-scale" id="demo-scale" role="img" data-i18n-aria="demo.aria" aria-label="Animated example: on an airline or hotel award search page, the Award Buddy button in the bottom-right corner opens a panel that searches several routes over two months and lists the award seats it finds.">
+        <div class="stage" id="stage" aria-hidden="true">
+          <div class="chrome"><i></i><i></i><i></i><div class="url" id="d-url"></div></div>
+          <div class="site">
+            <div class="site-nav"><span class="logo" id="d-logo"></span><span>Book</span><span>Manage</span><span id="d-miles">Miles</span><span>Help</span></div>
+            <div class="site-hero">
+              <h4 id="d-h4">Book with miles</h4>
+              <div class="site-form">
+                <div><small id="d-l1">From</small><strong id="d-from"></strong></div>
+                <div><small id="d-l2">To</small><strong id="d-to"></strong></div>
+                <div><small id="d-l3">Date</small><strong id="d-date">Thu, Nov 12</strong></div>
+                <button>Search</button>
+              </div>
+            </div>
+            <div class="site-list" id="d-list"></div>
+          </div>
+
+          <div class="ab-panel closed" id="ab-panel">
+            <div class="ab-header"><span id="ab-title"></span><span>⤢ &nbsp;✕</span></div>
+            <div class="ab-session"><i></i> Session ready</div>
+            <div class="ab-body">
+              <div class="ab-form">
+                <div class="ab-toggle" id="ab-toggle"><span class="on">Search</span><span>Calendar</span></div>
+                <div class="ab-row">
+                  <div><label id="ab-l1">Origins</label><div class="ab-box" id="ab-orig"></div></div>
+                  <div id="ab-dest-wrap"><label>Destinations</label><div class="ab-box" id="ab-dest"></div></div>
+                </div>
+                <div class="ab-row"><div><label id="ab-l3">Dates</label><div class="ab-box" style="padding:7px 9px" id="ab-dates"></div></div></div>
+                <span class="ab-lbl" id="ab-cab-lbl">Cabin (leave all off = any)</span>
+                <div class="ab-cabins" id="ab-cabins"></div>
+                <div class="ab-hint" id="ab-hint"></div>
+              </div>
+              <div class="ab-summary"><span id="ab-sum"></span><b>Edit</b></div>
+              <button class="ab-btn" id="ab-btn">Search</button>
+              <div class="ab-status" id="ab-status"></div>
+              <div class="ab-progress"><div id="ab-bar"></div></div>
+              <div class="ab-results">
+                <table class="ab-tbl">
+                  <thead><tr id="ab-head"></tr></thead>
+                  <tbody id="ab-rows"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <button class="ab-fab" id="ab-fab" tabindex="-1"></button>
+          <svg class="cursor" id="cursor" viewBox="0 0 24 24"><path d="M4 2l15 11.5-6.6.9 3.8 7.4-2.6 1.3-3.8-7.5L4 20z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="marquee-wrap reveal">
+      <p data-i18n="mq">Works on 16 airline and hotel programs</p>
+      <div class="marquee"><div class="marquee-track" id="marquee"></div></div>
+    </div>
+
+    <div class="wrap">
+      <div class="stats reveal">
+        <div class="stat"><strong class="grad">10</strong><span data-i18n="st.air">airline programs</span></div>
+        <div class="stat"><strong class="grad">6</strong><span data-i18n="st.hotel">hotel programs</span></div>
+        <div class="stat"><strong class="grad">0</strong><span data-i18n="st.srv">servers or accounts</span></div>
+        <div class="stat"><strong class="grad">100%</strong><span data-i18n="st.free">free and open source</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section id="why">
+    <div class="wrap">
+      <div class="head-c reveal">
+        <span class="kicker grad" data-i18n="f.kicker">Features</span>
+        <h2 data-i18n="f.h2">What makes it different</h2>
+        <p class="sub" data-i18n="f.sub">Award search sites mostly let you check one route on one day. Award Buddy checks all your dates and routes in one go, on the airline's or hotel's own site.</p>
+      </div>
+      <div class="bento">
+        <div class="card wide reveal">
+          <div>
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></div>
+            <h3 data-i18n="f.1h">Many dates, one table</h3>
+            <p data-i18n="f.1p">Every origin × destination × date runs through the site's own search. Sort by date, duration or miles, and filter by cabin, stops or day of the week.</p>
+          </div>
+          <div class="viz" aria-hidden="true">
+            <div class="viz-math"><span data-i18n="v.routes">3 routes</span><em>×</em><span data-i18n="v.days">61 days</span><em>=</em><strong data-i18n="v.searches">183 searches</strong></div>
+            <div class="viz-rows">
+              <div><span>2026-11-03</span><small data-i18n="v.r1">TPE → SFO · direct</small><b>75k</b></div>
+              <div><span>2026-11-09</span><small data-i18n="v.r2">TPE → LAX · direct</small><b>75k</b></div>
+              <div><span>2026-11-14</span><small data-i18n="v.r3">TPE → SEA · 1 stop</small><b>82k</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="card reveal">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
+          <h3 data-i18n="f.2h">Live data from the source</h3>
+          <p data-i18n="f.2p">Results come straight from the program's site, so you see what you could book right now. Nothing comes from a cached third-party database.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></div>
+          <h3 data-i18n="f.3h">No server, no account</h3>
+          <p data-i18n="f.3p">It runs in your browser with your own session on the airline's or hotel's page. Nothing is sent anywhere else, and it doesn't collect any data.</p>
+        </div>
+        <div class="card wide reveal">
+          <div>
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
+            <h3 data-i18n="f.4h">Calendar views</h3>
+            <p data-i18n="f.4p">Calendar mode shows the lowest price per day for whole months. Hotel searches show points per night for each hotel, one color per hotel.</p>
+          </div>
+          <div class="viz" aria-hidden="true"><div class="viz-cal" id="viz-cal"></div></div>
+        </div>
+        <div class="card wide full reveal">
+          <div>
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
+            <h3 data-i18n="f.5h">Flights and hotels</h3>
+            <p data-i18n="f.5p">10 airline programs and 6 hotel programs, including partner awards, stopovers and Choice points at Preferred Hotels.</p>
+          </div>
+          <div class="logo-cloud" id="logo-cloud" aria-hidden="true"></div>
+        </div>
+    </div>
+  </section>
+
+  <section id="install" class="alt">
+    <div class="wrap">
+      <div class="head-c reveal">
+        <span class="kicker grad" data-i18n="i.kicker">Get started</span>
+        <h2 data-i18n="i.h2">Install in under a minute</h2>
+        <p class="sub" data-i18n="i.sub">Install it as a userscript today. It updates itself automatically. A Chrome / Edge extension is coming soon.</p>
+      </div>
+      <div class="install-grid">
+        <div class="card feature reveal">
+          <h3 data-i18n="i.us">Userscript <span class="rec">Recommended</span></h3>
+          <ol class="steps">
+            <li data-i18n="i.s1">Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> or <a href="https://violentmonkey.github.io/">Violentmonkey</a>.</li>
+            <li data-i18n="i.s2">Open <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a> and click <strong>Install</strong>.</li>
+          </ol>
+          <p class="note" data-i18n="i.upd">Updates arrive on their own through Tampermonkey.</p>
+          <p style="margin:20px 0 0"><a class="btn primary" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+            <span data-i18n="i.btn">Install userscript</span></a></p>
+        </div>
+        <div class="card soon-box reveal">
+          <h3 data-i18n="i.ext">Chrome / Edge extension <span class="soon">Coming soon</span></h3>
+          <p class="note" style="margin-top:0" data-i18n="i.extp">A one-click install from the Chrome Web Store and Edge Add-ons is on the way. The link will be posted here.</p>
+          <div class="browsers" aria-hidden="true"><span data-i18n="i.cws">Chrome Web Store</span><span data-i18n="i.edge">Edge Add-ons</span></div>
+          <p class="note" data-i18n="i.until">Until then, the userscript works in Chrome and Edge with Tampermonkey.</p>
+        </div>
+      </div>
+
+      <div class="how">
+        <div class="card reveal">
+          <div class="num">01</div>
+          <h3 data-i18n="h1.h">Open a supported site</h3>
+          <p data-i18n="h1.p">Pick one from the <a href="#programs">list below</a>. A button appears in the corner of the page: ✈ on airline sites, 🏨 on hotel sites.</p>
+        </div>
+        <div class="card reveal">
+          <div class="num">02</div>
+          <h3 data-i18n="h2.h">Open the panel</h3>
+          <p data-i18n="h2.p">Click the button. If it asks for a session, log in or follow its <strong>Get session</strong> link.</p>
+        </div>
+        <div class="card reveal">
+          <div class="num">03</div>
+          <h3 data-i18n="h3.h">Search everything</h3>
+          <p data-i18n="h3.p">Enter your routes or hotels and dates, then click <strong>Search</strong>. Results appear as each request finishes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="programs">
+    <div class="wrap">
+      <div class="reveal">
+      <span class="kicker grad" data-i18n="p.kicker">Programs</span>
+      <h2 data-i18n="p.h2">Supported programs</h2>
+      <p class="sub" data-i18n="p.sub">Click <strong>Start search</strong> to open the page where the panel works. Some programs need you to log in or run one search first. The <strong>Before you search</strong> column says which.</p>
+      </div>
+
+      <div class="tabs-row">
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true" aria-controls="tab-air" id="btn-air" data-i18n="p.tabair">✈ Airlines (10)</button>
+          <button role="tab" aria-selected="false" aria-controls="tab-hotel" id="btn-hotel" data-i18n="p.tabhotel">🏨 Hotels (6)</button>
+        </div>
+        <div class="legend" aria-label="Session legend" data-i18n-aria="lg.aria">
+          <span data-i18n="lg.none"><span class="need need-none">No login</span>works right away</span>
+          <span data-i18n="lg.page"><span class="need need-page">Open page</span>no login, start on a page</span>
+          <span data-i18n="lg.login"><span class="need need-login">Log in</span>member login first</span>
+        </div>
+      </div>
+
+      <div id="tab-air" role="tabpanel" aria-labelledby="btn-air">
+        <table class="programs">
+          <thead><tr><th data-i18n="th.prog">Program</th><th class="cal" data-i18n="th.cal">Calendar</th><th data-i18n="th.before">Before you search</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="name"><img class="plogo" src="logos/as.png" alt=""><strong data-i18n="n.AS">Alaska Airlines</strong><small>Atmos Rewards · alaskaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.alaskaair.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/aa.png" alt=""><strong data-i18n="n.AA">American Airlines</strong><small>AAdvantage · aa.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page" data-i18n="p.runone">Run one search</span><span class="hint" data-i18n="h.aa">Run an award search on the page, then Get session</span></td><td class="go"><a href="https://www.aa.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/ac.png" alt=""><strong data-i18n="n.AC">Air Canada</strong><small>Aeroplan · aircanada.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page" data-i18n="p.opensearch">Open search page</span></td><td class="go"><a href="https://www.aircanada.com/aeroplan/redeem/availability/outbound" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/nh.png" alt=""><strong data-i18n="n.NH">ANA</strong><small>ANA Mileage Club · ana.co.jp</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span><span class="hint" data-i18n="h.nh">Then open the award booking page</span></td><td class="go"><a href="https://aswbe-i.ana.co.jp/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml?aswcid=1" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/cx.png" alt=""><strong data-i18n="n.CX">Cathay Pacific</strong><small>Asia Miles · cathaypacific.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page" data-i18n="p.openbooking">Open booking page</span></td><td class="go"><a href="https://www.cathaypacific.com/cx/en_HK/book-a-trip/redeem-flights/redeem-flight-awards.html" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/br.png" alt=""><strong data-i18n="n.BR">EVA Air</strong><small>Infinity MileageLands · evaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span><span class="hint" data-i18n="h.br">Then run one search by hand</span></td><td class="go"><a href="https://booking.evaair.com/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability/login.aspx?lang=en-us" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><i class="plogo" style="background:#002157">AF</i><strong>Flying Blue</strong><small>Air France / KLM · airfrance.us, klm.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page" data-i18n="p.opensearch">Open search page</span></td><td class="go"><a href="https://wwws.airfrance.us/search/flights/0" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/jl.png" alt=""><strong data-i18n="n.JL">Japan Airlines</strong><small>JAL Mileage Bank · jal.co.jp</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span><small data-i18n="p.jalonly">JAL flights</small></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span></td><td class="go"><a href="https://www.jal.co.jp/jp/en/jmb/award-inter/booking/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/av.png" alt=""><strong>LifeMiles</strong><small>Avianca · lifemiles.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span></td><td class="go"><a href="https://www.lifemiles.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/jx.png" alt=""><strong data-i18n="n.JX">Starlux Airlines</strong><small>COSMILE · starlux-airlines.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span></td><td class="go"><a href="https://www.starlux-airlines.com/en-US/redeem-award-ticket/index" data-i18n="p.go">Start search →</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="tab-hotel" role="tabpanel" aria-labelledby="btn-hotel" hidden>
+        <table class="programs">
+          <thead><tr><th data-i18n="th.prog">Program</th><th data-i18n="th.before">Before you search</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="name"><img class="plogo" src="logos/ihg.png" alt=""><strong>IHG One Rewards</strong><small>ihg.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.ihg.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/marriott.png" alt=""><strong>Marriott Bonvoy</strong><small>marriott.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.marriott.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/hilton.png" alt=""><strong>Hilton Honors</strong><small>hilton.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.hilton.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/hyatt.png" alt=""><strong>World of Hyatt</strong><small>hyatt.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.hyatt.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>Choice Privileges</strong><small>choicehotels.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.choicehotels.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr class="has-sub"><td class="name"><img class="plogo" src="logos/iprefer.png" alt=""><strong>I Prefer</strong><small>Preferred Hotels &amp; Resorts · iprefer.com</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://iprefer.com/" data-i18n="p.go">Start search →</a></td></tr>
+            <tr class="sub"><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong data-i18n="p.withchoice">with Choice points</strong><small>preferredhotels.com/choicepoints</small></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span><span class="hint" data-i18n="h.ipc">To book, <a href="https://www.choicehotels.com/ascend/preferred-hotels-partner">start from Choice</a> while logged in</span></td><td class="go"><a href="https://preferredhotels.com/choicepoints" data-i18n="p.go">Start search →</a></td></tr>
+          </tbody>
+        </table>
+        <p class="note" data-i18n="p.hotelnote">Hotel search covers standard reward nights paid in points. Add hotels by name, city or airport, pick them from the page you're on, or type a hotel code (for example IHG <code>TPEKM</code>, Hyatt <code>TYOPH</code>). More hotel chains are planned.</p>
+      </div>
+
+      <h3 class="section-h3 reveal" data-i18n="m.h">Extra search modes</h3>
+      <p class="section-sub reveal" data-i18n="m.sub">Program-specific options that show up in the panel.</p>
+      <dl class="modes">
+        <div class="reveal"><dt><img class="plogo" src="logos/ac.png" alt=""><span class="prog" data-i18n="n.AC">Air Canada</span><span data-i18n="m.ac">One-way with stopover</span></dt>
+        <dd data-i18n="m.acd">Enter stopover cities and stay lengths (for example <code>3-5, 7</code> days). Every city × stay length is searched for each route and date.</dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/jl.png" alt=""><span class="prog" data-i18n="n.JL">Japan Airlines</span><span data-i18n="m.jl">Partner awards</span></dt>
+        <dd data-i18n="m.jld">Search JMB partner space on oneworld and other partners.</dd>
+        <dd class="chips" data-i18n="m.jlc"><span>Alaska / Hawaiian</span><span>American</span><span>British Airways</span><span>Cathay Pacific</span><span>Qatar</span><span>Emirates</span><span>Finnair</span><span>Iberia</span><span>Qantas</span><span>Korean Air</span><span>+ more</span></dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/av.png" alt=""><span class="prog">LifeMiles</span><span data-i18n="m.lm">Carrier filter</span></dt>
+        <dd data-i18n="m.lmd">Search all of Star Alliance, use Smart Search, or pick one airline.</dd>
+        <dd class="chips" data-i18n="m.lmc"><span>Thai</span><span>Avianca + Gol</span><span>Aegean</span><span>ANA</span><span>Lufthansa</span><span>Singapore Airlines</span><span>United</span></dd></div>
+        <div class="reveal"><dt><img class="plogo" src="logos/iprefer.png" alt=""><span class="prog">I Prefer</span><span data-i18n="m.ip">I Prefer or Choice points</span></dt>
+        <dd data-i18n="m.ipd">Search Preferred Hotels &amp; Resorts priced in I Prefer points, or the 300+ hotels bookable with Choice Privileges points.</dd>
+        <dd class="chips" data-i18n="m.ipc"><span>I Prefer points</span><span>Choice points</span></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section id="changelog" class="alt">
+    <div class="wrap">
+      <div class="reveal">
+        <span class="kicker grad" data-i18n="c.kicker">Changelog</span>
+        <h2 data-i18n="c.h2">What's new</h2>
+        <p class="sub" data-i18n="c.sub">Downloads for every version are on <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a>.</p>
+      </div>
+      <ul class="log" id="log">
+        <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.6.0">1.6.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c160h">I Prefer hotel search <span class="latest">Latest</span></h3>
+            <ul data-i18n="c160u">
+              <li>New hotel program: I Prefer (Preferred Hotels &amp; Resorts) on iprefer.com and preferredhotels.com.</li>
+              <li>Two search modes: I Prefer points, or Choice Privileges points at the 300+ hotels that take them. Choice's taxes and fees are shown in cash.</li>
+              <li>Find hotels by name, code, city, state or country, or pick them from the page you're on.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.1">1.5.1</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c151h">More reliable EVA Air search</h3>
+            <ul data-i18n="c151u">
+              <li>Requests are spaced out and cached to avoid bot-check blocks. The panel now says when a session needs refreshing.</li>
+              <li>Searching starts after you've run one search by hand in the tab.</li>
+              <li>Works with EVA's new date header format.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.0">1.5.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c150h">Choice Privileges hotel search</h3>
+            <ul data-i18n="c150u">
+              <li>Points per night by month, with rows that link to the hotel with the points rate picked.</li>
+              <li>Find hotels by name, city or airport (nearest first), from the page, or by code.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="more">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.4.0">1.4.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c140h">World of Hyatt hotel search</h3>
+            <ul data-i18n="c140u">
+              <li>Points for every room type with award space (Standard, Club Access, Standard and Premium Suite), with off-peak / peak level.</li>
+              <li>A Room filter keeps one room type only.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="more">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.3.0">1.3.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c130h">Hilton Honors hotel search</h3>
+            <ul data-i18n="c130u">
+              <li>Lowest points per night with rooms left, including Premium Room Rewards when they're the lowest.</li>
+              <li>A Reward filter keeps Standard or Premium nights only.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="more">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.2.0">1.2.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c120h">Marriott Bonvoy hotel search</h3>
+            <ul data-i18n="c120u">
+              <li>Lowest points per night, with rows linking to the hotel's rate calendar.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="more">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.1.0">1.1.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c110h">Hotel search, starting with IHG One Rewards</h3>
+            <ul data-i18n="c110u">
+              <li>New hotel panel: points per night over a range of months, on a calendar and in a sortable table.</li>
+              <li>Hotel picker: search by name, city or airport, pick from the page, or type a hotel code.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="more">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.0.0">1.0.0</a><small><time datetime="2026-09-26">Sep 26, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c100h">First release</h3>
+            <ul data-i18n="c100u">
+              <li>Award flight search across many routes and dates on Alaska, American, Air Canada, ANA, Cathay Pacific, EVA Air, Flying Blue, Japan Airlines, LifeMiles and Starlux.</li>
+              <li>Calendar mode, Air Canada stopovers, JAL partner awards and the LifeMiles carrier filter.</li>
+              <li>Available as a userscript and a Chrome / Edge extension.</li>
+            </ul>
+          </div>
+        </li>
+      </ul>
+      <button class="btn log-toggle" id="log-toggle" type="button" aria-expanded="false" aria-controls="log">Show older releases</button>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <div class="final-card reveal">
+        <h2 data-i18n="fin.h">Stop checking one date at a time.</h2>
+        <p data-i18n="fin.p">Install Award Buddy, open your favorite program's site, and search two months of award space in a few minutes.</p>
+        <div class="cta">
+          <a class="btn light" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js" data-i18n="i.btn">Install userscript</a>
+          <a class="btn ghost" href="https://github.com/kevchentw/awardbuddy" data-i18n="fin.star">Star on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span><a class="brand" href="#top"><img src="icon-128.png" alt="">Award Buddy</a></span>
+    <span><span data-i18n="ft.lic"><a href="https://github.com/kevchentw/awardbuddy/blob/main/LICENSE">MIT License</a> · Not affiliated with any airline, hotel or loyalty program.</span></span>
+    <span><a href="https://github.com/kevchentw/awardbuddy/issues" data-i18n="ft.issue">Report a problem</a> · <a href="https://github.com/kevchentw/awardbuddy" data-i18n="ft.src">Source on GitHub</a></span>
+  </div>
+</footer>
+
+<script>
+  // Traditional Chinese (Taiwan) strings, keyed by data-i18n / data-i18n-aria. English stays in the markup.
+  // The demo stage (mock site and panel) stays in English, like the real sites and the Award Buddy panel.
+  const ZH = {
+    'nav.features': '功能', 'nav.programs': '支援計畫', 'nav.changelog': '更新紀錄', 'nav.install': '安裝',
+
+    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.6.0</span> 支援 I Prefer 點數房搜尋 <span class="arrow">→</span>',
+    'hero.h1': '哩程票、點數房<br><span class="grad">所有日期</span>一次查完',
+    'hero.lede': 'Award Buddy 會在航空公司和飯店官網上多加一個搜尋面板。選好航線或飯店、設定日期區間，它就會直接在官網上幫你把每種組合都查一遍，最後整理成一張可以排序的表格和月曆。',
+    'hero.install': '安裝 Award Buddy', 'hero.see': '看看支援哪些計畫',
+    'meta.free': '免費、開源（MIT）', 'meta.noacct': '不用註冊、不經過伺服器', 'meta.browsers': 'Chrome、Edge，或任何裝了 Tampermonkey 的瀏覽器',
+    'demo.pick': '選一個網站試試看', 'demo.pickaria': '選擇要示範的網站',
+    'demo.aria': '動畫示範：在航空公司或飯店的兌換搜尋頁面上，點右下角的 Award Buddy 按鈕打開面板，一次查兩個月內好幾條航線，並列出查到的哩程票空位。',
+    'mq': '支援 16 個航空公司和飯店計畫',
+    'st.air': '個航空哩程計畫', 'st.hotel': '個飯店點數計畫', 'st.srv': '台伺服器，也不用註冊', 'st.free': '免費開源',
+
+    'f.kicker': '功能', 'f.h2': '跟其他工具哪裡不一樣',
+    'f.sub': '官網的兌換搜尋通常一次只能查一條航線、一天。Award Buddy 直接在航空公司或飯店官網上，把你要的日期和航線一次查完。',
+    'f.1h': '一堆日期，一張表搞定',
+    'f.1p': '每個出發地 × 目的地 × 日期，都直接用官網自己的搜尋去查。結果可以依日期、飛行時間或哩程排序，也能用艙等、轉機次數或星期幾篩選。',
+    'v.routes': '3 條航線', 'v.days': '61 天', 'v.searches': '查 183 次',
+    'v.r1': 'TPE → SFO · 直飛', 'v.r2': 'TPE → LAX · 直飛', 'v.r3': 'TPE → SEA · 轉機 1 次',
+    'f.2h': '官網即時資料',
+    'f.2p': '結果直接來自各計畫官網，看到的就是現在訂得到的位子，不是第三方資料庫裡的舊資料。',
+    'f.3h': '不經過伺服器、不用註冊',
+    'f.3p': '全部在你的瀏覽器裡跑，用的是你自己在航空公司或飯店網站上的登入狀態。資料不會傳到別的地方，我們也不蒐集任何資料。',
+    'f.4h': '月曆檢視',
+    'f.4p': '月曆模式會列出整個月每天的最低哩程。查飯店時則顯示每家飯店每晚要多少點數，一家飯店一種顏色。',
+    'f.5h': '機票、飯店都能查',
+    'f.5p': '支援 10 個航空哩程計畫和 6 個飯店點數計畫，包括合作航空哩程票、中停（stopover），以及用 Choice 點數訂 Preferred Hotels。',
+    'cal.dow': '日一二三四五六',
+
+    'i.kicker': '開始使用', 'i.h2': '一分鐘就裝好',
+    'i.sub': '現在可以用油猴腳本（userscript）安裝，之後會自動更新。Chrome / Edge 擴充功能即將推出。',
+    'i.us': '油猴腳本 <span class="rec">推薦</span>',
+    'i.s1': '先安裝 <a href="https://www.tampermonkey.net/">Tampermonkey</a> 或 <a href="https://violentmonkey.github.io/">Violentmonkey</a>。',
+    'i.s2': '打開 <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a>，按下<strong>安裝</strong>（Install）。',
+    'i.upd': '之後有新版本，Tampermonkey 會自動幫你更新。',
+    'i.btn': '安裝油猴腳本',
+    'i.ext': 'Chrome / Edge 擴充功能 <span class="soon">即將推出</span>',
+    'i.extp': '之後可以從 Chrome 線上應用程式商店和 Edge 附加元件一鍵安裝，上架後連結會放在這裡。',
+    'i.cws': 'Chrome 線上應用程式商店', 'i.edge': 'Edge 附加元件',
+    'i.until': '在那之前，Chrome 和 Edge 裝 Tampermonkey 就能用油猴腳本。',
+    'h1.h': '打開支援的網站',
+    'h1.p': '從<a href="#programs">下面的清單</a>挑一個。頁面角落會出現一顆按鈕：航空公司網站是 ✈，飯店網站是 🏨。',
+    'h2.h': '打開面板',
+    'h2.p': '點一下按鈕。如果它說需要 session，就先登入，或照著面板上的 <strong>Get session</strong> 連結操作。',
+    'h3.h': '全部一次查',
+    'h3.p': '輸入航線或飯店和日期，按 <strong>Search</strong>。每查完一筆，結果就會馬上跳出來。',
+
+    'p.kicker': '支援計畫', 'p.h2': '支援的哩程和點數計畫',
+    'p.sub': '按<strong>開始搜尋</strong>會打開面板能用的頁面。有些計畫要先登入或先手動查一次，請看<strong>查詢前準備</strong>這一欄。',
+    'p.tabair': '✈ 航空公司（10）', 'p.tabhotel': '🏨 飯店（6）',
+    'lg.aria': '登入需求說明',
+    'lg.none': '<span class="need need-none">免登入</span>打開就能用',
+    'lg.page': '<span class="need need-page">開啟頁面</span>免登入，但要從指定頁面開始',
+    'lg.login': '<span class="need need-login">登入</span>要先登入會員',
+    'th.prog': '計畫', 'th.cal': '月曆', 'th.before': '查詢前準備',
+    'p.go': '開始搜尋 →', 'p.nologin': '免登入', 'p.runone': '先查一次', 'p.opensearch': '開啟搜尋頁',
+    'p.openbooking': '開啟訂位頁', 'p.login': '登入', 'p.jalonly': '限日航自家航班', 'p.withchoice': '用 Choice 點數',
+    'h.aa': '先在頁面上手動查一次哩程票，再按 Get session', 'h.nh': '登入後打開哩程兌換訂位頁', 'h.br': '登入後先手動查一次',
+    'h.ipc': '要訂房的話，請先登入 Choice，再<a href="https://www.choicehotels.com/ascend/preferred-hotels-partner">從 Choice 網站進入</a>',
+    'p.hotelnote': '飯店搜尋涵蓋用點數兌換的標準點數房。可以用飯店名稱、城市或機場加入飯店，直接從目前頁面挑，或輸入飯店代碼（例如 IHG <code>TPEKM</code>、Hyatt <code>TYOPH</code>）。之後會再支援更多飯店集團。',
+    'n.AS': '阿拉斯加航空', 'n.AA': '美國航空', 'n.AC': '加拿大航空', 'n.NH': '全日空', 'n.CX': '國泰航空',
+    'n.BR': '長榮航空', 'n.JL': '日本航空', 'n.JX': '星宇航空',
+    'yes': '支援', 'no': '不支援',
+
+    'm.h': '進階搜尋模式', 'm.sub': '各計畫專屬、會出現在面板裡的選項。',
+    'm.ac': '單程加中停',
+    'm.acd': '輸入中停城市和停留天數（例如 <code>3-5, 7</code> 天）。每條航線、每個日期都會把所有城市 × 停留天數的組合查一遍。',
+    'm.jl': '合作航空哩程票',
+    'm.jld': '查 JAL 哩程（JMB）可以換的寰宇一家和其他合作航空機位。',
+    'm.jlc': '<span>阿拉斯加 / 夏威夷航空</span><span>美國航空</span><span>英國航空</span><span>國泰航空</span><span>卡達航空</span><span>阿聯酋航空</span><span>芬蘭航空</span><span>伊比利亞航空</span><span>澳洲航空</span><span>大韓航空</span><span>還有更多</span>',
+    'm.lm': '指定航空公司',
+    'm.lmd': '查整個星空聯盟、用 Smart Search，或只查某一家航空公司。',
+    'm.lmc': '<span>泰國航空</span><span>Avianca + Gol</span><span>愛琴海航空</span><span>全日空</span><span>漢莎航空</span><span>新加坡航空</span><span>聯合航空</span>',
+    'm.ip': 'I Prefer 或 Choice 點數',
+    'm.ipd': '查 Preferred Hotels &amp; Resorts 旗下飯店要多少 I Prefer 點數，或 300 多家可以用 Choice Privileges 點數訂的飯店。',
+    'm.ipc': '<span>I Prefer 點數</span><span>Choice 點數</span>',
+
+    'c.kicker': '更新紀錄', 'c.h2': '最近更新了什麼',
+    'c.sub': '每個版本都可以到 <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a> 下載。',
+    'c.older': '看更早的版本', 'c.fewer': '收起更早的版本',
+    'c160h': 'I Prefer 點數房搜尋 <span class="latest">最新</span>',
+    'c160u': '<li>新增飯店計畫：I Prefer（Preferred Hotels &amp; Resorts），支援 iprefer.com 和 preferredhotels.com。</li><li>兩種查法：用 I Prefer 點數，或在 300 多家接受 Choice Privileges 點數的飯店用 Choice 點數。Choice 的稅費會以現金顯示。</li><li>可以用名稱、代碼、城市、州或國家找飯店，也能直接從目前頁面挑。</li>',
+    'c151h': '長榮航空搜尋更穩定',
+    'c151u': '<li>查詢會拉開間隔並暫存結果，比較不會被機器人驗證擋下。session 需要更新時，面板會提醒你。</li><li>要先在分頁裡手動查一次，才會開始自動搜尋。</li><li>支援長榮官網新的日期標題格式。</li>',
+    'c150h': 'Choice Privileges 點數房搜尋',
+    'c150u': '<li>按月份列出每晚要幾點，點一下就會打開已選好點數房價的飯店頁面。</li><li>可以用名稱、城市或機場（由近到遠排序）找飯店，也能從頁面挑或輸入代碼。</li>',
+    'c140h': 'World of Hyatt 點數房搜尋',
+    'c140u': '<li>列出每種還有點數房的房型要幾點（Standard、Club Access、Standard Suite 和 Premium Suite），並標示離峰 / 尖峰。</li><li>可以用房型篩選，只看某一種房型。</li>',
+    'c130h': 'Hilton Honors 點數房搜尋',
+    'c130u': '<li>每晚最低點數（只列還有房的），如果 Premium Room Rewards 比較便宜也會列出來。</li><li>可以篩選只看 Standard 或 Premium 點數房。</li>',
+    'c120h': 'Marriott Bonvoy 點數房搜尋',
+    'c120u': '<li>每晚最低點數，點一下就會打開該飯店的房價月曆。</li>',
+    'c110h': '開始支援飯店，第一站是 IHG One Rewards',
+    'c110u': '<li>新的飯店面板：好幾個月內每晚要幾點，用月曆和可排序的表格呈現。</li><li>飯店選擇器：用名稱、城市或機場搜尋、從頁面挑，或輸入飯店代碼。</li>',
+    'c100h': '第一版上線',
+    'c100u': '<li>可以在阿拉斯加航空、美國航空、加拿大航空、全日空、國泰航空、長榮航空、Flying Blue、日本航空、LifeMiles 和星宇航空，一次查好幾條航線、好幾個日期的哩程票。</li><li>月曆模式、加拿大航空中停、日航合作航空哩程票，以及 LifeMiles 指定航空公司。</li><li>提供油猴腳本和 Chrome / Edge 擴充功能兩種版本。</li>',
+
+    'fin.h': '別再一天一天慢慢查了',
+    'fin.p': '裝好 Award Buddy，打開你常用的哩程或點數計畫官網，幾分鐘就能把兩個月的空位查完。',
+    'fin.star': '到 GitHub 按個星星',
+    'ft.lic': '<a href="https://github.com/kevchentw/awardbuddy/blob/main/LICENSE">MIT 授權</a> · 與任何航空公司、飯店或會員計畫都沒有合作關係。',
+    'ft.issue': '回報問題', 'ft.src': 'GitHub 原始碼',
+  }
+  // Strings only the script needs in English
+  const EN = { 'cal.dow': 'SMTWTFS', 'c.older': 'Show older releases', 'c.fewer': 'Show fewer releases', 'yes': 'Yes', 'no': 'No' }
+  let LANG = window.AB_LANG ?? 'en'
+  const t = key => (LANG === 'zh' ? ZH : EN)[key]
+  // Program name for the picker and logo strip
+  const pname = p => (LANG === 'zh' && ZH[`n.${p.code}`]) || p.short || p.name
+
+  // Hero demo: a mock award page per airline with the Award Buddy panel on top.
+  // Scale the fixed-size stage to the column width, then play the search on a loop
+  const stage = document.getElementById('stage'), scaleBox = document.getElementById('demo-scale')
+  let scale = 1
+  const fit = () => {
+    scale = scaleBox.clientWidth / 960
+    stage.style.transform = `scale(${scale})`
+    scaleBox.style.height = `${600 * scale}px`
+  }
+  new ResizeObserver(fit).observe(scaleBox)
+  fit()
+
+  const $ = id => document.getElementById(id)
+  const panel = $('ab-panel'), fab = $('ab-fab'), btn = $('ab-btn'), cursor = $('cursor')
+  const status = $('ab-status'), bar = $('ab-bar'), rows = $('ab-rows')
+
+  const CABIN = {
+    F: ['First', '#7c3aed'], J: ['Business', '#0369a1'], N: ['Prem Eco', '#059669'], Y: ['Economy', '#374151'],
+  }
+  // Colors, names and cabins match src/programs/*; routes and prices are made up for the demo
+  const AIRLINES = [
+    { code: 'AS', logo: 'logos/as.png', name: 'Alaska Airlines', color: '#00467F', host: 'www.alaskaair.com', path: '/search/results', miles: 'Atmos Rewards',
+      cabins: 'FJNY', cal: true, orig: ['SEA', 'SFO'], dest: ['NRT', 'HND'], cols: ['F', 'J'], price: { F: [70, 80], J: [60, 75] } },
+    { code: 'AA', logo: 'logos/aa.png', name: 'American Airlines', color: '#0078d2', host: 'www.aa.com', path: '/booking/search', miles: 'AAdvantage',
+      cabins: 'FJNY', cal: true, orig: ['DFW', 'LAX'], dest: ['LHR', 'NRT'], cols: ['F', 'J'], price: { F: [85, 115], J: [57.5, 80] } },
+    { code: 'AC', logo: 'logos/ac.png', name: 'Air Canada (Aeroplan)', short: 'Air Canada', color: '#d2001f', host: 'www.aircanada.com', path: '/aeroplan/redeem/availability/outbound', miles: 'Aeroplan',
+      cabins: 'JNY', cal: false, orig: ['YVR', 'YYZ'], dest: ['TPE', 'NRT'], cols: ['J', 'Y'], price: { J: [75, 90], Y: [35, 45] } },
+    { code: 'NH', logo: 'logos/nh.png', name: 'ANA', color: '#003087', host: 'aswbe-i.ana.co.jp', path: '/international_asw/pages/award/search', miles: 'ANA Mileage Club',
+      cabins: 'FJNY', cal: false, orig: ['NRT', 'HND'], dest: ['JFK', 'ORD'], cols: ['F', 'J'], price: { F: [110, 150], J: [75, 90] } },
+    { code: 'CX', logo: 'logos/cx.png', name: 'Cathay Pacific', color: '#006564', host: 'book.cathaypacific.com', path: '/CathayPacificAwardV3/dyn/air/booking/availability', miles: 'Asia Miles',
+      cabins: 'FJNY', cal: false, orig: ['HKG'], dest: ['LHR', 'CDG', 'JFK'], cols: ['F', 'J'], price: { F: [125, 160], J: [85, 110] } },
+    { code: 'BR', logo: 'logos/br.png', name: 'EVA Air', color: '#006537', host: 'booking.evaair.com', path: '/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability', miles: 'Infinity MileageLands',
+      cabins: 'JNY', cal: true, orig: ['TPE'], dest: ['SFO', 'LAX', 'SEA'], cols: ['J', 'Y'], price: { J: [75, 90], Y: [40, 50] } },
+    { code: 'AF', name: 'Flying Blue', color: '#002157', host: 'wwws.airfrance.us', path: '/search/flights/0', miles: 'Flying Blue',
+      cabins: 'JNY', cal: true, orig: ['CDG', 'AMS'], dest: ['JFK', 'BOS'], cols: ['J', 'Y'], price: { J: [55, 90], Y: [20, 35] } },
+    { code: 'JL', logo: 'logos/jl.png', name: 'Japan Airlines', color: '#C00000', host: 'www.jal.co.jp', path: '/jp/en/jmb/award-inter/booking/', miles: 'JAL Mileage Bank',
+      cabins: 'FJNY', cal: true, orig: ['HND', 'NRT'], dest: ['LAX', 'SFO'], cols: ['F', 'J'], price: { F: [80, 100], J: [60, 70] } },
+    { code: 'LM', logo: 'logos/av.png', name: 'LifeMiles', color: '#E31837', host: 'www.lifemiles.com', path: '/fly/redemption', miles: 'LifeMiles',
+      cabins: 'JY', cal: false, orig: ['JFK', 'EWR'], dest: ['FRA', 'MUC'], cols: ['J', 'Y'], price: { J: [63, 78], Y: [30, 40] } },
+    { code: 'JX', logo: 'logos/jx.png', name: 'Starlux Airlines', color: '#1B3D6F', host: 'www.starlux-airlines.com', path: '/en-US/redeem-award-ticket/index', miles: 'COSMILE',
+      cabins: 'FJNY', cal: true, orig: ['TPE'], dest: ['LAX', 'SFO', 'ONT'], cols: ['F', 'J'], price: { F: [110, 130], J: [80, 95] } },
+  ]
+  // Hotel programs: title and color match src/programs/*; hotels, rooms and points are made up for the demo
+  const HOTELS = [
+    { code: 'IHG', hotel: true, logo: 'logos/ihg.png', name: 'IHG One Rewards', title: 'IHG', color: '#0D2D52', host: 'www.ihg.com', path: '/hotels/us/en/find-hotels/select-roomrate',
+      city: 'Tokyo, Japan', hotels: ['InterContinental Tokyo Bay', 'Kimpton Shinjuku Tokyo', 'ANA InterContinental Tokyo'], rooms: ['Standard Room', 'Club Room'], points: [45, 90] },
+    { code: 'MAR', hotel: true, logo: 'logos/marriott.png', name: 'Marriott Bonvoy', title: 'Marriott', color: '#1C1C1C', host: 'www.marriott.com', path: '/search/availabilityCalendar.mi',
+      city: 'Kyoto, Japan', hotels: ['The Ritz-Carlton, Kyoto', 'The Westin Miyako Kyoto', 'Moxy Kyoto Nijo'], rooms: ['Standard Room', 'Deluxe Room'], points: [30, 110] },
+    { code: 'HIL', hotel: true, logo: 'logos/hilton.png', name: 'Hilton Honors', title: 'Hilton', color: '#104C97', host: 'www.hilton.com', path: '/en/book/reservation/flexibledates/',
+      city: 'Maldives', hotels: ['Conrad Maldives Rangali Island', 'Waldorf Astoria Maldives Ithaafushi'], rooms: ['Standard Room Reward', 'Premium Room Reward'], points: [120, 150] },
+    { code: 'HYT', hotel: true, logo: 'logos/hyatt.png', name: 'World of Hyatt', title: 'Hyatt', color: '#0D2D52', host: 'www.hyatt.com', path: '/shop/rooms/',
+      city: 'Paris, France', hotels: ['Park Hyatt Paris-Vendôme', 'Hyatt Regency Paris Etoile', 'Hôtel du Louvre'], rooms: ['Standard Room · Standard', 'Suite · Standard'], points: [15, 45] },
+    { code: 'CHO', hotel: true, logo: 'logos/choice.png', name: 'Choice Privileges', title: 'Choice', color: '#0070BA', host: 'www.choicehotels.com', path: '/tokyo-japan/hotels',
+      city: 'Tokyo, Japan', hotels: ['Comfort Inn Tokyo Roppongi', 'Comfort Hotel Tokyo Kanda', 'Comfort Suites Tokyo Bay'], rooms: ['1 Double Bed', '2 Twin Beds'], points: [8, 20] },
+    { code: 'IPR', hotel: true, logo: 'logos/iprefer.png', name: 'I Prefer', title: 'I Prefer', color: '#1B2A3A', host: 'iprefer.com', path: '/hotels/search',
+      city: 'Tokyo, Japan', hotels: ['The Capitol Hotel Tokyu', 'Hotel Chinzanso Tokyo', 'Keio Plaza Hotel Tokyo'], rooms: ['Deluxe Room', 'Superior Room'], points: [40, 70] },
+  ]
+  const DEMOS = [...AIRLINES, ...HOTELS]
+
+  // Deterministic "results" per airline so each replay looks the same
+  function results(a) {
+    let seed = a.code.charCodeAt(0) * 31 + a.code.charCodeAt(1)
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280
+    const pick = xs => xs[Math.floor(rnd() * xs.length)]
+    const fmt = n => `${Math.round(n * 2) / 2}k`.replace('.0k', 'k')
+    const out = []
+    if (a.hotel) {
+      for (let day = 1 + Math.floor(rnd() * 3); out.length < 8; day += 2 + Math.floor(rnd() * 5)) {
+        const [lo, hi] = a.points
+        const pts = rnd() < .5 ? lo : Math.round((lo + (hi - lo) * rnd()) / 5) * 5
+        out.push([new Date(Date.UTC(2026, 10, day)).toISOString().slice(0, 10), pick(a.hotels), pick(a.rooms), pts * 1000, rnd() < .4 ? 1 + Math.floor(rnd() * 4) : ''])
+      }
+      return out
+    }
+    for (let day = 1 + Math.floor(rnd() * 4); out.length < 8; day += 3 + Math.floor(rnd() * 5)) {
+      const d = new Date(Date.UTC(2026, 10, day))
+      const cells = a.cols.map((c, i) => {
+        if (rnd() < (i === 0 ? .55 : .2)) return null
+        const [lo, hi] = a.price[c]
+        return [rnd() < .75 ? 'direct' : '1 stop', fmt(rnd() < .6 ? lo : lo + (hi - lo) * rnd())]
+      })
+      if (cells.every(x => !x)) cells[1] = ['direct', fmt(a.price[a.cols[1]][0])]
+      out.push([d.toISOString().slice(0, 10), pick(a.orig), pick(a.dest), ...cells])
+    }
+    return out
+  }
+
+  let cur, RESULTS, TOTAL
+  function load(a) {
+    cur = a; RESULTS = results(a)
+    stage.style.setProperty('--ab-color', a.color)
+    stage.style.setProperty('--air', a.color)
+    $('d-url').innerHTML = `https://<b>${a.host}</b>${a.path}`
+    $('d-logo').textContent = a.short ?? a.name
+    $('d-miles').textContent = a.hotel ? 'Rewards' : a.miles
+    fab.textContent = a.hotel ? '🏨' : '✈'
+    $('ab-title').textContent = `${a.hotel ? '🏨' : '✈'} Award Buddy – ${a.title ?? a.name}`
+    $('ab-dest-wrap').style.display = $('ab-cabins').style.display = $('ab-cab-lbl').style.display = a.hotel ? 'none' : ''
+    document.querySelectorAll('#demo-pick button').forEach(b => b.setAttribute('aria-pressed', b.dataset.code === a.code))
+    if (a.hotel) loadHotel(a)
+    else loadAirline(a)
+  }
+  function loadHotel(a) {
+    TOTAL = a.hotels.length * 2
+    $('d-h4').textContent = 'Book with points'
+    $('d-l1').textContent = 'Destination'; $('d-from').textContent = a.city
+    $('d-l2').textContent = 'Guests'; $('d-to').textContent = '1 room, 2 adults'
+    $('d-l3').textContent = 'Dates'; $('d-date').textContent = 'Nov 12 – 13'
+    $('d-list').innerHTML = `<div class="day">Thu, Nov 12 · ${a.city} · ${a.hotels.length} hotel${a.hotels.length > 1 ? 's' : ''}</div>` +
+      a.hotels.map(h => `<div class="site-card na"><div><div class="t">${h}</div><div class="s">Reward Night · 1 night</div></div><div class="m">Not available</div></div>`).join('')
+    $('ab-toggle').style.display = 'none'
+    $('ab-l1').textContent = 'Hotels'
+    $('ab-orig').innerHTML = a.hotels.map(x => `<span class="ab-chip">${x} ×</span>`).join('')
+    $('ab-l3').textContent = 'Months (click start, then end)'
+    $('ab-dates').textContent = '📅 Nov 2026 – Dec 2026'
+    $('ab-hint').textContent = `~${TOTAL} request(s) (${a.hotels.length} hotel(s) × 2 month(s))`
+    $('ab-sum').textContent = `${a.hotels.length > 1 ? `${a.hotels.length} hotels` : a.hotels[0]} · Nov – Dec 2026`
+    $('ab-head').innerHTML = '<th>Date</th><th>Hotel</th><th>Room</th><th>Points</th><th>Left</th>'
+  }
+  function loadAirline(a) {
+    const routes = a.orig.length * a.dest.length
+    TOTAL = routes * 61
+    $('d-h4').textContent = 'Book with miles'
+    $('d-l1').textContent = 'From'; $('d-l2').textContent = 'To'
+    $('d-l3').textContent = 'Date'; $('d-date').textContent = 'Thu, Nov 12'
+    $('d-from').textContent = a.orig[0]
+    $('d-to').textContent = a.dest[0]
+    const cab = CABIN[a.cols[0] === 'F' ? 'J' : a.cols[0]][0]
+    $('d-list').innerHTML = `<div class="day">Thu, Nov 12 · ${a.orig[0]} → ${a.dest[0]} · 3 flights</div>` +
+      [['08:40', '11h 30m'], ['16:20', '11h 35m'], ['23:50', '12h 05m']].map(([t, d]) =>
+        `<div class="site-card na"><div><div class="t">Departs ${t}</div><div class="s">Nonstop · ${d} · ${cab}</div></div><div class="m">Not available</div></div>`).join('')
+    $('ab-toggle').style.display = a.cal ? '' : 'none'
+    const chips = xs => xs.map(x => `<span class="ab-chip">${x} ×</span>`).join('')
+    $('ab-l1').textContent = 'Origins'
+    $('ab-l3').textContent = 'Dates'
+    $('ab-dates').textContent = '📅 Nov 1, 2026 – Dec 31, 2026'
+    $('ab-orig').innerHTML = chips(a.orig)
+    $('ab-dest').innerHTML = chips(a.dest)
+    $('ab-cabins').innerHTML = [...a.cabins].map(c =>
+      `<span${a.cols.includes(c) ? ` style="background:${CABIN[c][1]};color:#fff;border-color:transparent"` : ''}>${CABIN[c][0]}</span>`).join('')
+    $('ab-hint').textContent = `~${TOTAL} request(s) (${routes} route(s) × 61 day(s))`
+    $('ab-sum').textContent = `${a.orig.join(', ')} → ${a.dest.join(', ')} · Nov 1 – Dec 31 · ${a.cols.map(c => CABIN[c][0]).join(', ')}`
+    $('ab-head').innerHTML = '<th>Date</th><th>Orig</th><th>Dest</th>' + a.cols.map(c => `<th style="color:${CABIN[c][1]}">${CABIN[c][0]}</th>`).join('')
+  }
+
+  const cell = (v, c) => v ? `<td><span class="st">${v[0]}</span> <span class="mi" style="color:${CABIN[c][1]}">${v[1]}</span></td>` : '<td class="na">—</td>'
+  const row = r => cur.hotel
+    ? `<tr class="new"><td>${r[0]}</td><td class="ht" style="color:var(--ab-color)">${r[1]}</td><td class="rt rm">${r[2]}</td><td class="mi">${r[3].toLocaleString('en-US')}</td><td class="rt">${r[4]}</td></tr>`
+    : `<tr class="new"><td>${r[0]}</td><td class="rt">${r[1]}</td><td class="rt">${r[2]}</td>${cur.cols.map((c, i) => cell(r[3 + i], c)).join('')}</tr>`
+  const doneText = () => `Done in ${cur.hotel ? '14s' : '3m 12s'}. Found ${RESULTS.length} result(s) across ${TOTAL} searches.`
+
+  // Cursor positions are in stage pixels
+  const at = (x, y) => { cursor.style.left = x + 'px'; cursor.style.top = y + 'px' }
+  const centerOf = el => {
+    const r = el.getBoundingClientRect(), s = stage.getBoundingClientRect()
+    return [(r.left - s.left + r.width / 2) / scale, (r.top - s.top + r.height / 2) / scale]
+  }
+  const press = el => { el.classList.add('press'); setTimeout(() => el.classList.remove('press'), 150) }
+
+  let timers = [], visible = false, playing = false
+  const later = (ms, fn) => timers.push(setTimeout(fn, ms))
+  function reset() {
+    timers.forEach(clearTimeout); timers = []; playing = false
+    panel.classList.add('closed'); panel.classList.remove('running')
+    btn.textContent = 'Search'; status.textContent = ''; bar.style.width = '0'; rows.innerHTML = ''
+    cursor.style.transition = 'none'; cursor.style.display = ''; at(600, 330); cursor.getBoundingClientRect(); cursor.style.transition = ''
+    fab.classList.remove('hint')
+  }
+  function finalState() {
+    reset()
+    panel.classList.remove('closed'); panel.classList.add('running')
+    rows.innerHTML = RESULTS.map(row).join('').replaceAll(' class="new"', '')
+    bar.style.width = '100%'
+    status.textContent = doneText()
+    cursor.style.display = 'none'
+  }
+  function play() {
+    reset()
+    playing = true
+    later(400, () => fab.classList.add('hint'))
+    later(1200, () => at(906, 546))                                     // move to ✈
+    later(2000, () => { press(fab); panel.classList.remove('closed') }) // open panel
+    later(2700, () => { const [x, y] = centerOf(btn); at(x - 30, y - 4) }) // move to Search
+    later(3500, () => {
+      press(btn)
+      panel.classList.add('running'); btn.textContent = 'Stop'
+      const steps = 40
+      for (let i = 1; i <= steps; i++) later(i * 130, () => {
+        const done = Math.round(TOTAL * i / steps)
+        bar.style.width = `${done / TOTAL * 100}%`
+        status.textContent = `Searching… ${done}/${TOTAL}`
+        const shown = Math.floor(RESULTS.length * i / steps)
+        while (rows.children.length < shown) rows.insertAdjacentHTML('beforeend', row(RESULTS[rows.children.length]))
+        if (i === steps) {
+          btn.textContent = 'Search'
+          status.textContent = doneText()
+          later(4000, () => { playing = false; if (visible) play() }) // loop
+        }
+      })
+      later(600, () => at(980, 640))                                    // cursor out of the way
+    })
+  }
+
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+  const start = () => reduced ? finalState() : play()
+
+  // Picker names stay in English to match the English demo it controls
+  function renderPicker() {
+    $('demo-pick').innerHTML = DEMOS.map(a =>
+      `<button type="button" data-code="${a.code}" aria-pressed="${a === cur}" title="${a.name}">${a.logo ? `<img src="${a.logo}" alt="">` : `<i style="background:${a.color}">${a.code}</i>`}${a.short ?? a.name}</button>`).join('')
+  }
+  $('demo-pick').addEventListener('click', e => {
+    const b = e.target.closest('button')
+    if (!b) return
+    load(DEMOS.find(a => a.code === b.dataset.code))
+    start()
+  })
+  fab.addEventListener('click', () => panel.classList.toggle('closed'))
+
+  renderPicker()
+  load(AIRLINES.find(a => a.code === 'BR'))
+  if (reduced) finalState()
+  else new IntersectionObserver(es => {
+    visible = es[0].isIntersecting
+    if (visible && !playing) play()
+    if (!visible && playing) reset()   // pause off screen, restart when back
+  }, { threshold: .3 }).observe(scaleBox)
+
+  // Airline / hotel tabs
+  const tabs = document.querySelectorAll('.tabs [role="tab"]')
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    tabs.forEach(t => {
+      const on = t === tab
+      t.setAttribute('aria-selected', on)
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on
+    })
+  }))
+
+  // Logo strip and feature-card logo cloud
+  const ALL = DEMOS
+  const mark = p => p.logo ? `<img src="${p.logo}" alt="">` : `<i style="background:${p.color}">${p.code}</i>`
+  function renderLogos() {
+    const chipsHtml = ALL.map(p => `<span class="logo-chip">${mark(p)}${pname(p)}</span>`).join('')
+    $('marquee').innerHTML = chipsHtml + `<span class="dup" aria-hidden="true">${chipsHtml}</span>`
+    $('logo-cloud').innerHTML = ALL.map(p => mark(p).replace('<img', `<img title="${pname(p)}"`)).join('')
+  }
+
+  // Mini calendar for the Calendar views card (made-up prices)
+  function renderCal() {
+    let seed = 7
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280
+    let html = [...t('cal.dow')].map(d => `<div class="dow">${d}</div>`).join('')
+    for (let d = 1; d <= 21; d++) {
+      const r = rnd()
+      const [cls, v] = r < .3 ? ['lo', '60k'] : r < .75 ? ['mid', `${70 + Math.floor(rnd() * 4) * 5}k`] : ['x', '—']
+      html += `<div class="${cls}">${d}<b>${v}</b></div>`
+    }
+    $('viz-cal').innerHTML = html
+  }
+
+  // Nav border once scrolled
+  const nav = $('nav')
+  const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8)
+  addEventListener('scroll', onScroll, { passive: true }); onScroll()
+
+  // Older changelog entries
+  $('log-toggle').addEventListener('click', e => {
+    const open = $('log').classList.toggle('open')
+    e.currentTarget.setAttribute('aria-expanded', open)
+    e.currentTarget.textContent = t(open ? 'c.fewer' : 'c.older')
+  })
+
+  // Language: swap every [data-i18n] element between its English markup and the zh-TW dictionary
+  const ORIG = new Map(), ORIG_ARIA = new Map()
+  function setLang(lang) {
+    LANG = lang
+    document.documentElement.lang = lang === 'zh' ? 'zh-Hant-TW' : 'en'
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      if (!ORIG.has(el)) ORIG.set(el, el.innerHTML)
+      el.innerHTML = lang === 'zh' ? ZH[el.dataset.i18n] ?? ORIG.get(el) : ORIG.get(el)
+    })
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      if (!ORIG_ARIA.has(el)) ORIG_ARIA.set(el, el.getAttribute('aria-label'))
+      el.setAttribute('aria-label', lang === 'zh' ? ZH[el.dataset.i18nAria] : ORIG_ARIA.get(el))
+    })
+    document.querySelectorAll('.programs .yes').forEach(el => el.setAttribute('aria-label', t('yes')))
+    document.querySelectorAll('.programs .no').forEach(el => el.setAttribute('aria-label', t('no')))
+    const dateFmt = new Intl.DateTimeFormat(lang === 'zh' ? 'zh-TW' : 'en-US', { dateStyle: 'medium', timeZone: 'UTC' })
+    document.querySelectorAll('.log time').forEach(el => { el.textContent = dateFmt.format(new Date(el.dateTime)) })
+    $('log-toggle').textContent = t($('log').classList.contains('open') ? 'c.fewer' : 'c.older')
+    const btn = $('lang-btn')
+    btn.textContent = lang === 'zh' ? 'EN' : '中文'
+    btn.lang = lang === 'zh' ? 'en' : 'zh-Hant-TW'
+    btn.setAttribute('aria-label', lang === 'zh' ? 'Switch to English' : '切換為繁體中文')
+    renderPicker(); renderLogos(); renderCal()
+  }
+  $('lang-btn').addEventListener('click', () => {
+    const next = LANG === 'zh' ? 'en' : 'zh'
+    try { localStorage.setItem('ab-lang', next) } catch {}
+    // Drop a ?lang= override so the saved choice sticks on reload
+    const url = new URL(location.href)
+    if (url.searchParams.has('lang')) { url.searchParams.delete('lang'); history.replaceState(null, '', url) }
+    setLang(next)
+  })
+  setLang(LANG)
+
+  // Fade sections in as they scroll into view
+  if (!reduced && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) }
+    }), { rootMargin: '0px 0px -8% 0px' })
+    document.querySelectorAll('.reveal').forEach((el, i) => {
+      el.style.transitionDelay = `${(i % 3) * 70}ms`
+      io.observe(el)
+    })
+  }
+</script>
+</body>
+</html>
