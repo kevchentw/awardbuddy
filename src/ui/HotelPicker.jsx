@@ -7,7 +7,8 @@ import { useOutsideClick, cx } from './util.js'
 //   hotelsAt(ref)       → { exact?: { code, name }, nearby: [{ code, name?, sub? }] }
 //                         exact: the suggestion was one hotel, add it; otherwise pick from nearby
 //   hotelName(code)     → name, for hotels added or listed without one
-//   pageHotels()        → [{ code, name? }] hotels on the page the user is on, read when the list opens
+//   pageHotels()        → [{ code, name? }] (or a promise of it) hotels on the page the user is on, read
+//                         when the list opens
 //   isHotelCode(text)   → true when Enter should add the typed text as a code
 // value: selected codes; names: code → name; onChange(codes, names)
 export function HotelPicker({ program, value, names, onChange }) {
@@ -49,6 +50,13 @@ export function HotelPicker({ program, value, names, onChange }) {
       }
     }
     for (let n = 0; n < 4; n++) next()
+  }
+
+  async function showPageHotels() {
+    const title = 'Hotels on this page'
+    setList({ title, hotels: [], loading: true })
+    try { showList(title, await program.pageHotels()) }
+    catch { setList({ title, hotels: [], error: true }) }
   }
 
   async function choose(s) {
@@ -109,7 +117,7 @@ export function HotelPicker({ program, value, names, onChange }) {
         )}
       </div>
       {program.pageHotels && !list && (
-        <button class="ab-link-btn" style={{ margin: '4px 0 0' }} onClick={() => showList('Hotels on this page', program.pageHotels())}>
+        <button class="ab-link-btn" style={{ margin: '4px 0 0' }} onClick={showPageHotels}>
           + Pick from hotels on this page
         </button>
       )}

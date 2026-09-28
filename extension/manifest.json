@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Award Buddy",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "homepage_url": "https://github.com/kevchentw/awardbuddy",
   "icons": {
     "16": "icons/icon-16.png",
@@ -29,7 +29,9 @@
         "https://www.marriott.com/*",
         "https://www.hilton.com/*",
         "https://www.hyatt.com/*",
-        "https://www.choicehotels.com/*"
+        "https://www.choicehotels.com/*",
+        "https://iprefer.com/*",
+        "https://preferredhotels.com/*"
       ],
       "js": [
         "award-buddy.js"

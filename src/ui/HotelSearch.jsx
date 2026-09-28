@@ -13,6 +13,10 @@ import { HotelPicker } from './HotelPicker.jsx'
 //     start/end is an inclusive range of check-in dates within one month; throws when the request fails
 //   currentHotel()     code of the hotel page the user is on, if any (preselected on first visit)
 //   plus the hotel-finding functions listed in HotelPicker.jsx
+// It can also offer search modes, picked from a dropdown: modes: [{ code, name, program, tip?, tipLink? }],
+// each mode being a hotel program of its own over the same hotel codes: switching keeps the hotels and months
+// (one saved search for all modes) and clears the results
+//   pageMode()         mode the page the user is on calls for, if any (else the last one used)
 
 function monthISO(offset) {
   const d = new Date()
@@ -21,10 +25,11 @@ function monthISO(offset) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-const storeKey = program => `award-buddy:${program.id}`
-function initialForm(program) {
+const storeKey = id => `award-buddy:${id}`
+function initialForm(program, storeId, carried) {
+  if (carried) return carried
   let saved = {}
-  try { saved = JSON.parse(localStorage.getItem(storeKey(program))) || {} } catch {}
+  try { saved = JSON.parse(localStorage.getItem(storeKey(storeId))) || {} } catch {}
   const current = program.currentHotel?.()
   // Older saves kept the codes as comma-separated text
   const hotels = Array.isArray(saved.hotels) ? saved.hotels.filter(c => typeof c === 'string') : parseHotelCodes(saved.hotels)
@@ -34,17 +39,59 @@ function initialForm(program) {
     fromMonth: monthISO(0), toMonth: monthISO(2),
   }
 }
-function initialNames(program) {
-  try { const n = JSON.parse(localStorage.getItem(storeKey(program)))?.names; return n && typeof n === 'object' ? n : {} } catch { return {} }
+function initialNames(storeId) {
+  try { const n = JSON.parse(localStorage.getItem(storeKey(storeId)))?.names; return n && typeof n === 'object' ? n : {} } catch { return {} }
+}
+
+const modeKey = program => `award-buddy:${program.id}:mode`
+function initialMode(program) {
+  let saved
+  try { saved = localStorage.getItem(modeKey(program)) } catch {}
+  const valid = code => program.modes.some(m => m.code === code)
+  const page = program.pageMode?.()
+  return valid(page) ? page : valid(saved) ? saved : program.modes[0].code
 }
 
 export function HotelSearch({ program, session }) {
-  const [form, setForm] = useState(() => initialForm(program))
+  if (!program.modes) return <HotelSearchForm program={program} session={session} />
+  return <HotelSearchModes program={program} session={session} />
+}
+
+function HotelSearchModes({ program, session }) {
+  const [mode, setMode] = useState(() => initialMode(program))
+  const query = useRef(null)  // the form's hotels and months, carried over to the next mode
+  useEffect(() => { try { localStorage.setItem(modeKey(program), mode) } catch {} }, [mode])
+  const active = program.modes.find(m => m.code === mode)
+  return (
+    <>
+      <div class="ab-row">
+        <div class="ab-field">
+          <label>{program.modeLabel ?? 'Search mode'}</label>
+          <select value={mode} onChange={e => setMode(e.currentTarget.value)}>
+            {program.modes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+          </select>
+        </div>
+      </div>
+      {active.tip && (
+        <div class="ab-tip">💡 {active.tip}{active.tipLink && <> <a href={active.tipLink.url} target="_blank" style={{ color: 'var(--ab-color)' }}>{active.tipLink.text}</a></>}</div>
+      )}
+      {/* Keyed so a mode switch starts afresh (no results from the other mode), from the same query */}
+      <HotelSearchForm key={active.code} program={active.program} session={session} storeId={program.id}
+        carried={query.current} onFormChange={f => { query.current = f }} />
+    </>
+  )
+}
+
+// storeId: where the search is saved (a program with modes shares one); carried: form to start from instead
+// of the saved one; onFormChange(form): told of every change
+function HotelSearchForm({ program, session, storeId = program.id, carried, onFormChange }) {
+  const [form, setForm] = useState(() => initialForm(program, storeId, carried))
   const set = patch => setForm(f => ({ ...f, ...patch }))
   // code → hotel name; kept out of form so a name arriving mid-search doesn't restart it
-  const [names, setNames] = useState(() => initialNames(program))
+  const [names, setNames] = useState(() => initialNames(storeId))
   useEffect(() => {
-    try { localStorage.setItem(storeKey(program), JSON.stringify({ hotels: form.hotels, names })) } catch {}
+    try { localStorage.setItem(storeKey(storeId), JSON.stringify({ hotels: form.hotels, names })) } catch {}
+    onFormChange?.(form)
   }, [form, names])
   // Look up names for hotels added by code (or saved before names existed)
   useEffect(() => {
@@ -56,6 +103,8 @@ export function HotelSearch({ program, session }) {
 
   const run = useSearchRun(form)
   const { ctl, setStatus, setProgress } = run
+  // A search still running when the form goes away (mode switch) stops at its next request
+  useEffect(() => () => { ctl.stop = true; ctl.rerun = false }, [])
 
   const [results, setResults] = useState([])
   const [shown, setShown] = useState(null)  // { hotels, fromMonth, toMonth } of the last search, for the calendar
