@@ -1,25 +1,18 @@
 import { render } from 'preact'
 import { useState, useRef, useEffect } from 'preact/hooks'
 import { CABIN_LABELS, CABIN_COLORS, CONCURRENCY } from '../common/constants.js'
-import { getDates, runPool, parseNumberList, combos, todayISO } from '../common/search.js'
+import { getDates, runPool, parseNumberList, combos, restoreDates, restoreMonths } from '../common/search.js'
 import { CSS } from './styles.js'
 import { AirportCombo } from './AirportCombo.jsx'
 import { DateRangePicker } from './DateRangePicker.jsx'
 import { ResultsTable } from './ResultsTable.jsx'
 import { CalendarView, MonthRangePicker, calToRows, inMonthRange } from './Calendar.jsx'
 import { cx } from './util.js'
-import { useSearchRun, SearchSummary, SearchControls } from './searchRun.jsx'
+import { useSearchRun, useSavedResults, SearchSummary, SearchControls } from './searchRun.jsx'
 import { HotelSearch } from './HotelSearch.jsx'
 
 // Airport list (combo) or comma-separated text (programs without an airport list)
 const codes = v => Array.isArray(v) ? v : v.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
-
-function monthISO(offset) {
-  const d = new Date()
-  d.setDate(1)
-  d.setMonth(d.getMonth() + offset)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
 
 // Extra inputs a search mode needs (e.g. stopover cities, stay lengths). Each field yields a list of
 // values and every combination is searched for each route and date.
@@ -36,7 +29,7 @@ function optionCombos(program, form) {
   })))
 }
 
-// Last-used route/dates/cabin/carrier/options per program, in the host site's localStorage
+// Last-used route/dates/search mode/cabin/carrier/options per program, in the host site's localStorage
 const storeKey = program => `award-buddy:${program.id}`
 function loadSaved(program) {
   try { return JSON.parse(localStorage.getItem(storeKey(program))) || {} } catch { return {} }
@@ -44,33 +37,13 @@ function loadSaved(program) {
 // Saved value only if it has the same shape as the default (combo array vs. comma text)
 const sameShape = (v, fallback) => v != null && typeof v === typeof fallback && Array.isArray(v) === Array.isArray(fallback) ? v : fallback
 
-const isDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
-const isMonth = v => typeof v === 'string' && /^\d{4}-\d{2}$/.test(v)
-
-// Saved date range, with any days already past dropped (none left → no dates)
-function savedDates(saved) {
-  const today = todayISO()
-  if (!isDate(saved.start)) return { start: null, end: null }
-  const end = isDate(saved.end) && saved.end > saved.start ? saved.end : null
-  if ((end ?? saved.start) < today) return { start: null, end: null }
-  if (saved.start >= today) return { start: saved.start, end }
-  return { start: today, end: end > today ? end : null }
-}
-// Saved month range, starting no earlier than this month (all past → the default range)
-function savedMonths(saved) {
-  const now = monthISO(0)
-  if (!isMonth(saved.fromMonth) || !isMonth(saved.toMonth) || saved.toMonth < now || saved.toMonth < saved.fromMonth)
-    return { fromMonth: now, toMonth: monthISO(2) }
-  return { fromMonth: saved.fromMonth < now ? now : saved.fromMonth, toMonth: saved.toMonth }
-}
-
 function initialForm(program) {
   const saved = loadSaved(program)
   return {
     origins: sameShape(saved.origins, program.airports ? [] : ''),
     dests: sameShape(saved.dests, program.airports ? [] : 'NRT'),
-    ...savedDates(saved),
-    ...savedMonths(saved),
+    ...restoreDates(saved.start, saved.end),
+    ...restoreMonths(saved.fromMonth, saved.toMonth),
     carrier: program.carriers?.some(c => c.code === saved.carrier) ? saved.carrier : program.carriers?.[0]?.code,
     options: saved.options && typeof saved.options === 'object' ? saved.options : {},
     cabins: Array.isArray(saved.cabins) ? saved.cabins.filter(c => program.cabins.includes(c)) : [],
@@ -118,7 +91,7 @@ function useSession(program) {
 }
 
 function FlightSearch({ program, session }) {
-  const [calMode, setCalMode] = useState(false)
+  const [calMode, setCalMode] = useState(() => loadSaved(program).calMode === true)
   const [form, setForm] = useState(() => initialForm(program))
   const set = patch => setForm(f => ({ ...f, ...patch }))
   // Some programs' airport list and calendar support depend on the selected carrier / search mode
@@ -128,15 +101,18 @@ function FlightSearch({ program, session }) {
   useEffect(() => {
     const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form
     try {
-      localStorage.setItem(storeKey(program), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options }))
+      localStorage.setItem(storeKey(program), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, calMode, cabins, carrier, options }))
     } catch {}
-  }, [form])
+  }, [form, calMode])
 
   const run = useSearchRun(form)
   const { ctl, setStatus, setProgress } = run
   const [results, setResults] = useState([])
   const [cal, setCal] = useState(null)            // { data, fromMonth, toMonth }
   const [noResults, setNoResults] = useState(false)
+  useSavedResults(program.id, run, { results, cal, noResults }, saved => {
+    setResults(saved.results ?? []); setCal(saved.cal ?? null); setNoResults(!!saved.noResults)
+  })
 
   // Search loop reads the latest inputs via ref so a queued re-run picks up edits
   const latest = useRef()

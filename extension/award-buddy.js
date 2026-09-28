@@ -3740,6 +3740,25 @@
     }
     return spans;
   }
+  function monthISO(offset = 0) {
+    const d3 = /* @__PURE__ */ new Date();
+    d3.setDate(1);
+    d3.setMonth(d3.getMonth() + offset);
+    return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
+  }
+  var isDate = (v3) => typeof v3 === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v3);
+  var isMonth = (v3) => typeof v3 === "string" && /^\d{4}-\d{2}$/.test(v3);
+  function restoreDates(start, end, today = todayISO()) {
+    if (!isDate(start)) return { start: null, end: null };
+    end = isDate(end) && end > start ? end : null;
+    if ((end ?? start) < today) return { start: null, end: null };
+    if (start >= today) return { start, end };
+    return { start: today, end: end > today ? end : null };
+  }
+  function restoreMonths(fromMonth, toMonth, now = monthISO(0), fallbackTo = monthISO(2)) {
+    if (!isMonth(fromMonth) || !isMonth(toMonth) || toMonth < fromMonth || toMonth < now) return { fromMonth: now, toMonth: fallbackTo };
+    return { fromMonth: fromMonth < now ? now : fromMonth, toMonth };
+  }
 
   // src/ui/styles.js
   var CSS = `
@@ -4444,6 +4463,30 @@
       }
     };
   }
+  var restoredKeys = /* @__PURE__ */ new Set();
+  function useSavedResults(id, run, state, restore) {
+    const key = `award-buddy:${id}:results`;
+    h2(() => {
+      if (restoredKeys.has(key)) return;
+      restoredKeys.add(key);
+      let saved;
+      try {
+        saved = JSON.parse(sessionStorage.getItem(key));
+      } catch {
+      }
+      if (!saved?.state) return;
+      restore(saved.state);
+      const at = new Date(saved.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      run.setStatus(`Showing results of the last search (${at}). Search again to refresh.`);
+    }, []);
+    h2(() => {
+      if (run.searching || !run.ctl.t0) return;
+      try {
+        sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), state }));
+      } catch {
+      }
+    }, [run.searching, ...Object.values(state)]);
+  }
   function SearchSummary({ run, text }) {
     return /* @__PURE__ */ u3("div", { class: "ab-summary", children: [
       /* @__PURE__ */ u3("span", { children: text }),
@@ -4780,12 +4823,6 @@
   }
 
   // src/ui/HotelSearch.jsx
-  function monthISO(offset) {
-    const d3 = /* @__PURE__ */ new Date();
-    d3.setDate(1);
-    d3.setMonth(d3.getMonth() + offset);
-    return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
-  }
   var storeKey = (id) => `award-buddy:${id}`;
   function initialForm(program2, storeId, carried) {
     if (carried) return carried;
@@ -4799,8 +4836,7 @@
     return {
       // On a hotel page with nothing saved, start with that hotel
       hotels: hotels.length ? hotels : current ? [current] : [],
-      fromMonth: monthISO(0),
-      toMonth: monthISO(2)
+      ...restoreMonths(saved.fromMonth, saved.toMonth)
     };
   }
   function initialNames(storeId) {
@@ -4870,7 +4906,7 @@
     const [names, setNames] = d2(() => initialNames(storeId));
     h2(() => {
       try {
-        localStorage.setItem(storeKey(storeId), JSON.stringify({ hotels: form.hotels, names }));
+        localStorage.setItem(storeKey(storeId), JSON.stringify({ hotels: form.hotels, fromMonth: form.fromMonth, toMonth: form.toMonth, names }));
       } catch {
       }
       onFormChange?.(form);
@@ -4892,6 +4928,11 @@
     const [shown, setShown] = d2(null);
     const [date, setDate] = d2(null);
     const [noResults, setNoResults] = d2(false);
+    useSavedResults(program2.id, run, { results, shown, noResults }, (saved) => {
+      setResults(saved.results ?? []);
+      setShown(saved.shown ?? null);
+      setNoResults(!!saved.noResults);
+    });
     const [rateType, setRateType] = d2(null);
     const [roomType, setRoomType] = d2(null);
     const latest = A2();
@@ -5027,12 +5068,6 @@
 
   // src/ui/App.jsx
   var codes = (v3) => Array.isArray(v3) ? v3 : v3.split(",").map((s3) => s3.trim().toUpperCase()).filter(Boolean);
-  function monthISO2(offset) {
-    const d3 = /* @__PURE__ */ new Date();
-    d3.setDate(1);
-    d3.setMonth(d3.getMonth() + offset);
-    return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
-  }
   var optionFields = (program2, form) => program2.optionsFor?.(form.carrier) ?? [];
   function optionRaw(fd, form) {
     const v3 = form.options[fd.key] ?? fd.default;
@@ -5053,29 +5088,13 @@
     }
   }
   var sameShape = (v3, fallback) => v3 != null && typeof v3 === typeof fallback && Array.isArray(v3) === Array.isArray(fallback) ? v3 : fallback;
-  var isDate = (v3) => typeof v3 === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v3);
-  var isMonth = (v3) => typeof v3 === "string" && /^\d{4}-\d{2}$/.test(v3);
-  function savedDates(saved) {
-    const today = todayISO();
-    if (!isDate(saved.start)) return { start: null, end: null };
-    const end = isDate(saved.end) && saved.end > saved.start ? saved.end : null;
-    if ((end ?? saved.start) < today) return { start: null, end: null };
-    if (saved.start >= today) return { start: saved.start, end };
-    return { start: today, end: end > today ? end : null };
-  }
-  function savedMonths(saved) {
-    const now = monthISO2(0);
-    if (!isMonth(saved.fromMonth) || !isMonth(saved.toMonth) || saved.toMonth < now || saved.toMonth < saved.fromMonth)
-      return { fromMonth: now, toMonth: monthISO2(2) };
-    return { fromMonth: saved.fromMonth < now ? now : saved.fromMonth, toMonth: saved.toMonth };
-  }
   function initialForm2(program2) {
     const saved = loadSaved(program2);
     return {
       origins: sameShape(saved.origins, program2.airports ? [] : ""),
       dests: sameShape(saved.dests, program2.airports ? [] : "NRT"),
-      ...savedDates(saved),
-      ...savedMonths(saved),
+      ...restoreDates(saved.start, saved.end),
+      ...restoreMonths(saved.fromMonth, saved.toMonth),
       carrier: program2.carriers?.some((c3) => c3.code === saved.carrier) ? saved.carrier : program2.carriers?.[0]?.code,
       options: saved.options && typeof saved.options === "object" ? saved.options : {},
       cabins: Array.isArray(saved.cabins) ? saved.cabins.filter((c3) => program2.cabins.includes(c3)) : []
@@ -5121,7 +5140,7 @@
     return session;
   }
   function FlightSearch({ program: program2, session }) {
-    const [calMode, setCalMode] = d2(false);
+    const [calMode, setCalMode] = d2(() => loadSaved(program2).calMode === true);
     const [form, setForm] = d2(() => initialForm2(program2));
     const set = (patch) => setForm((f4) => ({ ...f4, ...patch }));
     const airports = program2.airportsFor?.(form.carrier) ?? program2.airports;
@@ -5132,15 +5151,20 @@
     h2(() => {
       const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form;
       try {
-        localStorage.setItem(storeKey2(program2), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options }));
+        localStorage.setItem(storeKey2(program2), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, calMode, cabins, carrier, options }));
       } catch {
       }
-    }, [form]);
+    }, [form, calMode]);
     const run = useSearchRun(form);
     const { ctl, setStatus, setProgress } = run;
     const [results, setResults] = d2([]);
     const [cal, setCal] = d2(null);
     const [noResults, setNoResults] = d2(false);
+    useSavedResults(program2.id, run, { results, cal, noResults }, (saved) => {
+      setResults(saved.results ?? []);
+      setCal(saved.cal ?? null);
+      setNoResults(!!saved.noResults);
+    });
     const latest = A2();
     latest.current = { form, calMode };
     async function search() {

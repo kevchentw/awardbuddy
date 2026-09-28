@@ -42,6 +42,29 @@ export function useSearchRun(form) {
   }
 }
 
+// Last search's results in this tab's sessionStorage so a page reload doesn't lose them.
+// state: what to save (plain JSON); restore(saved): puts it back when the page loads (not on a later
+// remount, e.g. a hotel mode switch, which starts with no results).
+// Saved whenever a search isn't running, once one has run in this page (a stopped search keeps what it found)
+const restoredKeys = new Set()
+export function useSavedResults(id, run, state, restore) {
+  const key = `award-buddy:${id}:results`
+  useEffect(() => {
+    if (restoredKeys.has(key)) return
+    restoredKeys.add(key)
+    let saved
+    try { saved = JSON.parse(sessionStorage.getItem(key)) } catch {}
+    if (!saved?.state) return
+    restore(saved.state)
+    const at = new Date(saved.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    run.setStatus(`Showing results of the last search (${at}). Search again to refresh.`)
+  }, [])
+  useEffect(() => {
+    if (run.searching || !run.ctl.t0) return
+    try { sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), state })) } catch {}
+  }, [run.searching, ...Object.values(state)])
+}
+
 // Collapsed-form summary line with an Edit button
 export function SearchSummary({ run, text }) {
   return (
