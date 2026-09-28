@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Award Buddy</title>
+<meta name="description" content="Search award flights and hotel reward nights across many dates at once, right on the airline and hotel sites. Free, open source, no server.">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="apple-touch-icon" href="icon-128.png">
+<meta property="og:title" content="Award Buddy">
+<meta property="og:description" content="Search award flights and hotel reward nights across many dates at once, right on the airline and hotel sites.">
+<meta property="og:image" content="icon-128.png">
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --surface: #ffffff;
+    --surface-2: #f3f1ec;
+    --text: #1d1c1a;
+    --muted: #65625c;
+    --border: #e4e0d8;
+    --accent: #1f5fbf;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6eefa;
+    --ok: #1f7a4d;
+    --code-bg: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514;
+      --surface: #1d1d1b;
+      --surface-2: #252523;
+      --text: #ecebe7;
+      --muted: #a09d96;
+      --border: #34332f;
+      --accent: #7aa7f0;
+      --accent-ink: #0e1a2e;
+      --accent-soft: #1d2a40;
+      --ok: #6cc596;
+      --code-bg: #2a2926;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151514;
+    --surface: #1d1d1b;
+    --surface-2: #252523;
+    --text: #ecebe7;
+    --muted: #a09d96;
+    --border: #34332f;
+    --accent: #7aa7f0;
+    --accent-ink: #0e1a2e;
+    --accent-soft: #1d2a40;
+    --ok: #6cc596;
+    --code-bg: #2a2926;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  code, kbd {
+    font: 0.9em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+
+  /* Nav */
+  header.nav {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  header.nav .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text); text-decoration: none; }
+  .brand img { width: 28px; height: 28px; }
+  nav.links { margin-left: auto; display: flex; gap: 18px; font-size: 15px; }
+  nav.links a { color: var(--muted); text-decoration: none; }
+  nav.links a:hover { color: var(--text); }
+  @media (max-width: 640px) { nav.links a.opt { display: none; } }
+
+  /* Hero */
+  .hero { padding: 72px 16px 48px; }
+  .hero h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 16px; max-width: 16ch; }
+  .hero p.lede { font-size: 19px; color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 18px; border-radius: 8px; font-weight: 600; font-size: 15px;
+    text-decoration: none; border: 1px solid var(--border); color: var(--text); background: var(--surface);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn:hover { filter: brightness(1.05); }
+  .meta { margin-top: 18px; font-size: 14px; color: var(--muted); }
+
+  section { padding: 48px 0; border-top: 1px solid var(--border); }
+  section h2 { font-size: 28px; letter-spacing: -0.01em; margin: 0 0 8px; }
+  section p.sub { color: var(--muted); margin: 0 0 28px; max-width: 65ch; }
+  h3 { font-size: 18px; margin: 0 0 8px; }
+
+  /* Why cards */
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  /* Demo: a made-up airline site with the Award Buddy panel on top. Panel styles mirror src/ui/styles.js */
+  .demo-frame { margin-top: 40px; position: relative; }
+  .demo-scale { position: relative; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 12px 40px rgba(0,0,0,.10); }
+  .stage {
+    position: absolute; top: 0; left: 0; width: 960px; height: 600px; transform-origin: 0 0;
+    background: #fff; color: #1f2933; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden;
+  }
+  .stage * { box-sizing: border-box; }
+  .chrome { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #eceae6; border-bottom: 1px solid #dcd9d3; }
+  .chrome i { width: 11px; height: 11px; border-radius: 50%; background: #d3d0ca; display: block; }
+  .chrome .url { margin-left: 14px; flex: 1; max-width: 520px; background: #fff; border-radius: 6px; padding: 5px 12px; font-size: 13px; color: #555; }
+  .chrome .url b { color: #1f2933; font-weight: 500; }
+
+  .site { height: 560px; background: #f4f6f7; }
+  .site-nav { height: 52px; background: var(--air); color: #fff; display: flex; align-items: center; gap: 28px; padding: 0 32px; font-size: 14px; }
+  .site-nav .logo { font-weight: 700; font-size: 18px; letter-spacing: .01em; margin-right: 12px; }
+  .site-nav span:not(.logo) { opacity: .85; }
+  .site-hero { padding: 34px 32px 26px; background: linear-gradient(180deg, color-mix(in srgb, var(--air) 88%, #fff) 0%, color-mix(in srgb, var(--air) 70%, #fff) 100%); color: #fff; }
+  .site-hero h4 { margin: 0 0 18px; font-size: 26px; font-weight: 650; }
+  .site-form { display: flex; gap: 10px; background: #fff; border-radius: 10px; padding: 12px; width: 640px; }
+  .site-form div { flex: 1; border: 1px solid #d5dbe0; border-radius: 6px; padding: 5px 10px; }
+  .site-form small { display: block; font-size: 10px; color: #7b8794; text-transform: uppercase; letter-spacing: .05em; }
+  .site-form strong { font-size: 15px; color: #1f2933; font-weight: 600; }
+  .site-form button { border: 0; border-radius: 6px; background: #f2a31b; color: #1f2933; font-weight: 700; padding: 0 22px; font-size: 14px; }
+  .site-list { padding: 20px 32px; }
+  .site-list .day { font-size: 13px; color: #52606d; margin-bottom: 10px; }
+  .site-card { background: #fff; border: 1px solid #e1e5e9; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; width: 520px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .site-card .t { font-weight: 600; }
+  .site-card .s { color: #7b8794; font-size: 12px; }
+  .site-card .m { font-weight: 700; color: var(--air); }
+  .site-card.na .m { color: #9aa5b1; font-weight: 500; }
+
+  /* Award Buddy panel (same look as the real one) */
+  .ab-fab {
+    position: absolute; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%;
+    color: #fff; font-size: 22px; border: none; cursor: pointer; background: var(--ab-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center;
+    transition: transform .15s;
+  }
+  .ab-fab.press { transform: scale(.9); }
+  .ab-fab.hint { animation: ab-ring 1.6s ease-out 2; }
+  @keyframes ab-ring { 0% { box-shadow: 0 4px 12px rgba(0,0,0,.3), 0 0 0 0 color-mix(in srgb, var(--ab-color) 50%, transparent); } 100% { box-shadow: 0 4px 12px rgba(0,0,0,.3), 0 0 0 18px transparent; } }
+  .ab-panel {
+    position: absolute; bottom: 86px; right: 24px; width: 440px; height: 440px; background: #fff; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden;
+    transform-origin: bottom right; transition: transform .25s cubic-bezier(.2,.8,.3,1.1), opacity .2s;
+    font-size: 13px; color: #111;
+  }
+  .ab-panel.closed { transform: scale(.2); opacity: 0; pointer-events: none; }
+  .ab-header { color: #fff; padding: 12px 16px; font-size: 15px; font-weight: 600; display: flex; justify-content: space-between; background: var(--ab-color); }
+  .ab-session { padding: 6px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e5e7eb; background: #f0fdf4; color: #166534; }
+  .ab-session i { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; display: block; }
+  .ab-body { padding: 14px 16px; flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .ab-toggle { display: flex; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+  .ab-toggle span { flex: 1; padding: 5px; font-size: 12px; text-align: center; color: #666; }
+  .ab-toggle span.on { background: var(--ab-color); color: #fff; }
+  .ab-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .ab-row > div { flex: 1; }
+  .ab-row label, .ab-lbl { font-size: 12px; color: #666; display: block; margin-bottom: 3px; }
+  .ab-box { min-height: 34px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 6px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .ab-chip { background: var(--ab-color); color: #fff; border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+  .ab-cabins { display: flex; gap: 6px; margin-bottom: 8px; }
+  .ab-cabins span { padding: 4px 10px; border-radius: 20px; border: 1.5px solid #ddd; font-size: 12px; }
+  .ab-cabins span.j { background: #0369a1; color: #fff; border-color: transparent; }
+  .ab-cabins span.f { background: #7c3aed; color: #fff; border-color: transparent; }
+  .ab-hint { font-size: 11px; color: #888; margin-bottom: 6px; }
+  .ab-summary { display: none; align-items: center; gap: 8px; padding: 7px 10px; margin-bottom: 4px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12px; color: #333; }
+  .ab-summary span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ab-summary b { color: var(--ab-color); font-size: 12px; }
+  .ab-panel.running .ab-form { display: none; }
+  .ab-panel.running .ab-summary { display: flex; }
+  .ab-btn { width: 100%; padding: 9px; color: #fff; border: none; border-radius: 7px; font-size: 14px; font-weight: 600; margin-top: 6px; background: var(--ab-color); transition: transform .1s; }
+  .ab-btn.press { transform: scale(.97); }
+  .ab-status { font-size: 12px; color: #666; margin-top: 8px; min-height: 16px; }
+  .ab-progress { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 6px; }
+  .ab-progress div { height: 100%; width: 0; border-radius: 2px; background: var(--ab-color); transition: width .3s; }
+  .ab-results { margin-top: 10px; overflow: hidden; flex: 1; }
+  .ab-tbl { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  .ab-tbl th { text-align: left; font-size: 11px; font-weight: 600; color: #888; padding: 4px 8px; border-bottom: 2px solid #e5e7eb; background: #fafafa; }
+  .ab-tbl td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; }
+  .ab-tbl tr.new td { animation: ab-in .35s ease-out; }
+  @keyframes ab-in { from { background: #eef6f8; opacity: 0; } to { background: transparent; opacity: 1; } }
+  .ab-tbl .rt { color: #666; font-size: 11px; }
+  .ab-tbl .na { color: #bbb; font-size: 11px; }
+  .ab-tbl .st { font-size: 10px; color: #888; }
+  .ab-tbl .mi { font-weight: 600; }
+
+  .cursor { position: absolute; left: 600px; top: 330px; width: 22px; height: 22px; pointer-events: none; transition: left .7s cubic-bezier(.4,0,.2,1), top .7s cubic-bezier(.4,0,.2,1); filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); z-index: 5; }
+  .demo-pick { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .demo-pick-label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .demo-pick-list { display: flex; gap: 6px; overflow-x: auto; padding: 2px; scrollbar-width: thin; flex-wrap: wrap; }
+  .demo-pick-list button {
+    display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
+    font: inherit; font-size: 13px; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px 4px 4px; cursor: pointer;
+  }
+  .demo-pick-list button:hover { border-color: var(--muted); }
+  .demo-pick-list button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); font-weight: 600; }
+  .demo-pick-list img { width: 24px; height: 24px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+  .demo-pick-list i {
+    font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .02em; color: #fff;
+    width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  }
+  @media (max-width: 640px) {
+    .demo-pick { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .demo-pick-list { flex-wrap: nowrap; max-width: 100%; }
+  }
+  .soon { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; vertical-align: 2px; }
+
+  /* Install */
+  .steps { margin: 0; padding-left: 20px; }
+  .steps li { margin-bottom: 8px; }
+  .steps li::marker { color: var(--muted); }
+  .note { font-size: 14px; color: var(--muted); margin-top: 12px; }
+
+  /* Programs */
+  .tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 10px; margin-bottom: 16px; }
+  .tabs button {
+    font: inherit; font-size: 15px; font-weight: 600; border: 0; background: transparent; color: var(--muted);
+    padding: 7px 16px; border-radius: 7px; cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .programs { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .programs th, .programs td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 15px; }
+  .programs th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--surface-2); }
+  .programs tr:last-child td { border-bottom: 0; }
+  .programs td.name { padding-left: 50px; position: relative; }
+  .programs td.name strong { display: block; }
+  .plogo { position: absolute; left: 14px; top: 14px; width: 24px; height: 24px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+  i.plogo { font-style: normal; font-size: 10px; font-weight: 700; color: #fff; border: 0; display: flex; align-items: center; justify-content: center; }
+  .programs td.name small { color: var(--muted); }
+  .programs td.cal { text-align: center; color: var(--ok); font-weight: 700; }
+  .programs td.go { white-space: nowrap; text-align: right; }
+  .programs td.go a { font-weight: 600; text-decoration: none; }
+  .programs td.go a:hover { text-decoration: underline; }
+  .programs td.sess { color: var(--muted); font-size: 14px; }
+  .programs td.sess em { font-style: normal; color: var(--text); }
+  @media (max-width: 640px) {
+    .programs thead { display: none; }
+    .programs, .programs tbody, .programs tr, .programs td { display: block; width: 100%; }
+    .programs tr { border-bottom: 1px solid var(--border); padding: 10px 0; }
+    .programs tr:last-child { border-bottom: 0; }
+    .programs td { border: 0; padding: 4px 14px; text-align: left !important; }
+    .programs td.cal:empty { display: none; }
+    .plogo { top: 4px; }
+    .programs td.cal::before { content: "Calendar mode "; color: var(--muted); font-weight: 400; }
+  }
+  .modes { margin-top: 0; }
+  .modes dt { font-weight: 650; margin-top: 14px; }
+  .modes dd { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+
+  /* Changelog */
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log > li { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--border); }
+  .log > li:last-child { border-bottom: 0; }
+  .log .ver { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .log .ver a { color: var(--text); text-decoration: none; }
+  .log .ver small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .log h3 { font-size: 16px; }
+  .log ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 15px; }
+  .log ul li { margin-bottom: 3px; }
+  @media (max-width: 640px) { .log > li { grid-template-columns: 1fr; gap: 4px; } }
+
+  footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="icon-128.png" alt="">Award Buddy</a>
+    <nav class="links">
+      <a class="opt" href="#why">Why</a>
+      <a href="#install">Install</a>
+      <a href="#programs">Programs</a>
+      <a class="opt" href="#changelog">Changelog</a>
+      <a href="https://github.com/kevchentw/awardbuddy">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <h1>Search award space across every date at once.</h1>
+    <p class="lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Install Award Buddy</a>
+      <a class="btn" href="#programs">See supported programs</a>
+    </div>
+    <p class="meta">Free and open source (MIT) · Chrome, Edge, or any browser with Tampermonkey · <span id="cur-ver">v1.6.0</span></p>
+
+    <div class="demo-frame">
+      <div class="demo-pick" role="group" aria-label="Show the demo on">
+        <span class="demo-pick-label">Try it on</span>
+        <div class="demo-pick-list" id="demo-pick"></div>
+      </div>
+      <div class="demo-scale" id="demo-scale" role="img" aria-label="Animated example: on an airline's award search page, the Award Buddy button in the bottom-right corner opens a panel that searches several routes over two months and lists the award seats it finds.">
+        <div class="stage" id="stage" aria-hidden="true">
+          <div class="chrome"><i></i><i></i><i></i><div class="url" id="d-url"></div></div>
+          <div class="site">
+            <div class="site-nav"><span class="logo" id="d-logo"></span><span>Book</span><span>Manage</span><span id="d-miles">Miles</span><span>Help</span></div>
+            <div class="site-hero">
+              <h4>Book with miles</h4>
+              <div class="site-form">
+                <div><small>From</small><strong id="d-from"></strong></div>
+                <div><small>To</small><strong id="d-to"></strong></div>
+                <div><small>Date</small><strong>Thu, Nov 12</strong></div>
+                <button>Search</button>
+              </div>
+            </div>
+            <div class="site-list" id="d-list"></div>
+          </div>
+
+          <div class="ab-panel closed" id="ab-panel">
+            <div class="ab-header"><span id="ab-title"></span><span>⤢ &nbsp;✕</span></div>
+            <div class="ab-session"><i></i> Session ready</div>
+            <div class="ab-body">
+              <div class="ab-form">
+                <div class="ab-toggle" id="ab-toggle"><span class="on">Search</span><span>Calendar</span></div>
+                <div class="ab-row">
+                  <div><label>Origins</label><div class="ab-box" id="ab-orig"></div></div>
+                  <div><label>Destinations</label><div class="ab-box" id="ab-dest"></div></div>
+                </div>
+                <div class="ab-row"><div><label>Dates</label><div class="ab-box" style="padding:7px 9px">📅 Nov 1, 2026 – Dec 31, 2026</div></div></div>
+                <span class="ab-lbl">Cabin (leave all off = any)</span>
+                <div class="ab-cabins" id="ab-cabins"></div>
+                <div class="ab-hint" id="ab-hint"></div>
+              </div>
+              <div class="ab-summary"><span id="ab-sum"></span><b>Edit</b></div>
+              <button class="ab-btn" id="ab-btn">Search</button>
+              <div class="ab-status" id="ab-status"></div>
+              <div class="ab-progress"><div id="ab-bar"></div></div>
+              <div class="ab-results">
+                <table class="ab-tbl">
+                  <thead><tr id="ab-head"></tr></thead>
+                  <tbody id="ab-rows"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <button class="ab-fab" id="ab-fab" tabindex="-1">✈</button>
+          <svg class="cursor" id="cursor" viewBox="0 0 24 24"><path d="M4 2l15 11.5-6.6.9 3.8 7.4-2.6 1.3-3.8-7.5L4 20z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="why">
+    <div class="wrap">
+      <h2>What makes it different</h2>
+      <p class="sub">Award search sites mostly let you check one route on one day. Award Buddy checks all your dates and routes in one go, on the airline's or hotel's own site.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>Many dates, one table</h3>
+          <p>Every origin × destination × date runs through the site's own search. Sort by date, duration or miles, and filter by cabin, stops or day of the week.</p>
+        </div>
+        <div class="card">
+          <h3>Live data from the source</h3>
+          <p>Results come straight from the program's site, so you see what you could book right now. Nothing comes from a cached third-party database.</p>
+        </div>
+        <div class="card">
+          <h3>No server, no account</h3>
+          <p>It runs in your browser with your own session on the airline's or hotel's page. Nothing is sent anywhere else, and it doesn't collect any data.</p>
+        </div>
+        <div class="card">
+          <h3>Calendar views</h3>
+          <p>Calendar mode shows the lowest price per day for whole months. Hotel searches show points per night for each hotel, one color per hotel.</p>
+        </div>
+        <div class="card">
+          <h3>Flights and hotels</h3>
+          <p>10 airline programs and 6 hotel programs, including partner awards, stopovers and Choice points at Preferred Hotels.</p>
+        </div>
+        <div class="card">
+          <h3>Links to booking</h3>
+          <p>Most results link to the program's booking page for that flight or night, so you can go from a search to booking quickly.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2>Install</h2>
+      <p class="sub">Install it as a userscript today. It updates itself automatically. A Chrome / Edge extension is coming soon.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>Userscript (recommended)</h3>
+          <ol class="steps">
+            <li>Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> or <a href="https://violentmonkey.github.io/">Violentmonkey</a>.</li>
+            <li>Open <a href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js"><code>award-buddy.user.js</code></a> and click <strong>Install</strong>.</li>
+          </ol>
+          <p class="note">Updates arrive on their own through Tampermonkey.</p>
+          <p style="margin-top:16px"><a class="btn primary" href="https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js">Install userscript</a></p>
+        </div>
+        <div class="card">
+          <h3>Chrome / Edge extension <span class="soon">Coming soon</span></h3>
+          <p class="note" style="margin-top:0">A one-click install from the Chrome Web Store and Edge Add-ons is on the way. The link will be posted here.</p>
+          <p class="note">Until then, the userscript works in Chrome and Edge with Tampermonkey.</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:36px">Then search</h3>
+      <ol class="steps">
+        <li>Open a supported site from the <a href="#programs">list below</a>. A button appears in the corner of the page: ✈ on airline sites, 🏨 on hotel sites.</li>
+        <li>Click it to open the panel. If it asks for a session, log in or follow its <strong>Get session</strong> link.</li>
+        <li>Enter your routes or hotels and dates, then click <strong>Search</strong>. Results appear as each request finishes.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="programs">
+    <div class="wrap">
+      <h2>Supported programs</h2>
+      <p class="sub">Click <strong>Start search</strong> to open the page where the panel works. Some programs need you to log in or run one search first. The Session column says which.</p>
+
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" aria-controls="tab-air" id="btn-air">✈ Airlines (10)</button>
+        <button role="tab" aria-selected="false" aria-controls="tab-hotel" id="btn-hotel">🏨 Hotels (6)</button>
+      </div>
+
+      <div id="tab-air" role="tabpanel" aria-labelledby="btn-air">
+        <table class="programs">
+          <thead><tr><th>Program</th><th>Calendar</th><th>Session</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="name"><img class="plogo" src="logos/as.png" alt=""><strong>Alaska Airlines</strong><small>Atmos Rewards · alaskaair.com</small></td><td class="cal">✓</td><td class="sess">Not needed</td><td class="go"><a href="https://www.alaskaair.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/aa.png" alt=""><strong>American Airlines</strong><small>AAdvantage · aa.com</small></td><td class="cal">✓</td><td class="sess"><em>Run one award search</em> on the page (Get session)</td><td class="go"><a href="https://www.aa.com/">Start search →</a></td></tr>
+            <tr><td class="name"><i class="plogo" style="background:#d2001f">AC</i><strong>Air Canada</strong><small>Aeroplan · aircanada.com</small></td><td class="cal"></td><td class="sess">Open the award search page</td><td class="go"><a href="https://www.aircanada.com/aeroplan/redeem/availability/outbound">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/nh.png" alt=""><strong>ANA</strong><small>ANA Mileage Club · ana.co.jp</small></td><td class="cal"></td><td class="sess"><em>Log in</em> to the award booking page</td><td class="go"><a href="https://aswbe-i.ana.co.jp/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml?aswcid=1">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/cx.png" alt=""><strong>Cathay Pacific</strong><small>Asia Miles · cathaypacific.com</small></td><td class="cal"></td><td class="sess">Open the award booking page</td><td class="go"><a href="https://www.cathaypacific.com/cx/en_HK/book-a-trip/redeem-flights/redeem-flight-awards.html">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/br.png" alt=""><strong>EVA Air</strong><small>Infinity MileageLands · evaair.com</small></td><td class="cal">✓</td><td class="sess"><em>Log in</em> and run one search by hand</td><td class="go"><a href="https://booking.evaair.com/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability/login.aspx?lang=en-us">Start search →</a></td></tr>
+            <tr><td class="name"><i class="plogo" style="background:#002157">AF</i><strong>Flying Blue</strong><small>Air France / KLM · airfrance.us, klm.com</small></td><td class="cal">✓</td><td class="sess">Open the award search page</td><td class="go"><a href="https://wwws.airfrance.us/search/flights/0">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/jl.png" alt=""><strong>Japan Airlines</strong><small>JAL Mileage Bank · jal.co.jp</small></td><td class="cal">✓ <small>JAL only</small></td><td class="sess"><em>Log in</em></td><td class="go"><a href="https://www.jal.co.jp/jp/en/jmb/award-inter/booking/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/av.png" alt=""><strong>LifeMiles</strong><small>Avianca · lifemiles.com</small></td><td class="cal"></td><td class="sess"><em>Log in</em></td><td class="go"><a href="https://www.lifemiles.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/jx.png" alt=""><strong>Starlux Airlines</strong><small>COSMILE · starlux-airlines.com</small></td><td class="cal">✓</td><td class="sess"><em>Log in</em></td><td class="go"><a href="https://www.starlux-airlines.com/en-US/redeem-award-ticket/index">Start search →</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="tab-hotel" role="tabpanel" aria-labelledby="btn-hotel" hidden>
+        <table class="programs">
+          <thead><tr><th>Program</th><th>Session</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="name"><img class="plogo" src="logos/ihg.png" alt=""><strong>IHG One Rewards</strong><small>ihg.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.ihg.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/marriott.png" alt=""><strong>Marriott Bonvoy</strong><small>marriott.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.marriott.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/hilton.png" alt=""><strong>Hilton Honors</strong><small>hilton.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.hilton.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/hyatt.png" alt=""><strong>World of Hyatt</strong><small>hyatt.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.hyatt.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>Choice Privileges</strong><small>choicehotels.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://www.choicehotels.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/iprefer.png" alt=""><strong>I Prefer</strong><small>Preferred Hotels &amp; Resorts · iprefer.com</small></td><td class="sess">Not needed</td><td class="go"><a href="https://iprefer.com/">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/choice.png" alt=""><strong>Preferred Hotels with Choice points</strong><small>preferredhotels.com/choicepoints</small></td><td class="sess">Not needed to search. To book, <a href="https://www.choicehotels.com/ascend/preferred-hotels-partner">start booking</a> from Choice while logged in</td><td class="go"><a href="https://preferredhotels.com/choicepoints">Start search →</a></td></tr>
+          </tbody>
+        </table>
+        <p class="note">Hotel search covers standard reward nights paid in points. Add hotels by name, city or airport, pick them from the page you're on, or type a hotel code (for example IHG <code>TPEKM</code>, Hyatt <code>TYOPH</code>). More hotel chains are planned.</p>
+      </div>
+
+      <h3 style="margin-top:36px">Extra search modes</h3>
+      <dl class="modes">
+        <dt>Air Canada: one-way with stopover</dt>
+        <dd>Enter stopover cities and stay lengths (for example <code>3-5, 7</code> days). Every city × stay length is searched for each route and date.</dd>
+        <dt>Japan Airlines: partner awards</dt>
+        <dd>Search JMB partner space on Alaska / Hawaiian, American, British Airways, Cathay Pacific, Qatar, Emirates, Finnair, Iberia, Qantas, Korean Air and more.</dd>
+        <dt>LifeMiles: carrier filter</dt>
+        <dd>All of Star Alliance, Smart Search, or one airline: Thai, Avianca + Gol, Aegean, ANA, Lufthansa, Singapore Airlines or United.</dd>
+        <dt>I Prefer: I Prefer or Choice points</dt>
+        <dd>Search Preferred Hotels &amp; Resorts priced in I Prefer points, or the 300+ hotels bookable with Choice Privileges points.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section id="changelog">
+    <div class="wrap">
+      <h2>Changelog</h2>
+      <p class="sub">Downloads for every version are on <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a>.</p>
+      <ul class="log">
+        <li>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.6.0">1.6.0</a><small>Sep 27, 2026</small></div>
+          <div>
+            <h3>I Prefer hotel search</h3>
+            <ul>
+              <li>New hotel program: I Prefer (Preferred Hotels &amp; Resorts) on iprefer.com and preferredhotels.com.</li>
+              <li>Two search modes: I Prefer points, or Choice Privileges points at the 300+ hotels that take them. Choice's taxes and fees are shown in cash.</li>
+              <li>Find hotels by name, code, city, state or country, or pick them from the page you're on.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.1">1.5.1</a><small>Sep 27, 2026</small></div>
+          <div>
+            <h3>More reliable EVA Air search</h3>
+            <ul>
+              <li>Requests are spaced out and cached to avoid bot-check blocks. The panel now says when a session needs refreshing.</li>
+              <li>Searching starts after you've run one search by hand in the tab.</li>
+              <li>Works with EVA's new date header format.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.0">1.5.0</a><small>Sep 27, 2026</small></div>
+          <div>
+            <h3>Choice Privileges hotel search</h3>
+            <ul>
+              <li>Points per night by month, with rows that link to the hotel with the points rate picked.</li>
+              <li>Find hotels by name, city or airport (nearest first), from the page, or by code.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.4.0">1.4.0</a><small>Sep 27, 2026</small></div>
+          <div>
+            <h3>World of Hyatt hotel search</h3>
+            <ul>
+              <li>Points for every room type with award space (Standard, Club Access, Standard and Premium Suite), with off-peak / peak level.</li>
+              <li>A Room filter keeps one room type only.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.3.0">1.3.0</a><small>Sep 27, 2026</small></div>
+          <div>
+            <h3>Hilton Honors hotel search</h3>
+            <ul>
+              <li>Lowest points per night with rooms left, including Premium Room Rewards when they're the lowest.</li>
+              <li>A Reward filter keeps Standard or Premium nights only.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.2.0">1.2.0</a><small>Sep 27, 2026</small></div>
+          <div>
+            <h3>Marriott Bonvoy hotel search</h3>
+            <ul>
+              <li>Lowest points per night, with rows linking to the hotel's rate calendar.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.1.0">1.1.0</a><small>Sep 27, 2026</small></div>
+          <div>
+            <h3>Hotel search, starting with IHG One Rewards</h3>
+            <ul>
+              <li>New hotel panel: points per night over a range of months, on a calendar and in a sortable table.</li>
+              <li>Hotel picker: search by name, city or airport, pick from the page, or type a hotel code.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.0.0">1.0.0</a><small>Sep 26, 2026</small></div>
+          <div>
+            <h3>First release</h3>
+            <ul>
+              <li>Award flight search across many routes and dates on Alaska, American, Air Canada, ANA, Cathay Pacific, EVA Air, Flying Blue, Japan Airlines, LifeMiles and Starlux.</li>
+              <li>Calendar mode, Air Canada stopovers, JAL partner awards and the LifeMiles carrier filter.</li>
+              <li>Available as a userscript and a Chrome / Edge extension.</li>
+            </ul>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Award Buddy · <a href="https://github.com/kevchentw/awardbuddy/blob/main/LICENSE">MIT License</a> · Not affiliated with any airline, hotel or loyalty program.</span>
+    <span><a href="https://github.com/kevchentw/awardbuddy/issues">Report a problem</a> · <a href="https://github.com/kevchentw/awardbuddy">Source on GitHub</a></span>
+  </div>
+</footer>
+
+<script>
+  // Hero demo: a mock award page per airline with the Award Buddy panel on top.
+  // Scale the fixed-size stage to the column width, then play the search on a loop
+  const stage = document.getElementById('stage'), scaleBox = document.getElementById('demo-scale')
+  let scale = 1
+  const fit = () => {
+    scale = scaleBox.clientWidth / 960
+    stage.style.transform = `scale(${scale})`
+    scaleBox.style.height = `${600 * scale}px`
+  }
+  new ResizeObserver(fit).observe(scaleBox)
+  fit()
+
+  const $ = id => document.getElementById(id)
+  const panel = $('ab-panel'), fab = $('ab-fab'), btn = $('ab-btn'), cursor = $('cursor')
+  const status = $('ab-status'), bar = $('ab-bar'), rows = $('ab-rows')
+
+  const CABIN = {
+    F: ['First', '#7c3aed'], J: ['Business', '#0369a1'], N: ['Prem Eco', '#059669'], Y: ['Economy', '#374151'],
+  }
+  // Colors, names and cabins match src/programs/*; routes and prices are made up for the demo
+  const AIRLINES = [
+    { code: 'AS', logo: 'logos/as.png', name: 'Alaska Airlines', color: '#00467F', host: 'www.alaskaair.com', path: '/search/results', miles: 'Atmos Rewards',
+      cabins: 'FJNY', cal: true, orig: ['SEA', 'SFO'], dest: ['NRT', 'HND'], cols: ['F', 'J'], price: { F: [70, 80], J: [60, 75] } },
+    { code: 'AA', logo: 'logos/aa.png', name: 'American Airlines', color: '#0078d2', host: 'www.aa.com', path: '/booking/search', miles: 'AAdvantage',
+      cabins: 'FJNY', cal: true, orig: ['DFW', 'LAX'], dest: ['LHR', 'NRT'], cols: ['F', 'J'], price: { F: [85, 115], J: [57.5, 80] } },
+    { code: 'AC', name: 'Air Canada (Aeroplan)', short: 'Air Canada', color: '#d2001f', host: 'www.aircanada.com', path: '/aeroplan/redeem/availability/outbound', miles: 'Aeroplan',
+      cabins: 'JNY', cal: false, orig: ['YVR', 'YYZ'], dest: ['TPE', 'NRT'], cols: ['J', 'Y'], price: { J: [75, 90], Y: [35, 45] } },
+    { code: 'NH', logo: 'logos/nh.png', name: 'ANA', color: '#003087', host: 'aswbe-i.ana.co.jp', path: '/international_asw/pages/award/search', miles: 'ANA Mileage Club',
+      cabins: 'FJNY', cal: false, orig: ['NRT', 'HND'], dest: ['JFK', 'ORD'], cols: ['F', 'J'], price: { F: [110, 150], J: [75, 90] } },
+    { code: 'CX', logo: 'logos/cx.png', name: 'Cathay Pacific', color: '#006564', host: 'book.cathaypacific.com', path: '/CathayPacificAwardV3/dyn/air/booking/availability', miles: 'Asia Miles',
+      cabins: 'FJNY', cal: false, orig: ['HKG'], dest: ['LHR', 'CDG', 'JFK'], cols: ['F', 'J'], price: { F: [125, 160], J: [85, 110] } },
+    { code: 'BR', logo: 'logos/br.png', name: 'EVA Air', color: '#006537', host: 'booking.evaair.com', path: '/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability', miles: 'Infinity MileageLands',
+      cabins: 'JNY', cal: true, orig: ['TPE'], dest: ['SFO', 'LAX', 'SEA'], cols: ['J', 'Y'], price: { J: [75, 90], Y: [40, 50] } },
+    { code: 'AF', name: 'Flying Blue', color: '#002157', host: 'wwws.airfrance.us', path: '/search/flights/0', miles: 'Flying Blue',
+      cabins: 'JNY', cal: true, orig: ['CDG', 'AMS'], dest: ['JFK', 'BOS'], cols: ['J', 'Y'], price: { J: [55, 90], Y: [20, 35] } },
+    { code: 'JL', logo: 'logos/jl.png', name: 'Japan Airlines', color: '#C00000', host: 'www.jal.co.jp', path: '/jp/en/jmb/award-inter/booking/', miles: 'JAL Mileage Bank',
+      cabins: 'FJNY', cal: true, orig: ['HND', 'NRT'], dest: ['LAX', 'SFO'], cols: ['F', 'J'], price: { F: [80, 100], J: [60, 70] } },
+    { code: 'LM', logo: 'logos/av.png', name: 'LifeMiles', color: '#E31837', host: 'www.lifemiles.com', path: '/fly/redemption', miles: 'LifeMiles',
+      cabins: 'JY', cal: false, orig: ['JFK', 'EWR'], dest: ['FRA', 'MUC'], cols: ['J', 'Y'], price: { J: [63, 78], Y: [30, 40] } },
+    { code: 'JX', logo: 'logos/jx.png', name: 'Starlux Airlines', color: '#1B3D6F', host: 'www.starlux-airlines.com', path: '/en-US/redeem-award-ticket/index', miles: 'COSMILE',
+      cabins: 'FJNY', cal: true, orig: ['TPE'], dest: ['LAX', 'SFO', 'ONT'], cols: ['F', 'J'], price: { F: [110, 130], J: [80, 95] } },
+  ]
+
+  // Deterministic "results" per airline so each replay looks the same
+  function results(a) {
+    let seed = a.code.charCodeAt(0) * 31 + a.code.charCodeAt(1)
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280
+    const pick = xs => xs[Math.floor(rnd() * xs.length)]
+    const fmt = n => `${Math.round(n * 2) / 2}k`.replace('.0k', 'k')
+    const out = []
+    for (let day = 1 + Math.floor(rnd() * 4); out.length < 8; day += 3 + Math.floor(rnd() * 5)) {
+      const d = new Date(Date.UTC(2026, 10, day))
+      const cells = a.cols.map((c, i) => {
+        if (rnd() < (i === 0 ? .55 : .2)) return null
+        const [lo, hi] = a.price[c]
+        return [rnd() < .75 ? 'direct' : '1 stop', fmt(rnd() < .6 ? lo : lo + (hi - lo) * rnd())]
+      })
+      if (cells.every(x => !x)) cells[1] = ['direct', fmt(a.price[a.cols[1]][0])]
+      out.push([d.toISOString().slice(0, 10), pick(a.orig), pick(a.dest), ...cells])
+    }
+    return out
+  }
+
+  let cur, RESULTS, TOTAL
+  function load(a) {
+    cur = a; RESULTS = results(a)
+    const routes = a.orig.length * a.dest.length
+    TOTAL = routes * 61
+    stage.style.setProperty('--ab-color', a.color)
+    stage.style.setProperty('--air', a.color)
+    $('d-url').innerHTML = `https://<b>${a.host}</b>${a.path}`
+    $('d-logo').textContent = a.short ?? a.name
+    $('d-miles').textContent = a.miles
+    $('d-from').textContent = a.orig[0]
+    $('d-to').textContent = a.dest[0]
+    const cab = CABIN[a.cols[0] === 'F' ? 'J' : a.cols[0]][0]
+    $('d-list').innerHTML = `<div class="day">Thu, Nov 12 · ${a.orig[0]} → ${a.dest[0]} · 3 flights</div>` +
+      [['08:40', '11h 30m'], ['16:20', '11h 35m'], ['23:50', '12h 05m']].map(([t, d]) =>
+        `<div class="site-card na"><div><div class="t">Departs ${t}</div><div class="s">Nonstop · ${d} · ${cab}</div></div><div class="m">Not available</div></div>`).join('')
+    $('ab-title').textContent = `✈ Award Buddy – ${a.name}`
+    $('ab-toggle').style.display = a.cal ? '' : 'none'
+    const chips = xs => xs.map(x => `<span class="ab-chip">${x} ×</span>`).join('')
+    $('ab-orig').innerHTML = chips(a.orig)
+    $('ab-dest').innerHTML = chips(a.dest)
+    $('ab-cabins').innerHTML = [...a.cabins].map(c =>
+      `<span${a.cols.includes(c) ? ` style="background:${CABIN[c][1]};color:#fff;border-color:transparent"` : ''}>${CABIN[c][0]}</span>`).join('')
+    $('ab-hint').textContent = `~${TOTAL} request(s) (${routes} route(s) × 61 day(s))`
+    $('ab-sum').textContent = `${a.orig.join(', ')} → ${a.dest.join(', ')} · Nov 1 – Dec 31 · ${a.cols.map(c => CABIN[c][0]).join(', ')}`
+    $('ab-head').innerHTML = '<th>Date</th><th>Orig</th><th>Dest</th>' + a.cols.map(c => `<th style="color:${CABIN[c][1]}">${CABIN[c][0]}</th>`).join('')
+    document.querySelectorAll('#demo-pick button').forEach(b => b.setAttribute('aria-pressed', b.dataset.code === a.code))
+  }
+
+  const cell = (v, c) => v ? `<td><span class="st">${v[0]}</span> <span class="mi" style="color:${CABIN[c][1]}">${v[1]}</span></td>` : '<td class="na">—</td>'
+  const row = r => `<tr class="new"><td>${r[0]}</td><td class="rt">${r[1]}</td><td class="rt">${r[2]}</td>${cur.cols.map((c, i) => cell(r[3 + i], c)).join('')}</tr>`
+  const doneText = () => `Done in 3m 12s. Found ${RESULTS.length} result(s) across ${TOTAL} searches.`
+
+  // Cursor positions are in stage pixels
+  const at = (x, y) => { cursor.style.left = x + 'px'; cursor.style.top = y + 'px' }
+  const centerOf = el => {
+    const r = el.getBoundingClientRect(), s = stage.getBoundingClientRect()
+    return [(r.left - s.left + r.width / 2) / scale, (r.top - s.top + r.height / 2) / scale]
+  }
+  const press = el => { el.classList.add('press'); setTimeout(() => el.classList.remove('press'), 150) }
+
+  let timers = [], visible = false, playing = false
+  const later = (ms, fn) => timers.push(setTimeout(fn, ms))
+  function reset() {
+    timers.forEach(clearTimeout); timers = []; playing = false
+    panel.classList.add('closed'); panel.classList.remove('running')
+    btn.textContent = 'Search'; status.textContent = ''; bar.style.width = '0'; rows.innerHTML = ''
+    cursor.style.transition = 'none'; cursor.style.display = ''; at(600, 330); cursor.getBoundingClientRect(); cursor.style.transition = ''
+    fab.classList.remove('hint')
+  }
+  function finalState() {
+    reset()
+    panel.classList.remove('closed'); panel.classList.add('running')
+    rows.innerHTML = RESULTS.map(row).join('').replaceAll(' class="new"', '')
+    bar.style.width = '100%'
+    status.textContent = doneText()
+    cursor.style.display = 'none'
+  }
+  function play() {
+    reset()
+    playing = true
+    later(400, () => fab.classList.add('hint'))
+    later(1200, () => at(906, 546))                                     // move to ✈
+    later(2000, () => { press(fab); panel.classList.remove('closed') }) // open panel
+    later(2700, () => { const [x, y] = centerOf(btn); at(x - 30, y - 4) }) // move to Search
+    later(3500, () => {
+      press(btn)
+      panel.classList.add('running'); btn.textContent = 'Stop'
+      const steps = 40
+      for (let i = 1; i <= steps; i++) later(i * 130, () => {
+        const done = Math.round(TOTAL * i / steps)
+        bar.style.width = `${done / TOTAL * 100}%`
+        status.textContent = `Searching… ${done}/${TOTAL}`
+        const shown = Math.floor(RESULTS.length * i / steps)
+        while (rows.children.length < shown) rows.insertAdjacentHTML('beforeend', row(RESULTS[rows.children.length]))
+        if (i === steps) {
+          btn.textContent = 'Search'
+          status.textContent = doneText()
+          later(4000, () => { playing = false; if (visible) play() }) // loop
+        }
+      })
+      later(600, () => at(980, 640))                                    // cursor out of the way
+    })
+  }
+
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+  const start = () => reduced ? finalState() : play()
+
+  $('demo-pick').innerHTML = AIRLINES.map(a =>
+    `<button type="button" data-code="${a.code}" aria-pressed="false" title="${a.name}">${a.logo ? `<img src="${a.logo}" alt="">` : `<i style="background:${a.color}">${a.code}</i>`}${a.short ?? a.name}</button>`).join('')
+  $('demo-pick').addEventListener('click', e => {
+    const b = e.target.closest('button')
+    if (!b) return
+    load(AIRLINES.find(a => a.code === b.dataset.code))
+    start()
+  })
+  fab.addEventListener('click', () => panel.classList.toggle('closed'))
+
+  load(AIRLINES.find(a => a.code === 'BR'))
+  if (reduced) finalState()
+  else new IntersectionObserver(es => {
+    visible = es[0].isIntersecting
+    if (visible && !playing) play()
+    if (!visible && playing) reset()   // pause off screen, restart when back
+  }, { threshold: .3 }).observe(scaleBox)
+
+  // Airline / hotel tabs
+  const tabs = document.querySelectorAll('.tabs [role="tab"]')
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    tabs.forEach(t => {
+      const on = t === tab
+      t.setAttribute('aria-selected', on)
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on
+    })
+  }))
+</script>
+</body>
+</html>
