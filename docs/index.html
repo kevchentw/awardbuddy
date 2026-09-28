@@ -258,6 +258,9 @@
   .ab-tbl .na { color: #bbb; font-size: 11px; }
   .ab-tbl .st { font-size: 10px; color: #888; }
   .ab-tbl .mi { font-weight: 600; }
+  .ab-tbl .ht, .ab-tbl .rm { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .ab-tbl .ht { font-weight: 500; }
+  .ab-tbl .rm { max-width: 95px; }
 
   .cursor { position: absolute; left: 600px; top: 330px; width: 22px; height: 22px; pointer-events: none; transition: left .7s cubic-bezier(.4,0,.2,1), top .7s cubic-bezier(.4,0,.2,1); filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); z-index: 5; }
   .demo-pick { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
@@ -338,6 +341,7 @@
   /* Bento feature grid */
   .bento { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
   .bento .card.wide { grid-column: span 2; }
+  .bento .card.full { grid-column: 1 / -1; }
   @media (max-width: 860px) { .bento { grid-template-columns: 1fr; } .bento .card.wide { grid-column: auto; } }
   .card {
     position: relative; overflow: hidden;
@@ -351,8 +355,8 @@
     color: var(--accent); background: var(--accent-soft);
   }
   .ico svg { width: 22px; height: 22px; }
-  .card.wide { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
-  @media (max-width: 640px) { .card.wide { grid-template-columns: 1fr; } }
+  .card.wide { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+  @media (max-width: 1000px) { .card.wide { grid-template-columns: 1fr; } }
 
   .viz { border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); padding: 14px; font-size: 12.5px; }
   .viz-math { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; font-weight: 600; }
@@ -363,9 +367,9 @@
   .viz-rows div { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; background: var(--surface); border-radius: 7px; padding: 5px 9px; }
   .viz-rows b { color: #0369a1; }
   .viz-rows small { color: var(--muted); }
-  .viz-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .viz-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
   .viz-cal div {
-    aspect-ratio: 1.5; border-radius: 6px; background: var(--surface); font-size: 10px; color: var(--muted);
+    min-width: 0; min-height: 34px; border-radius: 6px; background: var(--surface); font-size: 10px; color: var(--muted);
     display: flex; flex-direction: column; justify-content: space-between; padding: 3px 5px;
   }
   .viz-cal div b { font-size: 11px; font-weight: 700; align-self: flex-end; }
@@ -373,7 +377,7 @@
   .viz-cal .lo b { color: #15803d; }
   .viz-cal .mid b { color: #0369a1; }
   .viz-cal .x { opacity: .45; }
-  .viz-cal .dow { background: transparent; aspect-ratio: auto; text-align: center; align-items: center; font-weight: 600; }
+  .viz-cal .dow { background: transparent; min-height: 0; text-align: center; align-items: center; font-weight: 600; }
   .logo-cloud { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   .logo-cloud img, .logo-cloud i {
     width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--border);
@@ -561,17 +565,17 @@
         <div class="demo-pick-list" id="demo-pick"></div>
       </div>
       <div class="demo-glow">
-      <div class="demo-scale" id="demo-scale" role="img" aria-label="Animated example: on an airline's award search page, the Award Buddy button in the bottom-right corner opens a panel that searches several routes over two months and lists the award seats it finds.">
+      <div class="demo-scale" id="demo-scale" role="img" aria-label="Animated example: on an airline or hotel award search page, the Award Buddy button in the bottom-right corner opens a panel that searches several routes over two months and lists the award seats it finds.">
         <div class="stage" id="stage" aria-hidden="true">
           <div class="chrome"><i></i><i></i><i></i><div class="url" id="d-url"></div></div>
           <div class="site">
             <div class="site-nav"><span class="logo" id="d-logo"></span><span>Book</span><span>Manage</span><span id="d-miles">Miles</span><span>Help</span></div>
             <div class="site-hero">
-              <h4>Book with miles</h4>
+              <h4 id="d-h4">Book with miles</h4>
               <div class="site-form">
-                <div><small>From</small><strong id="d-from"></strong></div>
-                <div><small>To</small><strong id="d-to"></strong></div>
-                <div><small>Date</small><strong>Thu, Nov 12</strong></div>
+                <div><small id="d-l1">From</small><strong id="d-from"></strong></div>
+                <div><small id="d-l2">To</small><strong id="d-to"></strong></div>
+                <div><small id="d-l3">Date</small><strong id="d-date">Thu, Nov 12</strong></div>
                 <button>Search</button>
               </div>
             </div>
@@ -585,11 +589,11 @@
               <div class="ab-form">
                 <div class="ab-toggle" id="ab-toggle"><span class="on">Search</span><span>Calendar</span></div>
                 <div class="ab-row">
-                  <div><label>Origins</label><div class="ab-box" id="ab-orig"></div></div>
-                  <div><label>Destinations</label><div class="ab-box" id="ab-dest"></div></div>
+                  <div><label id="ab-l1">Origins</label><div class="ab-box" id="ab-orig"></div></div>
+                  <div id="ab-dest-wrap"><label>Destinations</label><div class="ab-box" id="ab-dest"></div></div>
                 </div>
-                <div class="ab-row"><div><label>Dates</label><div class="ab-box" style="padding:7px 9px">📅 Nov 1, 2026 – Dec 31, 2026</div></div></div>
-                <span class="ab-lbl">Cabin (leave all off = any)</span>
+                <div class="ab-row"><div><label id="ab-l3">Dates</label><div class="ab-box" style="padding:7px 9px" id="ab-dates"></div></div></div>
+                <span class="ab-lbl" id="ab-cab-lbl">Cabin (leave all off = any)</span>
                 <div class="ab-cabins" id="ab-cabins"></div>
                 <div class="ab-hint" id="ab-hint"></div>
               </div>
@@ -605,7 +609,7 @@
               </div>
             </div>
           </div>
-          <button class="ab-fab" id="ab-fab" tabindex="-1">✈</button>
+          <button class="ab-fab" id="ab-fab" tabindex="-1"></button>
           <svg class="cursor" id="cursor" viewBox="0 0 24 24"><path d="M4 2l15 11.5-6.6.9 3.8 7.4-2.6 1.3-3.8-7.5L4 20z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
         </div>
       </div>
@@ -669,7 +673,7 @@
           </div>
           <div class="viz" aria-hidden="true"><div class="viz-cal" id="viz-cal"></div></div>
         </div>
-        <div class="card wide reveal">
+        <div class="card wide full reveal">
           <div>
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
             <h3>Flights and hotels</h3>
@@ -677,12 +681,6 @@
           </div>
           <div class="logo-cloud" id="logo-cloud" aria-hidden="true"></div>
         </div>
-        <div class="card reveal">
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg></div>
-          <h3>Links to booking</h3>
-          <p>Most results link to the program's booking page for that flight or night, so you can go from a search to booking quickly.</p>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -954,6 +952,22 @@
     { code: 'JX', logo: 'logos/jx.png', name: 'Starlux Airlines', color: '#1B3D6F', host: 'www.starlux-airlines.com', path: '/en-US/redeem-award-ticket/index', miles: 'COSMILE',
       cabins: 'FJNY', cal: true, orig: ['TPE'], dest: ['LAX', 'SFO', 'ONT'], cols: ['F', 'J'], price: { F: [110, 130], J: [80, 95] } },
   ]
+  // Hotel programs: title and color match src/programs/*; hotels, rooms and points are made up for the demo
+  const HOTELS = [
+    { code: 'IHG', hotel: true, logo: 'logos/ihg.png', name: 'IHG One Rewards', title: 'IHG', color: '#0D2D52', host: 'www.ihg.com', path: '/hotels/us/en/find-hotels/select-roomrate',
+      city: 'Tokyo, Japan', hotels: ['InterContinental Tokyo Bay', 'Kimpton Shinjuku Tokyo', 'ANA InterContinental Tokyo'], rooms: ['Standard Room', 'Club Room'], points: [45, 90] },
+    { code: 'MAR', hotel: true, logo: 'logos/marriott.png', name: 'Marriott Bonvoy', title: 'Marriott', color: '#1C1C1C', host: 'www.marriott.com', path: '/search/availabilityCalendar.mi',
+      city: 'Kyoto, Japan', hotels: ['The Ritz-Carlton, Kyoto', 'The Westin Miyako Kyoto', 'Moxy Kyoto Nijo'], rooms: ['Standard Room', 'Deluxe Room'], points: [30, 110] },
+    { code: 'HIL', hotel: true, logo: 'logos/hilton.png', name: 'Hilton Honors', title: 'Hilton', color: '#104C97', host: 'www.hilton.com', path: '/en/book/reservation/flexibledates/',
+      city: 'Maldives', hotels: ['Conrad Maldives Rangali Island', 'Waldorf Astoria Maldives Ithaafushi'], rooms: ['Standard Room Reward', 'Premium Room Reward'], points: [120, 150] },
+    { code: 'HYT', hotel: true, logo: 'logos/hyatt.png', name: 'World of Hyatt', title: 'Hyatt', color: '#0D2D52', host: 'www.hyatt.com', path: '/shop/rooms/',
+      city: 'Paris, France', hotels: ['Park Hyatt Paris-Vendôme', 'Hyatt Regency Paris Etoile', 'Hôtel du Louvre'], rooms: ['Standard Room · Standard', 'Suite · Standard'], points: [15, 45] },
+    { code: 'CHO', hotel: true, logo: 'logos/choice.png', name: 'Choice Privileges', title: 'Choice', color: '#0070BA', host: 'www.choicehotels.com', path: '/tokyo-japan/hotels',
+      city: 'Tokyo, Japan', hotels: ['Comfort Inn Tokyo Roppongi', 'Comfort Hotel Tokyo Kanda', 'Comfort Suites Tokyo Bay'], rooms: ['1 Double Bed', '2 Twin Beds'], points: [8, 20] },
+    { code: 'IPR', hotel: true, logo: 'logos/iprefer.png', name: 'I Prefer', title: 'I Prefer', color: '#1B2A3A', host: 'iprefer.com', path: '/hotels/search',
+      city: 'Tokyo, Japan', hotels: ['The Capitol Hotel Tokyu', 'Hotel Chinzanso Tokyo', 'Keio Plaza Hotel Tokyo'], rooms: ['Deluxe Room', 'Superior Room'], points: [40, 70] },
+  ]
+  const DEMOS = [...AIRLINES, ...HOTELS]
 
   // Deterministic "results" per airline so each replay looks the same
   function results(a) {
@@ -962,6 +976,14 @@
     const pick = xs => xs[Math.floor(rnd() * xs.length)]
     const fmt = n => `${Math.round(n * 2) / 2}k`.replace('.0k', 'k')
     const out = []
+    if (a.hotel) {
+      for (let day = 1 + Math.floor(rnd() * 3); out.length < 8; day += 2 + Math.floor(rnd() * 5)) {
+        const [lo, hi] = a.points
+        const pts = rnd() < .5 ? lo : Math.round((lo + (hi - lo) * rnd()) / 5) * 5
+        out.push([new Date(Date.UTC(2026, 10, day)).toISOString().slice(0, 10), pick(a.hotels), pick(a.rooms), pts * 1000, rnd() < .4 ? 1 + Math.floor(rnd() * 4) : ''])
+      }
+      return out
+    }
     for (let day = 1 + Math.floor(rnd() * 4); out.length < 8; day += 3 + Math.floor(rnd() * 5)) {
       const d = new Date(Date.UTC(2026, 10, day))
       const cells = a.cols.map((c, i) => {
@@ -978,22 +1000,52 @@
   let cur, RESULTS, TOTAL
   function load(a) {
     cur = a; RESULTS = results(a)
-    const routes = a.orig.length * a.dest.length
-    TOTAL = routes * 61
     stage.style.setProperty('--ab-color', a.color)
     stage.style.setProperty('--air', a.color)
     $('d-url').innerHTML = `https://<b>${a.host}</b>${a.path}`
     $('d-logo').textContent = a.short ?? a.name
-    $('d-miles').textContent = a.miles
+    $('d-miles').textContent = a.hotel ? 'Rewards' : a.miles
+    fab.textContent = a.hotel ? '🏨' : '✈'
+    $('ab-title').textContent = `${a.hotel ? '🏨' : '✈'} Award Buddy – ${a.title ?? a.name}`
+    $('ab-dest-wrap').style.display = $('ab-cabins').style.display = $('ab-cab-lbl').style.display = a.hotel ? 'none' : ''
+    document.querySelectorAll('#demo-pick button').forEach(b => b.setAttribute('aria-pressed', b.dataset.code === a.code))
+    if (a.hotel) loadHotel(a)
+    else loadAirline(a)
+  }
+  function loadHotel(a) {
+    TOTAL = a.hotels.length * 2
+    $('d-h4').textContent = 'Book with points'
+    $('d-l1').textContent = 'Destination'; $('d-from').textContent = a.city
+    $('d-l2').textContent = 'Guests'; $('d-to').textContent = '1 room, 2 adults'
+    $('d-l3').textContent = 'Dates'; $('d-date').textContent = 'Nov 12 – 13'
+    $('d-list').innerHTML = `<div class="day">Thu, Nov 12 · ${a.city} · ${a.hotels.length} hotel${a.hotels.length > 1 ? 's' : ''}</div>` +
+      a.hotels.map(h => `<div class="site-card na"><div><div class="t">${h}</div><div class="s">Reward Night · 1 night</div></div><div class="m">Not available</div></div>`).join('')
+    $('ab-toggle').style.display = 'none'
+    $('ab-l1').textContent = 'Hotels'
+    $('ab-orig').innerHTML = a.hotels.map(x => `<span class="ab-chip">${x} ×</span>`).join('')
+    $('ab-l3').textContent = 'Months (click start, then end)'
+    $('ab-dates').textContent = '📅 Nov 2026 – Dec 2026'
+    $('ab-hint').textContent = `~${TOTAL} request(s) (${a.hotels.length} hotel(s) × 2 month(s))`
+    $('ab-sum').textContent = `${a.hotels.length > 1 ? `${a.hotels.length} hotels` : a.hotels[0]} · Nov – Dec 2026`
+    $('ab-head').innerHTML = '<th>Date</th><th>Hotel</th><th>Room</th><th>Points</th><th>Left</th>'
+  }
+  function loadAirline(a) {
+    const routes = a.orig.length * a.dest.length
+    TOTAL = routes * 61
+    $('d-h4').textContent = 'Book with miles'
+    $('d-l1').textContent = 'From'; $('d-l2').textContent = 'To'
+    $('d-l3').textContent = 'Date'; $('d-date').textContent = 'Thu, Nov 12'
     $('d-from').textContent = a.orig[0]
     $('d-to').textContent = a.dest[0]
     const cab = CABIN[a.cols[0] === 'F' ? 'J' : a.cols[0]][0]
     $('d-list').innerHTML = `<div class="day">Thu, Nov 12 · ${a.orig[0]} → ${a.dest[0]} · 3 flights</div>` +
       [['08:40', '11h 30m'], ['16:20', '11h 35m'], ['23:50', '12h 05m']].map(([t, d]) =>
         `<div class="site-card na"><div><div class="t">Departs ${t}</div><div class="s">Nonstop · ${d} · ${cab}</div></div><div class="m">Not available</div></div>`).join('')
-    $('ab-title').textContent = `✈ Award Buddy – ${a.name}`
     $('ab-toggle').style.display = a.cal ? '' : 'none'
     const chips = xs => xs.map(x => `<span class="ab-chip">${x} ×</span>`).join('')
+    $('ab-l1').textContent = 'Origins'
+    $('ab-l3').textContent = 'Dates'
+    $('ab-dates').textContent = '📅 Nov 1, 2026 – Dec 31, 2026'
     $('ab-orig').innerHTML = chips(a.orig)
     $('ab-dest').innerHTML = chips(a.dest)
     $('ab-cabins').innerHTML = [...a.cabins].map(c =>
@@ -1001,12 +1053,13 @@
     $('ab-hint').textContent = `~${TOTAL} request(s) (${routes} route(s) × 61 day(s))`
     $('ab-sum').textContent = `${a.orig.join(', ')} → ${a.dest.join(', ')} · Nov 1 – Dec 31 · ${a.cols.map(c => CABIN[c][0]).join(', ')}`
     $('ab-head').innerHTML = '<th>Date</th><th>Orig</th><th>Dest</th>' + a.cols.map(c => `<th style="color:${CABIN[c][1]}">${CABIN[c][0]}</th>`).join('')
-    document.querySelectorAll('#demo-pick button').forEach(b => b.setAttribute('aria-pressed', b.dataset.code === a.code))
   }
 
   const cell = (v, c) => v ? `<td><span class="st">${v[0]}</span> <span class="mi" style="color:${CABIN[c][1]}">${v[1]}</span></td>` : '<td class="na">—</td>'
-  const row = r => `<tr class="new"><td>${r[0]}</td><td class="rt">${r[1]}</td><td class="rt">${r[2]}</td>${cur.cols.map((c, i) => cell(r[3 + i], c)).join('')}</tr>`
-  const doneText = () => `Done in 3m 12s. Found ${RESULTS.length} result(s) across ${TOTAL} searches.`
+  const row = r => cur.hotel
+    ? `<tr class="new"><td>${r[0]}</td><td class="ht" style="color:var(--ab-color)">${r[1]}</td><td class="rt rm">${r[2]}</td><td class="mi">${r[3].toLocaleString('en-US')}</td><td class="rt">${r[4]}</td></tr>`
+    : `<tr class="new"><td>${r[0]}</td><td class="rt">${r[1]}</td><td class="rt">${r[2]}</td>${cur.cols.map((c, i) => cell(r[3 + i], c)).join('')}</tr>`
+  const doneText = () => `Done in ${cur.hotel ? '14s' : '3m 12s'}. Found ${RESULTS.length} result(s) across ${TOTAL} searches.`
 
   // Cursor positions are in stage pixels
   const at = (x, y) => { cursor.style.left = x + 'px'; cursor.style.top = y + 'px' }
@@ -1063,12 +1116,12 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
   const start = () => reduced ? finalState() : play()
 
-  $('demo-pick').innerHTML = AIRLINES.map(a =>
+  $('demo-pick').innerHTML = DEMOS.map(a =>
     `<button type="button" data-code="${a.code}" aria-pressed="false" title="${a.name}">${a.logo ? `<img src="${a.logo}" alt="">` : `<i style="background:${a.color}">${a.code}</i>`}${a.short ?? a.name}</button>`).join('')
   $('demo-pick').addEventListener('click', e => {
     const b = e.target.closest('button')
     if (!b) return
-    load(AIRLINES.find(a => a.code === b.dataset.code))
+    load(DEMOS.find(a => a.code === b.dataset.code))
     start()
   })
   fab.addEventListener('click', () => panel.classList.toggle('closed'))
@@ -1092,12 +1145,7 @@
   }))
 
   // Logo strip and feature-card logo cloud
-  const HOTELS = [
-    { name: 'IHG One Rewards', logo: 'logos/ihg.png' }, { name: 'Marriott Bonvoy', logo: 'logos/marriott.png' },
-    { name: 'Hilton Honors', logo: 'logos/hilton.png' }, { name: 'World of Hyatt', logo: 'logos/hyatt.png' },
-    { name: 'Choice Privileges', logo: 'logos/choice.png' }, { name: 'I Prefer', logo: 'logos/iprefer.png' },
-  ]
-  const ALL = [...AIRLINES, ...HOTELS]
+  const ALL = DEMOS
   const mark = p => p.logo ? `<img src="${p.logo}" alt="">` : `<i style="background:${p.color}">${p.code}</i>`
   const chipsHtml = ALL.map(p => `<span class="logo-chip">${mark(p)}${p.short ?? p.name}</span>`).join('')
   $('marquee').innerHTML = chipsHtml + `<span class="dup" aria-hidden="true">${chipsHtml}</span>`
