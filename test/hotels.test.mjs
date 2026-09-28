@@ -513,3 +513,20 @@ test('Choice: the Preferred Hotels search mode is a hotel program of its own', a
   assert.ok(choiceProgram.modes[1].program.isHotelCode('PARHD'))
   assert.equal(typeof choiceProgram.onHotelSearch, 'function')
 })
+
+test('Preferred Hotels portal: the hotel being booked and the search result cards, as codes', async () => {
+  const { preferredChoiceSynxisFromUrl, preferredChoicePageHotels, preferredHotelsProgram } = await import('../src/programs/preferred-choice.js')
+  const { ipreferParseDirectory } = await import('../src/programs/iprefer.js')
+  assert.equal(preferredChoiceSynxisFromUrl('https://preferredhotels.com/choicepoints/book/hotel/58345?x=1'), '58345')
+  assert.equal(preferredChoiceSynxisFromUrl('https://preferredhotels.com/choicepoints/search'), null)
+  const dir = ipreferParseDirectory(ipreferDirectoryData)
+  const el = textContent => ({ textContent })
+  // Hotel Napoleon doesn't take Choice points, so its card is skipped
+  const doc = { querySelectorAll: () => [el('Cash Only Paris'), el('Hotel Napoleon')] }
+  assert.deepEqual(preferredChoicePageHotels(doc, dir, 'https://preferredhotels.com/choicepoints/book/hotel/58345'), [
+    { code: 'PARHD' },
+    { code: 'PARXX', name: 'Cash Only Paris' },
+  ])
+  assert.deepEqual(preferredChoicePageHotels(doc, dir, 'https://preferredhotels.com/choicepoints/search').map(h => h.code), ['PARXX'])
+  assert.deepEqual(preferredHotelsProgram.matches, ['preferredhotels.com'])
+})

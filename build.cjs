@@ -34,6 +34,7 @@ const MATCHES = [
   'https://www.hyatt.com/*',
   'https://www.choicehotels.com/*',
   'https://iprefer.com/*',
+  'https://preferredhotels.com/*',
 ]
 
 const HEADER = `// ==UserScript==

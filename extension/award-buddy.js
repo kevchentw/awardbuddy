@@ -9035,6 +9035,15 @@
     }
     return results.sort((a3, b2) => a3.date.localeCompare(b2.date));
   }
+  function preferredChoiceSynxisFromUrl(url) {
+    return new URL(url).pathname.match(/^\/choicepoints\/book\/hotel\/(\d+)\/?$/)?.[1] ?? null;
+  }
+  function preferredChoicePageHotels(doc, directory3, url) {
+    const bookable = (directory3 ?? []).filter(takesChoicePoints);
+    const synxisId = preferredChoiceSynxisFromUrl(url);
+    const current = synxisId ? bookable.find((h3) => h3.synxisId === synxisId)?.code : null;
+    return ipreferPageHotels(doc, bookable, current);
+  }
   var preferredChoiceProgram = {
     id: "choice-preferred",
     kind: "hotel",
@@ -9056,6 +9065,12 @@
       const [data, dir] = await Promise.all([ptgCalendar(preferredChoiceCalendarUrl(params.hotel)), ipreferDirectory()]);
       return data === "SESSION_EXPIRED" ? data : preferredChoiceParseCalendar(data, params, dir.find((h3) => h3.code === params.hotel));
     }
+  };
+  var preferredHotelsProgram = {
+    ...preferredChoiceProgram,
+    color: "#1B2A3A",
+    matches: ["preferredhotels.com"],
+    pageHotels: async () => preferredChoicePageHotels(document, await ipreferDirectory(), location.href)
   };
 
   // src/programs/choice.js
@@ -9224,7 +9239,7 @@
   };
 
   // src/entrypoint.js
-  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram, choiceProgram, ipreferProgram];
+  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram, choiceProgram, ipreferProgram, preferredHotelsProgram];
   var program = ALL_PROGRAMS.find((p3) => p3.matchHost?.(location.hostname) ?? p3.matches.includes(location.hostname));
   if (program) {
     if (document.body) mountPanel(program);

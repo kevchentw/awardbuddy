@@ -30,7 +30,8 @@
         "https://www.hilton.com/*",
         "https://www.hyatt.com/*",
         "https://www.choicehotels.com/*",
-        "https://iprefer.com/*"
+        "https://iprefer.com/*",
+        "https://preferredhotels.com/*"
       ],
       "js": [
         "award-buddy.js"
