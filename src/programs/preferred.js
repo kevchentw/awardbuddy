@@ -1,13 +1,14 @@
-import { ipreferProgram, ipreferDirectory, ipreferPageHotels, bookableWithPoints } from './iprefer.js'
+import { ipreferPointsProgram, ipreferDirectory, ipreferPageHotels, bookableWithPoints } from './iprefer.js'
 import { preferredChoiceProgram, takesChoicePoints, PARTNER_PAGE_URL } from './preferred-choice.js'
 
-// Preferred Hotels & Resorts (preferredhotels.com) – two search modes over the same hotels:
-//   I Prefer points   as on iprefer.com (iprefer.js); Book links open the hotel on iprefer.com
-//   Choice points     the Choice Privileges portal at /choicepoints (preferred-choice.js), picked by default
-//                     there; booking needs the Choice session that portal is entered with
-// Hotel pages (/hotels/<country>/<slug>, the same paths as iprefer.com's) and the portal's booking pages
+// I Prefer / Preferred Hotels & Resorts, on iprefer.com and preferredhotels.com – the same hotels, booked
+// with either points, as two search modes:
+//   I Prefer points   iprefer.js; Book links open the hotel on iprefer.com
+//   Choice points     preferred-choice.js; picked by default on preferredhotels.com/choicepoints (the Choice
+//                     Privileges portal), and booking needs the Choice session that portal is entered with
+// Hotel pages (/hotels/<country>/<slug>, the same paths on both sites) and the portal's booking pages
 // (/choicepoints/book/hotel/<synxisId>) are matched to codes through the directory, and search result
-// cards (the same markup as iprefer.com's) by name.
+// cards (the same markup on both sites) by name.
 
 // SynXis id from a portal booking page URL: /choicepoints/book/hotel/26919
 export function preferredSynxisFromUrl(url) {
@@ -26,19 +27,20 @@ export function preferredPageHotels(doc, directory, url, bookableIf) {
 
 const pageHotelsFor = bookableIf => async () => preferredPageHotels(document, await ipreferDirectory(), location.href, bookableIf)
 
-const ipreferMode = { ...ipreferProgram, currentHotel: undefined, pageHotels: pageHotelsFor(bookableWithPoints) }
-const choiceMode = { ...preferredChoiceProgram, pageHotels: pageHotelsFor(takesChoicePoints) }
+const ipreferMode = { ...ipreferPointsProgram, pageHotels: pageHotelsFor(bookableWithPoints) }
+const choiceMode = { ...preferredChoiceProgram, currentHotel: ipreferPointsProgram.currentHotel, pageHotels: pageHotelsFor(takesChoicePoints) }
 
-export const preferredHotelsProgram = {
+export const ipreferProgram = {
   ...ipreferMode,
   id: 'preferred',
-  name: 'Preferred Hotels',
-  matches: ['preferredhotels.com'],
+  name: 'I Prefer',
+  color: '#1B2A3A',
+  matchHost: h => h === 'iprefer.com' || h === 'preferredhotels.com',
   modes: [
     { code: 'iprefer', name: 'I Prefer points', program: ipreferMode },
     {
       code: 'choice', name: 'Choice Privileges points', program: choiceMode,
-      tip: 'Booking needs your Choice Privileges login: enter the portal from Start booking on the partner page, then the Book links open the hotel here (pick the dates there).',
+      tip: 'Booking needs your Choice Privileges login: enter the portal from Start booking on the partner page, then the Book links open the hotel on preferredhotels.com (pick the dates there).',
       tipLink: { url: PARTNER_PAGE_URL, text: 'Partner page ↗' },
     },
   ],

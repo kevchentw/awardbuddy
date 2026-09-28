@@ -1,8 +1,8 @@
 import { PTG_API, CODE_RE, ipreferDirectory, ipreferSuggest, ipreferHotelsAt, ptgCalendar } from './iprefer.js'
 
-// Preferred Hotels & Resorts booked with Choice Privileges points – a search mode of the Choice program
-// (choicehotels.com/ascend/preferred-hotels-partner). Searching needs no login; it uses the same
-// ptgapis.com data as I Prefer (see iprefer.js):
+// Preferred Hotels & Resorts booked with Choice Privileges points – one of the two search modes of the
+// I Prefer program (preferred.js). Searching needs no login; it uses the same ptgapis.com data as I Prefer
+// points (see iprefer.js):
 //   /rate-calendar/v2?propertyCode=…&program=CH   nights bookable with Choice points, for every date the
 //                                        hotel has (about a year) in one response. Each comes with the cash
 //                                        rate and its taxes / fees but points 0: a hotel's points are a flat
@@ -10,7 +10,6 @@ import { PTG_API, CODE_RE, ipreferDirectory, ipreferSuggest, ipreferHotelsAt, pt
 // Booking happens on preferredhotels.com/choicepoints, which needs a Choice Privileges session handed over
 // from choicehotels.com ("Start booking" on the partner page); without one it shows a login wall. Its
 // booking page doesn't take dates from the URL.
-// It's also a search mode on preferredhotels.com (preferred.js).
 
 export const PARTNER_PAGE_URL = 'https://www.choicehotels.com/ascend/preferred-hotels-partner'
 

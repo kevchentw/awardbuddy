@@ -1,6 +1,7 @@
 import { sleep } from '../common/search.js'
 
-// I Prefer (Preferred Hotels & Resorts) – no login required.
+// I Prefer (Preferred Hotels & Resorts), booked with I Prefer points – no login required. One of the two
+// search modes of the I Prefer program (preferred.js), next to Choice points.
 // The site's data comes from ptgapis.com, which answers any origin (CORS *):
 //   /rate-calendar/v2?propertyCode=…&rateCode=IPPOINTS   reward calendar: points per night for one hotel,
 //                                        every date it has (about 18 months) in one response; nights without
@@ -10,10 +11,10 @@ import { sleep } from '../common/search.js'
 //                                        Choice points value) is ~300 KB.
 //                                        Fetched once and kept for names, text search and the hotels around
 //                                        a city (the site's own place search is Google Maps in the page)
-// The directory, text search and calendar cache are shared with the Choice-points search (preferred-choice.js),
-// and this program is also a search mode on preferredhotels.com (preferred.js).
+// The directory, text search and calendar cache are shared with the Choice points mode (preferred-choice.js).
 // Hotel pages (/hotels/<country>/<slug>) and search result cards don't carry the code in a URL or
-// attribute: a hotel page's server-rendered data names it, and cards are matched to it by name.
+// attribute: on iprefer.com a hotel page's server-rendered data names it (for preselecting it); cards and
+// pages are also matched through the directory (preferred.js).
 
 export const PTG_API = 'https://ptgapis.com'
 const IPREFER_DELAY_MS = 600
@@ -211,19 +212,16 @@ export function ptgCalendar(url) {
 
 const currentHotel = () => ipreferHotelFromPage(document.documentElement.innerHTML, location.href)
 
-export const ipreferProgram = {
+export const ipreferPointsProgram = {
   id: 'iprefer',
   kind: 'hotel',
-  name: 'I Prefer',
-  color: '#1B2A3A',
-  matches: ['iprefer.com'],
+  name: 'I Prefer points',
   requiresSession: false,
   hotelPlaceholder: 'Hotel name, city, country or code',
   expiredMessage: '⚠ I Prefer rejected the request — refresh the page and try again',
 
   currentHotel,
   isHotelCode: text => CODE_RE.test(text),
-  pageHotels: async () => ipreferPageHotels(document, await ipreferDirectory(), currentHotel()),
 
   async suggestHotels(text) {
     return ipreferSuggest(await ipreferDirectory(), text)

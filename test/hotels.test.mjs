@@ -471,7 +471,7 @@ test('I Prefer: hotel code from a hotel page, and hotels on a search results pag
   assert.deepEqual(ipreferPageHotels({ querySelectorAll: () => [] }, dir, 'BILNH'), [{ code: 'BILNH' }])
 })
 
-test('Preferred Hotels (Choice points): calendar URL, one row per bookable night at the flat Choice rate', async () => {
+test('I Prefer, Choice points mode: calendar URL, one row per bookable night at the flat Choice rate', async () => {
   const { preferredChoiceCalendarUrl, preferredChoiceParseCalendar } = await import('../src/programs/preferred-choice.js')
   assert.equal(preferredChoiceCalendarUrl('MLAIH'), 'https://ptgapis.com/rate-calendar/v2?propertyCode=MLAIH&program=CH&adults=1&children=0')
   const night = (more) => ({ is_available: true, has_inventory: true, allows_check_in: true, allows_check_out: true, rate: 768, tax: 53, fees: 0, points: 0, ...more })
@@ -495,7 +495,7 @@ test('Preferred Hotels (Choice points): calendar URL, one row per bookable night
   assert.deepEqual(preferredChoiceParseCalendar({ currency_code: 'USD', count: 0, results: [] }, span, info), [])
 })
 
-test('Preferred Hotels (Choice points): search and lists keep hotels that take Choice points', async () => {
+test('I Prefer, Choice points mode: search and lists keep hotels that take Choice points', async () => {
   const { ipreferParseDirectory, ipreferSuggest, ipreferHotelsAt } = await import('../src/programs/iprefer.js')
   const dir = ipreferParseDirectory(ipreferDirectoryData)
   const choice = h => h.choicePoints > 0
@@ -506,27 +506,23 @@ test('Preferred Hotels (Choice points): search and lists keep hotels that take C
   assert.deepEqual(ipreferHotelsAt(dir, { city: 'Paris', country: 'France' }, choice).nearby.map(h => h.code).sort(), ['PARHD', 'PARXX'])
 })
 
-test('Choice: the Preferred Hotels search mode is a hotel program of its own', async () => {
+test('I Prefer: on iprefer.com and preferredhotels.com, an I Prefer points mode and a Choice points mode', async () => {
+  const { ipreferProgram } = await import('../src/programs/preferred.js')
   const { choiceProgram } = await import('../src/programs/choice.js')
-  assert.deepEqual(choiceProgram.modes.map(m => [m.code, m.program.id]), [['choice', 'choice'], ['preferred', 'choice-preferred']])
-  assert.equal(choiceProgram.modes[0].program.modes, undefined)
-  assert.ok(choiceProgram.modes[1].program.isHotelCode('PARHD'))
-  assert.equal(typeof choiceProgram.onHotelSearch, 'function')
-})
-
-test('Preferred Hotels site: an I Prefer points mode and a Choice points mode, the latter picked on /choicepoints', async () => {
-  const { preferredHotelsProgram } = await import('../src/programs/preferred.js')
-  assert.deepEqual(preferredHotelsProgram.matches, ['preferredhotels.com'])
-  assert.deepEqual(preferredHotelsProgram.modes.map(m => [m.code, m.program.id]), [['iprefer', 'iprefer'], ['choice', 'choice-preferred']])
-  assert.ok(preferredHotelsProgram.modes.every(m => typeof m.program.pageHotels === 'function' && !m.program.currentHotel))
+  assert.ok(['iprefer.com', 'preferredhotels.com'].every(ipreferProgram.matchHost))
+  assert.ok(!ipreferProgram.matchHost('www.choicehotels.com'))
+  assert.equal(choiceProgram.modes, undefined)
+  assert.deepEqual(ipreferProgram.modes.map(m => [m.code, m.program.id]), [['iprefer', 'iprefer'], ['choice', 'choice-preferred']])
+  assert.ok(ipreferProgram.modes.every(m => typeof m.program.pageHotels === 'function' && typeof m.program.currentHotel === 'function'))
+  // The Choice points mode is picked on the Choice portal
   globalThis.location = { pathname: '/choicepoints/search' }
-  assert.equal(preferredHotelsProgram.pageMode(), 'choice')
+  assert.equal(ipreferProgram.pageMode(), 'choice')
   globalThis.location = { pathname: '/hotels/france/hotel-napoleon' }
-  assert.equal(preferredHotelsProgram.pageMode(), null)
+  assert.equal(ipreferProgram.pageMode(), null)
   delete globalThis.location
 })
 
-test('Preferred Hotels site: search cards plus the hotel or booking page the user is on, per mode', async () => {
+test('I Prefer: search cards plus the hotel or booking page the user is on, per mode', async () => {
   const { preferredSynxisFromUrl, preferredPageHotels } = await import('../src/programs/preferred.js')
   const { ipreferParseDirectory, bookableWithPoints } = await import('../src/programs/iprefer.js')
   const { takesChoicePoints } = await import('../src/programs/preferred-choice.js')
