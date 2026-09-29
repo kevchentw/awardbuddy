@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.8.2
+// @version      1.8.3
 // @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
@@ -7441,6 +7441,7 @@
   ];
   var JAL_PARTNER_CABIN = { F: "F", B: "J", N: "N", E: "Y" };
   var JAL_PARTNER_GAP_MS = 3e3;
+  var JAL_OWN_GAP_MS = 500;
   var jalCaptured = { sessionId: null };
   var jalSessionCallback = null;
   function jalTryCapture() {
@@ -7613,20 +7614,26 @@
       return [];
     }
   }
-  var jalPartnerQueue = Promise.resolve();
-  var jalPartnerLastAt = 0;
-  function jalPartnerEnqueue(fn) {
-    const run = jalPartnerQueue.then(async () => {
-      await sleep(Math.max(0, jalPartnerLastAt + JAL_PARTNER_GAP_MS - Date.now()));
+  var jalQueue = Promise.resolve();
+  var jalLastAt = 0;
+  function jalEnqueue(fn, gapMs) {
+    const run = jalQueue.then(async () => {
+      await sleep(Math.max(0, jalLastAt + gapMs - Date.now()));
       try {
         return await fn();
       } finally {
-        jalPartnerLastAt = Date.now();
+        jalLastAt = Date.now();
       }
     });
-    jalPartnerQueue = run.catch(() => {
+    jalQueue = run.catch(() => {
     });
     return run;
+  }
+  var jalPartnerEnqueue = (fn) => jalEnqueue(fn, JAL_PARTNER_GAP_MS);
+  var jalDdsId = null;
+  function jalNextDdsIds() {
+    jalDdsId ?? (jalDdsId = Number(new URL(location.href).searchParams.get("DDS_PREVIOUS_REQUEST_ID") || 0));
+    return { prevId: jalDdsId, currId: ++jalDdsId };
   }
   var JAL_PARTNER_BASE = {
     SITE: "J019J019",
@@ -7862,38 +7869,36 @@
       if (!sid) return [];
       const cabins = cabinFilter.length ? cabinFilter : ["F", "J", "N", "Y"];
       const byFlight = {};
-      let ddsId = Number(new URL(location.href).searchParams.get("DDS_PREVIOUS_REQUEST_ID") || 0);
       for (const cabin of cabins) {
-        await sleep(500);
         try {
-          const prevId = ddsId;
-          const currId = ddsId + 1;
-          ddsId = currId;
-          const { html } = await jalSubmit(sid, {
-            COUNTRY_SITE: "JAL_JR_JP",
-            LANGUAGE: "GB",
-            SITE: "J019J019",
-            LOCATION: origin,
-            DESTINATION: destination,
-            DEPARTURE_LOCATION_1: origin,
-            ARRIVAL_LOCATION_1: destination,
-            DEPARTURE_DATE_1: `${date.replace(/-/g, "")}0000`,
-            CABIN_CODE: "ALL",
-            CFF_OUTBOUND: JAL_CFF[cabin] ?? "9YE",
-            FLOW_MODE: "REDEMPTION",
-            TRIP_TYPE: "O",
-            NB_ADT: "1",
-            NB_CHD: "0",
-            NB_INF: "0",
-            IS_FLEXIBLE: "false",
-            PATTERN: "1B",
-            DEVICE_TYPE: "mobile",
-            STREAM: "booking",
-            DDS_CURRENT_REQUEST_ID: currId,
-            DDS_PREVIOUS_REQUEST_ID: prevId,
-            DDS_FROM_PAGE: "AFFH",
-            PAGE_TICKET: "1"
-          });
+          const { html } = await jalEnqueue(() => {
+            const { prevId, currId } = jalNextDdsIds();
+            return jalSubmit(sid, {
+              COUNTRY_SITE: "JAL_JR_JP",
+              LANGUAGE: "GB",
+              SITE: "J019J019",
+              LOCATION: origin,
+              DESTINATION: destination,
+              DEPARTURE_LOCATION_1: origin,
+              ARRIVAL_LOCATION_1: destination,
+              DEPARTURE_DATE_1: `${date.replace(/-/g, "")}0000`,
+              CABIN_CODE: "ALL",
+              CFF_OUTBOUND: JAL_CFF[cabin] ?? "9YE",
+              FLOW_MODE: "REDEMPTION",
+              TRIP_TYPE: "O",
+              NB_ADT: "1",
+              NB_CHD: "0",
+              NB_INF: "0",
+              IS_FLEXIBLE: "false",
+              PATTERN: "1B",
+              DEVICE_TYPE: "mobile",
+              STREAM: "booking",
+              DDS_CURRENT_REQUEST_ID: currId,
+              DDS_PREVIOUS_REQUEST_ID: prevId,
+              DDS_FROM_PAGE: "AFFH",
+              PAGE_TICKET: "1"
+            });
+          }, JAL_OWN_GAP_MS);
           if (!html) continue;
           const rows = jalParseAvailability(html, date);
           if (rows === "SESSION_EXPIRED") return "SESSION_EXPIRED";
@@ -8047,6 +8052,52 @@
       return [];
     }
   }
+  var anaQueue = Promise.resolve();
+  function anaEnqueue(fn) {
+    const run = anaQueue.then(fn);
+    anaQueue = run.catch(() => {
+    });
+    return run;
+  }
+  async function anaFetchResults(origin, destination, date, cabinFilter) {
+    const cabins = cabinFilter.length ? cabinFilter : ["F", "J", "N", "Y"];
+    const inputRes = await fetch(anaInputUrl(), { credentials: "include" });
+    if (!inputRes.ok) return null;
+    const inputHtml = await inputRes.text();
+    const parsed = anaParseInputPage(inputHtml);
+    if (!parsed) return null;
+    const cff = ANA_CFF[cabins[0]] ?? "CFF1";
+    const body = new URLSearchParams({
+      "conditionInput": "conditionInput",
+      "conditionInput_operationTicket": "",
+      "conditionInput_cmnPageTicket": "0",
+      "hiddenSearchMode": "ONE_WAY",
+      "itineraryButtonCheck": "oneWay",
+      "hiddenAction": "AwardRoundTripSearchInputAction",
+      "hiddenRoundtripOpenJawSelected": "0",
+      "departureAirportCode:field": origin,
+      "departureAirportCode:field_pctext": origin,
+      "arrivalAirportCode:field": destination,
+      "arrivalAirportCode:field_pctext": destination,
+      "awardDepartureDate:field": date.replace(/-/g, ""),
+      "hiddenBoardingClassType": "0",
+      "boardingClass": cff,
+      "adult:count": "1",
+      "youngAdult:count": "0",
+      "child:count": "0",
+      "hiddenDomesticChildAge": "false",
+      "infant:count": "0",
+      [parsed.searchBtn]: "Search",
+      "javax.faces.ViewState": parsed.viewState
+    });
+    const res = await fetch(parsed.action, {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: body.toString()
+    });
+    return res.ok ? res.text() : null;
+  }
   var anaProgram = {
     id: "ana",
     name: "ANA",
@@ -8069,45 +8120,8 @@
     },
     async onSearch({ origin, destination, date, cabinFilter }) {
       if (!anaCaptured.aswcid) return [];
-      const cabins = cabinFilter.length ? cabinFilter : ["F", "J", "N", "Y"];
-      const inputRes = await fetch(anaInputUrl(), { credentials: "include" });
-      if (!inputRes.ok) return [];
-      const inputHtml = await inputRes.text();
-      const parsed = anaParseInputPage(inputHtml);
-      if (!parsed) return [];
-      const cff = ANA_CFF[cabins[0]] ?? "CFF1";
-      const body = new URLSearchParams({
-        "conditionInput": "conditionInput",
-        "conditionInput_operationTicket": "",
-        "conditionInput_cmnPageTicket": "0",
-        "hiddenSearchMode": "ONE_WAY",
-        "itineraryButtonCheck": "oneWay",
-        "hiddenAction": "AwardRoundTripSearchInputAction",
-        "hiddenRoundtripOpenJawSelected": "0",
-        "departureAirportCode:field": origin,
-        "departureAirportCode:field_pctext": origin,
-        "arrivalAirportCode:field": destination,
-        "arrivalAirportCode:field_pctext": destination,
-        "awardDepartureDate:field": date.replace(/-/g, ""),
-        "hiddenBoardingClassType": "0",
-        "boardingClass": cff,
-        "adult:count": "1",
-        "youngAdult:count": "0",
-        "child:count": "0",
-        "hiddenDomesticChildAge": "false",
-        "infant:count": "0",
-        [parsed.searchBtn]: "Search",
-        "javax.faces.ViewState": parsed.viewState
-      });
-      const res = await fetch(parsed.action, {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-      });
-      if (!res.ok) return [];
-      const html = await res.text();
-      return anaParseResults(html, date);
+      const html = await anaEnqueue(() => anaFetchResults(origin, destination, date, cabinFilter));
+      return html ? anaParseResults(html, date) : [];
     }
   };
 

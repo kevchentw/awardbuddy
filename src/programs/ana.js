@@ -119,6 +119,62 @@ function anaParseResults(html, date) {
   } catch { return [] }
 }
 
+// The input page's ViewState and the search POST run one flow on the aswcid session; two dates in
+// flight at once can overwrite each other, so one search at a time across the worker pool
+let anaQueue = Promise.resolve()
+function anaEnqueue(fn) {
+  const run = anaQueue.then(fn)
+  anaQueue = run.catch(() => {})
+  return run
+}
+
+// → results HTML, or null on an error
+async function anaFetchResults(origin, destination, date, cabinFilter) {
+  const cabins = cabinFilter.length ? cabinFilter : ['F', 'J', 'N', 'Y']
+
+  // Fetch input page once per search (one search covers all cabins via result parsing)
+  const inputRes = await fetch(anaInputUrl(), { credentials: 'include' })
+  if (!inputRes.ok) return null
+  const inputHtml = await inputRes.text()
+  const parsed = anaParseInputPage(inputHtml)
+  if (!parsed) return null
+
+  // Use first cabin for the search request (result page shows all cabins for ANA flights)
+  // ponytail: ANA result page always shows all available cabins regardless of CFF; cabin filter applied post-parse
+  const cff = ANA_CFF[cabins[0]] ?? 'CFF1'
+  const body = new URLSearchParams({
+    'conditionInput': 'conditionInput',
+    'conditionInput_operationTicket': '',
+    'conditionInput_cmnPageTicket': '0',
+    'hiddenSearchMode': 'ONE_WAY',
+    'itineraryButtonCheck': 'oneWay',
+    'hiddenAction': 'AwardRoundTripSearchInputAction',
+    'hiddenRoundtripOpenJawSelected': '0',
+    'departureAirportCode:field': origin,
+    'departureAirportCode:field_pctext': origin,
+    'arrivalAirportCode:field': destination,
+    'arrivalAirportCode:field_pctext': destination,
+    'awardDepartureDate:field': date.replace(/-/g, ''),
+    'hiddenBoardingClassType': '0',
+    'boardingClass': cff,
+    'adult:count': '1',
+    'youngAdult:count': '0',
+    'child:count': '0',
+    'hiddenDomesticChildAge': 'false',
+    'infant:count': '0',
+    [parsed.searchBtn]: 'Search',
+    'javax.faces.ViewState': parsed.viewState,
+  })
+
+  const res = await fetch(parsed.action, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  })
+  return res.ok ? res.text() : null
+}
+
 export const anaProgram = {
   id: 'ana',
   name: 'ANA',
@@ -140,50 +196,7 @@ export const anaProgram = {
 
   async onSearch({ origin, destination, date, cabinFilter }) {
     if (!anaCaptured.aswcid) return []
-    const cabins = cabinFilter.length ? cabinFilter : ['F', 'J', 'N', 'Y']
-
-    // Fetch input page once per search (one search covers all cabins via result parsing)
-    const inputRes = await fetch(anaInputUrl(), { credentials: 'include' })
-    if (!inputRes.ok) return []
-    const inputHtml = await inputRes.text()
-    const parsed = anaParseInputPage(inputHtml)
-    if (!parsed) return []
-
-    // Use first cabin for the search request (result page shows all cabins for ANA flights)
-    // ponytail: ANA result page always shows all available cabins regardless of CFF; cabin filter applied post-parse
-    const cff = ANA_CFF[cabins[0]] ?? 'CFF1'
-    const body = new URLSearchParams({
-      'conditionInput': 'conditionInput',
-      'conditionInput_operationTicket': '',
-      'conditionInput_cmnPageTicket': '0',
-      'hiddenSearchMode': 'ONE_WAY',
-      'itineraryButtonCheck': 'oneWay',
-      'hiddenAction': 'AwardRoundTripSearchInputAction',
-      'hiddenRoundtripOpenJawSelected': '0',
-      'departureAirportCode:field': origin,
-      'departureAirportCode:field_pctext': origin,
-      'arrivalAirportCode:field': destination,
-      'arrivalAirportCode:field_pctext': destination,
-      'awardDepartureDate:field': date.replace(/-/g, ''),
-      'hiddenBoardingClassType': '0',
-      'boardingClass': cff,
-      'adult:count': '1',
-      'youngAdult:count': '0',
-      'child:count': '0',
-      'hiddenDomesticChildAge': 'false',
-      'infant:count': '0',
-      [parsed.searchBtn]: 'Search',
-      'javax.faces.ViewState': parsed.viewState,
-    })
-
-    const res = await fetch(parsed.action, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    })
-    if (!res.ok) return []
-    const html = await res.text()
-    return anaParseResults(html, date)
+    const html = await anaEnqueue(() => anaFetchResults(origin, destination, date, cabinFilter))
+    return html ? anaParseResults(html, date) : []
   },
 }

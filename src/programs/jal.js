@@ -49,6 +49,7 @@ const JAL_SEARCH_MODES = [
 // Partner segment cabin code → our cabin
 const JAL_PARTNER_CABIN = { F: 'F', B: 'J', N: 'N', E: 'Y' }
 const JAL_PARTNER_GAP_MS = 3000  // ponytail: a quick burst of ~15 partner requests got a 403 Access Denied from Akamai
+const JAL_OWN_GAP_MS = 500
 
 const jalCaptured = { sessionId: null }
 let jalSessionCallback = null
@@ -221,16 +222,26 @@ export function jalParsePartnerAvailability(html, date) {
   } catch { return [] }
 }
 
-// Partner requests are serialized across the UI's worker pool and spaced out for Akamai
-let jalPartnerQueue = Promise.resolve()
-let jalPartnerLastAt = 0
-function jalPartnerEnqueue(fn) {
-  const run = jalPartnerQueue.then(async () => {
-    await sleep(Math.max(0, jalPartnerLastAt + JAL_PARTNER_GAP_MS - Date.now()))
-    try { return await fn() } finally { jalPartnerLastAt = Date.now() }
+// Every availability submit goes through one queue: a JAL_SESSION_ID holds a single booking flow, so
+// two dates in flight at once overwrite each other, and partner requests are spaced out for Akamai
+let jalQueue = Promise.resolve()
+let jalLastAt = 0
+function jalEnqueue(fn, gapMs) {
+  const run = jalQueue.then(async () => {
+    await sleep(Math.max(0, jalLastAt + gapMs - Date.now()))
+    try { return await fn() } finally { jalLastAt = Date.now() }
   })
-  jalPartnerQueue = run.catch(() => {})
+  jalQueue = run.catch(() => {})
   return run
+}
+const jalPartnerEnqueue = fn => jalEnqueue(fn, JAL_PARTNER_GAP_MS)
+
+// DDS request ids chain from one submit to the next across searches; the iframes never change our
+// own URL, so it only seeds the first one
+let jalDdsId = null
+function jalNextDdsIds() {
+  jalDdsId ??= Number(new URL(location.href).searchParams.get('DDS_PREVIOUS_REQUEST_ID') || 0)
+  return { prevId: jalDdsId, currId: ++jalDdsId }
 }
 
 const JAL_PARTNER_BASE = {
@@ -445,28 +456,26 @@ export const jalProgram = {
     if (!sid) return []
     const cabins = cabinFilter.length ? cabinFilter : ['F', 'J', 'N', 'Y']
     const byFlight = {}
-    let ddsId = Number(new URL(location.href).searchParams.get('DDS_PREVIOUS_REQUEST_ID') || 0)
     for (const cabin of cabins) {
-      await sleep(500)
       try {
-        const prevId = ddsId
-        const currId = ddsId + 1
-        ddsId = currId
-        const { html } = await jalSubmit(sid, {
-          COUNTRY_SITE: 'JAL_JR_JP', LANGUAGE: 'GB', SITE: 'J019J019',
-          LOCATION: origin, DESTINATION: destination,
-          DEPARTURE_LOCATION_1: origin,
-          ARRIVAL_LOCATION_1: destination,
-          DEPARTURE_DATE_1: `${date.replace(/-/g, '')}0000`,
-          CABIN_CODE: 'ALL',
-          CFF_OUTBOUND: JAL_CFF[cabin] ?? '9YE',
-          FLOW_MODE: 'REDEMPTION', TRIP_TYPE: 'O',
-          NB_ADT: '1', NB_CHD: '0', NB_INF: '0',
-          IS_FLEXIBLE: 'false', PATTERN: '1B',
-          DEVICE_TYPE: 'mobile', STREAM: 'booking',
-          DDS_CURRENT_REQUEST_ID: currId, DDS_PREVIOUS_REQUEST_ID: prevId,
-          DDS_FROM_PAGE: 'AFFH', PAGE_TICKET: '1',
-        })
+        const { html } = await jalEnqueue(() => {
+          const { prevId, currId } = jalNextDdsIds()
+          return jalSubmit(sid, {
+            COUNTRY_SITE: 'JAL_JR_JP', LANGUAGE: 'GB', SITE: 'J019J019',
+            LOCATION: origin, DESTINATION: destination,
+            DEPARTURE_LOCATION_1: origin,
+            ARRIVAL_LOCATION_1: destination,
+            DEPARTURE_DATE_1: `${date.replace(/-/g, '')}0000`,
+            CABIN_CODE: 'ALL',
+            CFF_OUTBOUND: JAL_CFF[cabin] ?? '9YE',
+            FLOW_MODE: 'REDEMPTION', TRIP_TYPE: 'O',
+            NB_ADT: '1', NB_CHD: '0', NB_INF: '0',
+            IS_FLEXIBLE: 'false', PATTERN: '1B',
+            DEVICE_TYPE: 'mobile', STREAM: 'booking',
+            DDS_CURRENT_REQUEST_ID: currId, DDS_PREVIOUS_REQUEST_ID: prevId,
+            DDS_FROM_PAGE: 'AFFH', PAGE_TICKET: '1',
+          })
+        }, JAL_OWN_GAP_MS)
         if (!html) continue
         const rows = jalParseAvailability(html, date)
         if (rows === 'SESSION_EXPIRED') return 'SESSION_EXPIRED'

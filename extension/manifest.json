@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Award Buddy",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "homepage_url": "https://github.com/kevchentw/awardbuddy",
   "icons": {
     "16": "icons/icon-16.png",
