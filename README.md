@@ -37,7 +37,7 @@ It runs in your browser on the airline's or hotel's page, using your own session
 | Hilton Honors | hilton.com | Not needed |
 | World of Hyatt | hyatt.com | Not needed |
 | Choice Privileges | choicehotels.com | Not needed |
-| I Prefer (Preferred Hotels & Resorts) | iprefer.com, preferredhotels.com | Not needed to search; Choice login to book with Choice points |
+| I Prefer (Preferred Hotels & Resorts) | iprefer.com, preferredhotels.com | Not needed |
 
 More hotel chains are planned.
 
@@ -48,7 +48,7 @@ When a program needs a session and doesn't have one yet, the panel shows a **Get
 Some programs have more to search than a plain one-way. These appear as a **Search mode** or carrier dropdown in the panel.
 
 - **Air Canada: one-way with stopover.** Enter one or more stopover cities and the length of stay (for example `3-5, 7` days). Every combination of stopover city × stay length is searched for each route and date.
-- **I Prefer: I Prefer or Choice points.** Preferred Hotels & Resorts can be booked with I Prefer points or with Choice Privileges points, so on iprefer.com and preferredhotels.com pick **I Prefer points** or **Choice Privileges points** (the latter is picked by default on the preferredhotels.com/choicepoints portal). Choice points are a flat rate per hotel and night, plus taxes and fees in cash (shown in the Room column), and only the 300+ hotels that take them are listed. Searching needs no login, but booking with Choice points does: click **Start booking** on Choice's [Preferred Hotels partner page](https://www.choicehotels.com/ascend/preferred-hotels-partner) while logged in, and the **Book** links then open the hotel on preferredhotels.com (pick the dates there).
+- **I Prefer: I Prefer or Choice points.** Preferred Hotels & Resorts can be booked with I Prefer points or with Choice Privileges points, so on iprefer.com and preferredhotels.com pick **I Prefer points** or **Choice Privileges points** (the latter is picked by default on the preferredhotels.com/choicepoints portal). Choice points are a flat rate per hotel and night, plus taxes and fees in cash (shown in the Room column), and only the 300+ hotels that take them are listed. The **Book** links open the hotel on preferredhotels.com (pick the dates there).
 - **Japan Airlines: partner awards.** Search JMB partner award space for Alaska / Hawaiian, American, British Airways, Cathay Pacific, Fiji Airways, Finnair, Iberia, Malaysia Airlines, Oman Air, Qantas, Qatar Airways, Royal Air Maroc, Royal Jordanian, SriLankan, Air France, Bangkok Airways, Emirates, Garuda Indonesia, Korean Air and LATAM. The airport list changes to match the partner network. Calendar mode only covers JAL's own flights.
 - **LifeMiles: carrier filter.** Search all of Star Alliance, use Smart Search, or limit results to one airline: Thai, Avianca + Gol, Aegean, ANA, Lufthansa, Singapore Airlines or United.
 
