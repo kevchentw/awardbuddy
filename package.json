@@ -1,6 +1,6 @@
 {
   "name": "awardbuddy",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "scripts": {
     "build": "node build.cjs",
     "test": "node --test test/*.test.mjs"
