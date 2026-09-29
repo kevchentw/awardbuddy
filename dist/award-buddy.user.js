@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.7.2
+// @version      1.8.0
 // @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
@@ -3787,6 +3787,34 @@
     if (start >= today) return { start, end };
     return { start: today, end: end > today ? end : null };
   }
+  function parseDay(text, from) {
+    const m3 = text.match(/^(?:(\d{4})[-/.])?(\d{1,2})[-/.](\d{1,2})$/);
+    if (!m3) return null;
+    const [, y3, mo, d3] = m3.map(Number);
+    const make = (year2) => {
+      const iso2 = `${year2}-${String(mo).padStart(2, "0")}-${String(d3).padStart(2, "0")}`;
+      return addDays(iso2, 0) === iso2 ? iso2 : null;
+    };
+    if (m3[1]) return make(y3);
+    const year = +from.slice(0, 4), iso = make(year);
+    return iso && iso < from ? make(year + 1) : iso;
+  }
+  function parseDateRange(text, today = todayISO()) {
+    text = String(text ?? "").trim();
+    if (!text) return { start: null, end: null };
+    let parts = text.split(/\s*(?:—|–|~|→|\bto\b)\s*|\s+-\s+|\s+/).filter(Boolean);
+    if (parts.length === 1 && !parseDay(parts[0], today)) {
+      const at = [...text.matchAll(/-/g)].map((h3) => h3.index).find((i3) => parseDay(text.slice(0, i3), today) && parseDay(text.slice(i3 + 1), today));
+      if (at !== void 0) parts = [text.slice(0, at), text.slice(at + 1)];
+    }
+    if (parts.length > 2) return null;
+    const start = parseDay(parts[0], today);
+    if (!start || start < today) return null;
+    if (parts.length === 1) return { start, end: null };
+    const end = parseDay(parts[1], start);
+    if (!end || end < start) return null;
+    return { start, end: end > start ? end : null };
+  }
   function restoreMonths(fromMonth, toMonth, now = monthISO(0), fallbackTo = monthISO(2)) {
     if (!isMonth(fromMonth) || !isMonth(toMonth) || toMonth < fromMonth || toMonth < now) return { fromMonth: now, toMonth: fallbackTo };
     return { fromMonth: fromMonth < now ? now : fromMonth, toMonth };
@@ -3956,7 +3984,9 @@
   }
   .ab-drp-input:hover { border-color: #aaa; }
   .ab-drp-input.open { border-color: var(--ab-color); }
-  .ab-drp-text { flex: 1; color: #333; user-select: none; }
+  .ab-drp-input.bad { border-color: #e11d48; }
+  .ab-drp-text { flex: 1; min-width: 0; border: none; padding: 0; outline: none; font: inherit; color: #333; background: none; }
+  .ab-drp-count { font-size: 11px; color: #999; white-space: nowrap; }
   .ab-drp-clear { background: none; border: none; cursor: pointer; font-size: 16px; color: #bbb; padding: 0; line-height: 1; }
   .ab-drp-popup {
     position: fixed; z-index: 9999;
@@ -3964,22 +3994,31 @@
     box-shadow: 0 8px 24px rgba(0,0,0,.15); padding: 12px; width: 280px;
   }
   .ab-drp-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .ab-drp-cal-title { font-size: 14px; font-weight: 600; }
+  .ab-drp-cal-title { font-size: 14px; font-weight: 600; background: none; border: none; cursor: pointer; padding: 2px 8px; border-radius: 4px; color: inherit; }
+  .ab-drp-cal-title:hover { background: #f0f0f0; }
+  .ab-drp-caret { font-size: 10px; color: #999; }
   .ab-drp-nav { background: none; border: none; cursor: pointer; font-size: 18px; color: #555; padding: 2px 8px; border-radius: 4px; }
-  .ab-drp-nav:hover { background: #f0f0f0; }
-  .ab-drp-dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 2px; }
+  .ab-drp-nav:hover:not(:disabled) { background: #f0f0f0; }
+  .ab-drp-nav:disabled { color: #ddd; cursor: default; }
+  .ab-drp-body { height: 224px; }
+  .ab-drp-dow { display: grid; grid-template-columns: repeat(7, 1fr); height: 20px; }
   .ab-drp-dow span { text-align: center; font-size: 10px; color: #999; padding: 3px 0; }
-  .ab-drp-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .ab-drp-days { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 34px; }
   .ab-drp-day {
-    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; border-radius: 4px; cursor: pointer; border: none; background: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; border-radius: 4px; cursor: pointer; border: none; background: none; padding: 0; color: #333;
   }
+  .ab-drp-day.other { color: #aaa; }
   .ab-drp-day:not(:disabled):hover { background: #e8f0ff; }
-  .ab-drp-day.in-range { background: #dbeafe; border-radius: 0; }
-  .ab-drp-day.range-start { background: #dbeafe; border-radius: 4px 0 0 4px; }
-  .ab-drp-day.range-end { background: #dbeafe; border-radius: 0 4px 4px 0; }
+  .ab-drp-day:focus-visible { outline: 2px solid var(--ab-color); outline-offset: -2px; }
+  .ab-drp-day.in-range, .ab-drp-day.preview { background: #dbeafe; border-radius: 0; }
   .ab-drp-day.sel { background: var(--ab-color) !important; color: #fff; border-radius: 4px; }
-  .ab-drp-day:disabled { color: #ccc; cursor: default; }
+  .ab-drp-day:disabled { color: #ddd; cursor: default; }
+  .ab-drp-months { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; height: 100%; }
+  .ab-drp-month { border: none; border-radius: 6px; background: none; font-size: 13px; cursor: pointer; color: #333; }
+  .ab-drp-month:not(:disabled):hover { background: #e8f0ff; }
+  .ab-drp-month.sel { background: #dbeafe; }
+  .ab-drp-month:disabled { color: #ddd; cursor: default; }
   .ab-drp-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #f0f0f0; }
   .ab-drp-preset {
     padding: 3px 8px; border-radius: 20px; border: 1px solid #ddd;
@@ -3994,6 +4033,7 @@
 
   // src/ui/util.js
   var cx = (...names) => names.filter(Boolean).join(" ");
+  var pad = (n2) => String(n2).padStart(2, "0");
   function useOutsideClick(ref, onOutside) {
     const cb = A2(onOutside);
     cb.current = onOutside;
@@ -4104,7 +4144,6 @@
     "November",
     "December"
   ];
-  var pad = (n2) => String(n2).padStart(2, "0");
   var byCabin = ([a3], [b2]) => CABIN_ORDER.indexOf(a3) - CABIN_ORDER.indexOf(b2);
   var k3 = (miles) => `${(miles / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
   var inMonthRange = (date, fromMonth, toMonth) => date >= fromMonth && date <= toMonth + "-31";
@@ -4159,82 +4198,229 @@
   }
 
   // src/ui/DateRangePicker.jsx
-  var pad2 = (n2) => String(n2).padStart(2, "0");
+  var MONTHS_AHEAD = 12;
+  var monthOf = (iso) => ({ y: +iso.slice(0, 4), m: +iso.slice(5, 7) - 1 });
+  var monthIdx = ({ y: y3, m: m3 }) => y3 * 12 + m3;
+  var isoOf = (y3, m3, d3) => {
+    const t3 = new Date(y3, m3, d3);
+    return `${t3.getFullYear()}-${pad(t3.getMonth() + 1)}-${pad(t3.getDate())}`;
+  };
+  var formatRange = (start, end) => start ? end ? `${start} \u2014 ${end}` : start : "";
   function DateRangePicker({ start, end, onChange }) {
+    const today = todayISO();
+    const first = monthOf(today), last = monthOf(isoOf(first.y, first.m + MONTHS_AHEAD, 1));
+    const clampMonth = (v3) => monthIdx(v3) < monthIdx(first) ? first : monthIdx(v3) > monthIdx(last) ? last : v3;
     const [open, setOpen] = d2(false);
-    const [view, setView] = d2(() => {
-      const t3 = todayISO();
-      return { y: +t3.slice(0, 4), m: +t3.slice(5, 7) - 1 };
-    });
+    const [view, setView] = d2(first);
+    const [pickMonth, setPickMonth] = d2(false);
     const [awaitingEnd, setAwaitingEnd] = d2(false);
-    const wrapRef = A2(), inputRef = A2(), popupRef = A2();
-    useOutsideClick(wrapRef, () => setOpen(false));
+    const [hover, setHover] = d2(null);
+    const [focusDay, setFocusDay] = d2(null);
+    const [draft, setDraft] = d2(null);
+    const [bad, setBad] = d2(false);
+    const wrapRef = A2(), inputRef = A2(), popupRef = A2(), wantFocus = A2(null);
+    useOutsideClick(wrapRef, () => close());
     _2(() => {
       if (!open) return;
-      const r3 = inputRef.current.getBoundingClientRect(), el = popupRef.current, h3 = el.offsetHeight;
-      el.style.top = (r3.bottom + 4 + h3 <= innerHeight ? r3.bottom + 4 : r3.top - h3 - 4) + "px";
-      el.style.left = r3.left + "px";
-    }, [open, view]);
-    const today = todayISO();
+      const place2 = () => {
+        const r3 = wrapRef.current.getBoundingClientRect(), el = popupRef.current;
+        el.style.top = (r3.bottom + 4 + el.offsetHeight <= innerHeight ? r3.bottom + 4 : r3.top - el.offsetHeight - 4) + "px";
+        el.style.left = Math.max(4, Math.min(r3.left, innerWidth - el.offsetWidth - 4)) + "px";
+      };
+      place2();
+      const root = wrapRef.current.getRootNode();
+      root.addEventListener("scroll", place2, true);
+      addEventListener("scroll", place2, true);
+      addEventListener("resize", place2);
+      return () => {
+        root.removeEventListener("scroll", place2, true);
+        removeEventListener("scroll", place2, true);
+        removeEventListener("resize", place2);
+      };
+    }, [open]);
+    h2(() => {
+      if (!wantFocus.current) return;
+      popupRef.current?.querySelector(`[data-iso="${wantFocus.current}"]`)?.focus();
+      wantFocus.current = null;
+    });
+    function show() {
+      if (open) return;
+      setView(clampMonth(monthOf(start || today)));
+      setPickMonth(false);
+      setAwaitingEnd(false);
+      setHover(null);
+      setFocusDay(null);
+      setOpen(true);
+    }
+    function close() {
+      setOpen(false);
+      setAwaitingEnd(false);
+      setHover(null);
+    }
+    function commit() {
+      if (draft === null) return true;
+      const r3 = parseDateRange(draft, today);
+      if (!r3) {
+        setBad(true);
+        return false;
+      }
+      onChange(r3.start, r3.end);
+      setDraft(null);
+      setBad(false);
+      if (r3.start) setView(clampMonth(monthOf(r3.start)));
+      return true;
+    }
+    function revert() {
+      setDraft(null);
+      setBad(false);
+    }
     function pick(iso) {
+      revert();
       if (!awaitingEnd || iso < start) {
         onChange(iso, null);
         setAwaitingEnd(true);
+        if (!inView(iso)) setView(monthOf(iso));
       } else if (iso === start) {
         onChange(start, null);
-        setAwaitingEnd(false);
-        setOpen(false);
+        close();
       } else {
         onChange(start, iso);
-        setAwaitingEnd(false);
+        close();
       }
     }
     function preset(n2) {
-      const anchor = start || todayISO();
-      onChange(addDays(anchor, -n2), addDays(anchor, n2));
-      setAwaitingEnd(false);
+      const anchor = start || today, from = addDays(anchor, -n2);
+      onChange(from < today ? today : from, addDays(anchor, n2));
+      revert();
+      close();
     }
     function clear(e3) {
       e3.stopPropagation();
       onChange(null, null);
-      setAwaitingEnd(false);
-      setOpen(false);
+      revert();
+      close();
     }
-    const shift = (d3) => setView(({ y: y3, m: m3 }) => {
-      const t3 = new Date(y3, m3 + d3, 1);
-      return { y: t3.getFullYear(), m: t3.getMonth() };
-    });
+    function moveFocus(iso) {
+      if (iso < today || monthIdx(monthOf(iso)) > monthIdx(last)) return;
+      wantFocus.current = iso;
+      setFocusDay(iso);
+      setHover(iso);
+      setView(monthOf(iso));
+    }
+    const shift = (d3) => setView(({ y: y3, m: m3 }) => pickMonth ? { y: y3 + d3, m: m3 } : monthOf(isoOf(y3, m3 + d3, 1)));
+    function onInputKey(e3) {
+      if (e3.key === "Enter") {
+        if (commit()) close();
+      } else if (e3.key === "ArrowDown") {
+        e3.preventDefault();
+        show();
+        setPickMonth(false);
+        moveFocus(start && start >= today ? start : today);
+      }
+    }
+    function onDayKey(e3) {
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e3.key];
+      if (!step || !e3.target.dataset.iso) return;
+      e3.preventDefault();
+      moveFocus(addDays(e3.target.dataset.iso, step));
+    }
+    function onKey(e3) {
+      if (e3.key !== "Escape" || !open) return;
+      e3.stopPropagation();
+      revert();
+      close();
+      inputRef.current.focus();
+    }
+    const canBack = pickMonth ? view.y > first.y : monthIdx(view) > monthIdx(first);
+    const canFwd = pickMonth ? view.y < last.y : monthIdx(view) < monthIdx(last);
+    const days = start ? getDates(start, end || start).length : 0;
     const firstDow = new Date(view.y, view.m, 1).getDay();
-    const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
-    const text = start ? `${start} \u2014 ${end ?? "?"}` : "Select dates";
-    return /* @__PURE__ */ u3("div", { class: "ab-drp", ref: wrapRef, children: [
-      /* @__PURE__ */ u3("div", { class: cx("ab-drp-input", open && "open"), ref: inputRef, onClick: () => setOpen(!open), children: [
+    const cells = Array.from({ length: 42 }, (_3, i3) => isoOf(view.y, view.m, i3 - firstDow + 1));
+    const inView = (iso) => iso && monthOf(iso).m === view.m && monthOf(iso).y === view.y;
+    const tabDay = [focusDay, start, end].find((d3) => inView(d3) && d3 >= today) ?? cells.find((d3) => inView(d3) && d3 >= today);
+    return /* @__PURE__ */ u3("div", { class: "ab-drp", ref: wrapRef, onKeyDown: onKey, children: [
+      /* @__PURE__ */ u3("div", { class: cx("ab-drp-input", open && "open", bad && "bad"), onClick: () => {
+        inputRef.current.focus();
+        show();
+      }, children: [
         /* @__PURE__ */ u3("span", { style: { fontSize: 14 }, children: "\u{1F4C5}" }),
-        /* @__PURE__ */ u3("span", { class: "ab-drp-text", children: text }),
-        /* @__PURE__ */ u3("button", { class: "ab-drp-clear", title: "Clear", onClick: clear, children: "\xD7" })
+        /* @__PURE__ */ u3(
+          "input",
+          {
+            ref: inputRef,
+            class: "ab-drp-text",
+            placeholder: "e.g. 10/1-10/5, or pick below",
+            spellcheck: false,
+            value: draft ?? formatRange(start, end),
+            onInput: (e3) => {
+              const text = e3.target.value, r3 = parseDateRange(text, today);
+              setDraft(text);
+              setBad(false);
+              show();
+              if (r3?.start) setView(clampMonth(monthOf(r3.start)));
+            },
+            onKeyDown: onInputKey,
+            onBlur: () => {
+              if (!commit()) revert();
+            }
+          }
+        ),
+        days > 0 && draft === null && /* @__PURE__ */ u3("span", { class: "ab-drp-count", children: [
+          days,
+          " day",
+          days > 1 ? "s" : ""
+        ] }),
+        (start || draft) && /* @__PURE__ */ u3("button", { class: "ab-drp-clear", title: "Clear", onClick: clear, children: "\xD7" })
       ] }),
       open && /* @__PURE__ */ u3("div", { class: "ab-drp-popup", ref: popupRef, children: [
         /* @__PURE__ */ u3("div", { class: "ab-drp-cal-header", children: [
-          /* @__PURE__ */ u3("button", { class: "ab-drp-nav", onClick: () => shift(-1), children: "\u2039" }),
-          /* @__PURE__ */ u3("span", { class: "ab-drp-cal-title", children: [
-            MONTH_NAMES[view.m],
+          /* @__PURE__ */ u3("button", { class: "ab-drp-nav", onClick: () => shift(-1), disabled: !canBack, children: "\u2039" }),
+          /* @__PURE__ */ u3("button", { class: "ab-drp-cal-title", title: pickMonth ? "Back to days" : "Pick a month", onClick: () => setPickMonth(!pickMonth), children: [
+            pickMonth ? view.y : `${MONTH_NAMES[view.m]} ${view.y}`,
             " ",
-            view.y
+            /* @__PURE__ */ u3("span", { class: "ab-drp-caret", children: pickMonth ? "\u25B4" : "\u25BE" })
           ] }),
-          /* @__PURE__ */ u3("button", { class: "ab-drp-nav", onClick: () => shift(1), children: "\u203A" })
+          /* @__PURE__ */ u3("button", { class: "ab-drp-nav", onClick: () => shift(1), disabled: !canFwd, children: "\u203A" })
         ] }),
-        /* @__PURE__ */ u3("div", { class: "ab-drp-dow", children: DOW.map((d3) => /* @__PURE__ */ u3("span", { children: d3 }, d3)) }),
-        /* @__PURE__ */ u3("div", { class: "ab-drp-days", children: [
-          Array.from({ length: firstDow }, (_3, i3) => /* @__PURE__ */ u3("button", { class: "ab-drp-day", disabled: true }, `b${i3}`)),
-          Array.from({ length: daysInMonth }, (_3, i3) => {
-            const iso = `${view.y}-${pad2(view.m + 1)}-${pad2(i3 + 1)}`;
+        /* @__PURE__ */ u3("div", { class: "ab-drp-body", children: pickMonth ? /* @__PURE__ */ u3("div", { class: "ab-drp-months", children: MONTH_NAMES.map((name, m3) => {
+          const idx = monthIdx({ y: view.y, m: m3 });
+          const out = idx < monthIdx(first) || idx > monthIdx(last);
+          const sel = start && monthIdx(monthOf(start)) <= idx && idx <= monthIdx(monthOf(end || start));
+          return /* @__PURE__ */ u3(
+            "button",
+            {
+              class: cx("ab-drp-month", sel && "sel"),
+              disabled: out,
+              onClick: () => {
+                setView({ y: view.y, m: m3 });
+                setPickMonth(false);
+              },
+              children: name.slice(0, 3)
+            },
+            m3
+          );
+        }) }) : [
+          /* @__PURE__ */ u3("div", { class: "ab-drp-dow", children: DOW.map((d3) => /* @__PURE__ */ u3("span", { children: d3 }, d3)) }, "dow"),
+          /* @__PURE__ */ u3("div", { class: "ab-drp-days", onKeyDown: onDayKey, onMouseLeave: () => setHover(null), children: cells.map((iso) => {
             const sel = iso === start || iso === end;
             const inRange = start && end && iso > start && iso < end;
-            const past = iso < today;
-            return /* @__PURE__ */ u3("button", { class: cx("ab-drp-day", sel && "sel", inRange && "in-range"), onClick: () => !past && pick(iso), disabled: past, children: i3 + 1 }, iso);
-          })
+            const preview = awaitingEnd && hover && iso > start && iso <= hover;
+            return /* @__PURE__ */ u3(
+              "button",
+              {
+                "data-iso": iso,
+                tabIndex: iso === tabDay ? 0 : -1,
+                class: cx("ab-drp-day", !inView(iso) && "other", sel && "sel", inRange && "in-range", preview && "preview"),
+                disabled: iso < today,
+                onClick: () => pick(iso),
+                onMouseEnter: () => setHover(iso),
+                children: +iso.slice(8)
+              },
+              iso
+            );
+          }) }, "days")
         ] }),
-        /* @__PURE__ */ u3("div", { class: "ab-drp-presets", children: [1, 3, 7, 14].map((n2) => /* @__PURE__ */ u3("button", { class: "ab-drp-preset", onClick: () => preset(n2), children: [
+        /* @__PURE__ */ u3("div", { class: "ab-drp-presets", children: [1, 3, 7, 14].map((n2) => /* @__PURE__ */ u3("button", { class: "ab-drp-preset", title: `${n2} day(s) either side of ${start || "today"}`, onClick: () => preset(n2), children: [
           "\xB1",
           n2,
           "d"
@@ -4562,7 +4748,6 @@
 
   // src/ui/HotelResults.jsx
   var PAGE_SIZE2 = 50;
-  var pad3 = (n2) => String(n2).padStart(2, "0");
   var k4 = (points) => `${(points / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
   var hotelColor = (hotels, code) => HOTEL_COLORS[hotels.indexOf(code) % HOTEL_COLORS.length];
   function HotelCalendar({ results, hotels, names, fromMonth, toMonth, selected, onSelect }) {
@@ -4590,7 +4775,7 @@
             DOW.map((d3) => /* @__PURE__ */ u3("div", { class: "ab-cal-dow", children: d3 }, d3)),
             Array.from({ length: firstDow }, (_3, i3) => /* @__PURE__ */ u3("div", {}, `b${i3}`)),
             Array.from({ length: daysInMonth }, (_3, i3) => {
-              const date = `${y4}-${pad3(m4)}-${pad3(i3 + 1)}`;
+              const date = `${y4}-${pad(m4)}-${pad(i3 + 1)}`;
               const avail = byDate[date];
               if (!avail) return /* @__PURE__ */ u3("div", { class: "ab-cal-day", children: /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }) }, i3);
               return /* @__PURE__ */ u3(

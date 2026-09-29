@@ -82,6 +82,42 @@ export function restoreDates(start, end, today = todayISO()) {
   return { start: today, end: end > today ? end : null }
 }
 
+// "2026-10-01", "10/1" or "10-1" → ISO date; a date without a year is the next one on or after `from`
+function parseDay(text, from) {
+  const m = text.match(/^(?:(\d{4})[-/.])?(\d{1,2})[-/.](\d{1,2})$/)
+  if (!m) return null
+  const [, y, mo, d] = m.map(Number)
+  const make = year => {
+    const iso = `${year}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    return addDays(iso, 0) === iso ? iso : null   // rejects 2/30 and friends
+  }
+  if (m[1]) return make(y)
+  const year = +from.slice(0, 4), iso = make(year)
+  return iso && iso < from ? make(year + 1) : iso
+}
+
+// Typed date range → { start, end } (end null for one day), or null if it can't be read or starts
+// before today. Takes "2026-10-01 — 2026-10-05", "2026-10-01~10-05", "10/1-10/5", "10/1 to 10/5",
+// a single day, or empty text (clears the range).
+export function parseDateRange(text, today = todayISO()) {
+  text = String(text ?? '').trim()
+  if (!text) return { start: null, end: null }
+  let parts = text.split(/\s*(?:—|–|~|→|\bto\b)\s*|\s+-\s+|\s+/).filter(Boolean)
+  // "10/1-10/5" / "2026-10-01-2026-10-05": split at the hyphen with a date on both sides
+  if (parts.length === 1 && !parseDay(parts[0], today)) {
+    const at = [...text.matchAll(/-/g)].map(h => h.index)
+      .find(i => parseDay(text.slice(0, i), today) && parseDay(text.slice(i + 1), today))
+    if (at !== undefined) parts = [text.slice(0, at), text.slice(at + 1)]
+  }
+  if (parts.length > 2) return null
+  const start = parseDay(parts[0], today)
+  if (!start || start < today) return null
+  if (parts.length === 1) return { start, end: null }
+  const end = parseDay(parts[1], start)
+  if (!end || end < start) return null
+  return { start, end: end > start ? end : null }
+}
+
 // Saved month range starting no earlier than this month (all past or invalid → this month + 2)
 export function restoreMonths(fromMonth, toMonth, now = monthISO(0), fallbackTo = monthISO(2)) {
   if (!isMonth(fromMonth) || !isMonth(toMonth) || toMonth < fromMonth || toMonth < now) return { fromMonth: now, toMonth: fallbackTo }

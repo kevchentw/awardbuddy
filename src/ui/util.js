@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks'
 
 export const cx = (...names) => names.filter(Boolean).join(' ')
+export const pad = n => String(n).padStart(2, '0')
 
 // Calls onOutside when a click lands outside ref's element (composedPath sees through the shadow root)
 export function useOutsideClick(ref, onOutside) {

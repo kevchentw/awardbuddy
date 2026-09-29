@@ -1,11 +1,10 @@
 import { CABIN_LABELS, CABIN_COLORS, CABIN_ORDER } from '../common/constants.js'
-import { cx } from './util.js'
+import { cx, pad } from './util.js'
 
 export const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December']
 
-const pad = n => String(n).padStart(2, '0')
 const byCabin = ([a], [b]) => CABIN_ORDER.indexOf(a) - CABIN_ORDER.indexOf(b)
 const k = miles => `${(miles / 1000).toFixed(1).replace(/\.0$/, '')}k`
 export const inMonthRange = (date, fromMonth, toMonth) => date >= fromMonth && date <= toMonth + '-31'

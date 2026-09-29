@@ -158,7 +158,9 @@ export const CSS = `
   }
   .ab-drp-input:hover { border-color: #aaa; }
   .ab-drp-input.open { border-color: var(--ab-color); }
-  .ab-drp-text { flex: 1; color: #333; user-select: none; }
+  .ab-drp-input.bad { border-color: #e11d48; }
+  .ab-drp-text { flex: 1; min-width: 0; border: none; padding: 0; outline: none; font: inherit; color: #333; background: none; }
+  .ab-drp-count { font-size: 11px; color: #999; white-space: nowrap; }
   .ab-drp-clear { background: none; border: none; cursor: pointer; font-size: 16px; color: #bbb; padding: 0; line-height: 1; }
   .ab-drp-popup {
     position: fixed; z-index: 9999;
@@ -166,22 +168,31 @@ export const CSS = `
     box-shadow: 0 8px 24px rgba(0,0,0,.15); padding: 12px; width: 280px;
   }
   .ab-drp-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .ab-drp-cal-title { font-size: 14px; font-weight: 600; }
+  .ab-drp-cal-title { font-size: 14px; font-weight: 600; background: none; border: none; cursor: pointer; padding: 2px 8px; border-radius: 4px; color: inherit; }
+  .ab-drp-cal-title:hover { background: #f0f0f0; }
+  .ab-drp-caret { font-size: 10px; color: #999; }
   .ab-drp-nav { background: none; border: none; cursor: pointer; font-size: 18px; color: #555; padding: 2px 8px; border-radius: 4px; }
-  .ab-drp-nav:hover { background: #f0f0f0; }
-  .ab-drp-dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 2px; }
+  .ab-drp-nav:hover:not(:disabled) { background: #f0f0f0; }
+  .ab-drp-nav:disabled { color: #ddd; cursor: default; }
+  .ab-drp-body { height: 224px; }
+  .ab-drp-dow { display: grid; grid-template-columns: repeat(7, 1fr); height: 20px; }
   .ab-drp-dow span { text-align: center; font-size: 10px; color: #999; padding: 3px 0; }
-  .ab-drp-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .ab-drp-days { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 34px; }
   .ab-drp-day {
-    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; border-radius: 4px; cursor: pointer; border: none; background: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; border-radius: 4px; cursor: pointer; border: none; background: none; padding: 0; color: #333;
   }
+  .ab-drp-day.other { color: #aaa; }
   .ab-drp-day:not(:disabled):hover { background: #e8f0ff; }
-  .ab-drp-day.in-range { background: #dbeafe; border-radius: 0; }
-  .ab-drp-day.range-start { background: #dbeafe; border-radius: 4px 0 0 4px; }
-  .ab-drp-day.range-end { background: #dbeafe; border-radius: 0 4px 4px 0; }
+  .ab-drp-day:focus-visible { outline: 2px solid var(--ab-color); outline-offset: -2px; }
+  .ab-drp-day.in-range, .ab-drp-day.preview { background: #dbeafe; border-radius: 0; }
   .ab-drp-day.sel { background: var(--ab-color) !important; color: #fff; border-radius: 4px; }
-  .ab-drp-day:disabled { color: #ccc; cursor: default; }
+  .ab-drp-day:disabled { color: #ddd; cursor: default; }
+  .ab-drp-months { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; height: 100%; }
+  .ab-drp-month { border: none; border-radius: 6px; background: none; font-size: 13px; cursor: pointer; color: #333; }
+  .ab-drp-month:not(:disabled):hover { background: #e8f0ff; }
+  .ab-drp-month.sel { background: #dbeafe; }
+  .ab-drp-month:disabled { color: #ddd; cursor: default; }
   .ab-drp-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #f0f0f0; }
   .ab-drp-preset {
     padding: 3px 8px; border-radius: 20px; border: 1px solid #ddd;
