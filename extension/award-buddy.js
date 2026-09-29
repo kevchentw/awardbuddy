@@ -6077,7 +6077,12 @@
     const upsell = av?.upsell;
     const flights = upsell?.bounds?.[0]?.flights;
     if (!flights?.length) return [];
+    const recoRbds = {};
+    for (const reco of Object.values(upsell.recommendations ?? {})) {
+      recoRbds[reco.id] = Object.values(reco.rbdsPerBound?.[0]?.segmentRBDs ?? {}).map((r3) => r3.code);
+    }
     const flightCabins = {};
+    const flightRbds = {};
     for (const assoc of Object.values(upsell.associations ?? {})) {
       const { flightId, fareFamily, lsa } = assoc.boundAssociations[0];
       if (!lsa) continue;
@@ -6085,6 +6090,7 @@
       if (!cabin) continue;
       if (!flightCabins[flightId]) flightCabins[flightId] = { F: null, J: null, N: null, Y: null };
       flightCabins[flightId][cabin] = lsa;
+      (flightRbds[flightId] ?? (flightRbds[flightId] = {}))[cabin] = recoRbds[assoc.recoId] ?? [];
     }
     const results = [];
     for (const flight of flights) {
@@ -6098,22 +6104,80 @@
         dep: new Date(seg.flightIdentifier.originDate).toISOString(),
         arr: new Date(seg.destinationDate).toISOString()
       }));
-      results.push({ date, origin, destination, segs, cabins, miles: {}, duration: Math.round(flight.duration / 6e4), bookUrl: CX_AWARD_PAGE });
+      results.push({ date, origin, destination, segs, cabins, miles: {}, rbds: flightRbds[flight.id], duration: Math.round(flight.duration / 6e4), bookUrl: CX_AWARD_PAGE });
     }
     return results;
   }
   var CX_MILES_INFO_URL = "https://api.cathaypacific.com/redibe/milesInfo/v2.0";
   var CX_MILES_CABIN = { F: "FIR", J: "BUS", N: "PEY", Y: "ECO" };
+  var CX_CABIN_ORDER = ["F", "J", "N", "Y"];
   var cxMilesCache = {};
-  function cxMilesKey(segs, cabin) {
+  var CX_RBD_CABIN = Object.fromEntries(Object.entries({
+    CX: "F:Z,J:U,N:T,Y:X",
+    "4C": "J:U,N:R,Y:T",
+    "4M": "J:U,N:R,Y:T",
+    "9W": "F:R,J:D,Y:X",
+    AA: "F:Z,J:U,N:X,Y:T",
+    AB: "J:U,Y:X",
+    AE: "F:Z,J:U,N:X,Y:T",
+    AS: "F:AE,N:Z,Y:WT",
+    AT: "J:U,Y:X",
+    AX: "F:Z,J:U,N:X,Y:T",
+    AY: "J:U,Y:X",
+    BA: "F:Z,J:U,N:P,Y:X",
+    BI: "J:I,Y:P",
+    CA: "F:O,J:I,Y:X",
+    EI: "J:U,Y:T",
+    FJ: "J:U,Y:X",
+    GF: "J:P,Y:T",
+    HG: "J:U,Y:X",
+    IB: "J:U,Y:X",
+    IT: "J:U,Y:X",
+    JC: "F:Z,J:U,Y:S",
+    JJ: "J:U,N:R,Y:T",
+    JL: "F:ZA,J:U,Y:ST",
+    JO: "F:Z,J:U,Y:S",
+    KA: "F:Z,J:U,Y:X",
+    LA: "J:U,N:R,Y:T",
+    LP: "J:U,N:R,Y:T",
+    LU: "J:U,N:R,Y:T",
+    MA: "J:R,Y:X",
+    MH: "J:U,Y:X",
+    MU: "F:A,J:D,Y:I",
+    MX: "J:U,Y:X",
+    NU: "F:Z,J:U,Y:ST",
+    QF: "F:P,J:U,N:Z,Y:X",
+    QR: "F:Z,J:U,Y:X",
+    RJ: "J:U,Y:X",
+    S7: "J:U,Y:E",
+    UL: "J:U,Y:X",
+    WY: "F:A,J:U,Y:X",
+    XL: "J:U,N:R,Y:T",
+    XM: "F:Z,J:U,Y:S",
+    ZH: "F:O,J:I,Y:X"
+  }).map(([airline, spec]) => [airline, Object.fromEntries(spec.split(",").flatMap((part) => {
+    const [cabin, codes2] = part.split(":");
+    return [...codes2].map((code) => [code, cabin]);
+  }))]));
+  function cxMilesKey(segs, segCabins) {
     const airports = [segs[0].origin, ...segs.map((s3) => s3.destination)].join(":");
     const airlines = segs.map((s3) => s3.airline).join(":");
-    const cabins = segs.map(() => CX_MILES_CABIN[cabin]).join(":");
+    const cabins = segCabins.map((c3) => CX_MILES_CABIN[c3]).join(":");
     return `${airports}_${airlines}_STD_${cabins}`;
   }
+  function cxMilesCandidates(segs, cabin, rbds = []) {
+    const lower = CX_CABIN_ORDER.slice(CX_CABIN_ORDER.indexOf(cabin));
+    let combos2 = [[]];
+    segs.forEach((seg, i3) => {
+      const known = CX_RBD_CABIN[seg.airline]?.[rbds[i3]];
+      const options = known ? [known] : lower;
+      combos2 = combos2.flatMap((c3) => options.map((o3) => [...c3, o3]));
+    });
+    return combos2.map((c3) => cxMilesKey(segs, c3));
+  }
   async function cxFillMiles(results) {
-    const keyed = results.flatMap((r3) => Object.entries(r3.cabins).filter(([, lsa]) => lsa !== null).map(([cabin]) => ({ r: r3, cabin, key: cxMilesKey(r3.segs, cabin) })));
-    const missing = [...new Set(keyed.map((k5) => k5.key).filter((k5) => !(k5 in cxMilesCache)))];
+    const keyed = results.flatMap((r3) => Object.entries(r3.cabins).filter(([, lsa]) => lsa !== null).map(([cabin]) => ({ r: r3, cabin, keys: cxMilesCandidates(r3.segs, cabin, r3.rbds?.[cabin]) })));
+    const missing = [...new Set(keyed.flatMap((k5) => k5.keys).filter((k5) => !(k5 in cxMilesCache)))];
     if (missing.length) {
       try {
         const res = await fetch(CX_MILES_INFO_URL, {
@@ -6126,7 +6190,11 @@
       } catch {
       }
     }
-    for (const { r: r3, cabin, key } of keyed) if (cxMilesCache[key]) r3.miles[cabin] = cxMilesCache[key];
+    for (const { r: r3, cabin, keys } of keyed) {
+      const miles = keys.map((k5) => cxMilesCache[k5]).find((m3) => m3 > 0);
+      if (miles) r3.miles[cabin] = miles;
+    }
+    for (const r3 of results) delete r3.rbds;
     return results;
   }
   async function cxDoSearch(origin, destination, date) {
