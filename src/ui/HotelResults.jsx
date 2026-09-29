@@ -2,10 +2,9 @@ import { useState } from 'preact/hooks'
 import { HOTEL_COLORS, lowestByDate, cheapestOnly } from '../common/hotels.js'
 import { DOW, MONTH_NAMES } from './Calendar.jsx'
 import { FilterBar, Pagination, DOW_LABELS } from './ResultsTable.jsx'
-import { cx } from './util.js'
+import { cx, pad } from './util.js'
 
 const PAGE_SIZE = 50
-const pad = n => String(n).padStart(2, '0')
 const k = points => `${(points / 1000).toFixed(1).replace(/\.0$/, '')}k`
 const hotelColor = (hotels, code) => HOTEL_COLORS[hotels.indexOf(code) % HOTEL_COLORS.length]
 

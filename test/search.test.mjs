@@ -1,7 +1,7 @@
 // Run: npm test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { getDates, addDays, parseNumberList, combos, restoreDates, restoreMonths, addRecent } from '../src/common/search.js'
+import { getDates, addDays, parseNumberList, combos, restoreDates, restoreMonths, addRecent, parseDateRange } from '../src/common/search.js'
 
 test('getDates spans month end and US DST change without gaps or repeats', () => {
   assert.deepEqual(getDates('2027-03-12', '2027-03-16'), ['2027-03-12', '2027-03-13', '2027-03-14', '2027-03-15', '2027-03-16'])
@@ -187,4 +187,30 @@ test('addRecent puts the query first, moves a repeat up and caps the list', () =
   assert.deepEqual(addRecent([], a), [a])
   assert.deepEqual(addRecent([a, b], { o: ['TPE'], d: ['HND'] }), [b, a])
   assert.deepEqual(addRecent([a], b, 1), [b])
+})
+
+test('parseDateRange reads typed ranges in several formats', () => {
+  const t = '2026-09-28', r = (start, end = null) => ({ start, end })
+  assert.deepEqual(parseDateRange('2026-10-01 — 2026-10-05', t), r('2026-10-01', '2026-10-05'))
+  assert.deepEqual(parseDateRange('2026-10-01 - 2026-10-05', t), r('2026-10-01', '2026-10-05'))
+  assert.deepEqual(parseDateRange('2026-10-01-2026-10-05', t), r('2026-10-01', '2026-10-05'))
+  assert.deepEqual(parseDateRange('2026-10-01~10-05', t), r('2026-10-01', '2026-10-05'))
+  assert.deepEqual(parseDateRange('10/1-10/5', t), r('2026-10-01', '2026-10-05'))
+  assert.deepEqual(parseDateRange('10/1 to 10/5', t), r('2026-10-01', '2026-10-05'))
+  assert.deepEqual(parseDateRange('10/1 10/5', t), r('2026-10-01', '2026-10-05'))
+  assert.deepEqual(parseDateRange(' 2026-10-01 ', t), r('2026-10-01'))
+  assert.deepEqual(parseDateRange('10/1-10/1', t), r('2026-10-01'))
+  assert.deepEqual(parseDateRange('', t), r(null))
+})
+
+test('parseDateRange rolls yearless dates forward and rejects bad ones', () => {
+  const t = '2026-09-28', r = (start, end = null) => ({ start, end })
+  assert.deepEqual(parseDateRange('12/28-1/3', t), r('2026-12-28', '2027-01-03'))
+  assert.deepEqual(parseDateRange('9/1', t), r('2027-09-01'))
+  assert.deepEqual(parseDateRange('9/28', t), r('2026-09-28'))
+  assert.equal(parseDateRange('2026-09-01', t), null)          // past
+  assert.equal(parseDateRange('2026-10-05 — 2026-10-01', t), null)
+  assert.equal(parseDateRange('2/30', t), null)
+  assert.equal(parseDateRange('10/1-10/5-10/9', t), null)
+  assert.equal(parseDateRange('tomorrow', t), null)
 })
