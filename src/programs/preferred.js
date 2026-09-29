@@ -1,5 +1,5 @@
 import { ipreferPointsProgram, ipreferDirectory, ipreferPageHotels, bookableWithPoints } from './iprefer.js'
-import { preferredChoiceProgram, takesChoicePoints, PARTNER_PAGE_URL } from './preferred-choice.js'
+import { preferredChoiceProgram, takesChoicePoints } from './preferred-choice.js'
 
 // I Prefer / Preferred Hotels & Resorts, on iprefer.com and preferredhotels.com – the same hotels, booked
 // with either points, as two search modes:
@@ -40,8 +40,7 @@ export const ipreferProgram = {
     { code: 'iprefer', name: 'I Prefer points', program: ipreferMode },
     {
       code: 'choice', name: 'Choice Privileges points', program: choiceMode,
-      tip: 'Booking needs your Choice Privileges login: enter the portal from Start booking on the partner page, then the Book links open the hotel on preferredhotels.com (pick the dates there).',
-      tipLink: { url: PARTNER_PAGE_URL, text: 'Partner page ↗' },
+      tip: 'The Book links open the hotel on preferredhotels.com (pick the dates there).',
     },
   ],
   // The Choice points portal lives under /choicepoints

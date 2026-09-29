@@ -9396,7 +9396,6 @@
   };
 
   // src/programs/preferred-choice.js
-  var PARTNER_PAGE_URL = "https://www.choicehotels.com/ascend/preferred-hotels-partner";
   var preferredChoiceCalendarUrl = (hotel) => `${PTG_API}/rate-calendar/v2?propertyCode=${hotel}&program=CH&adults=1&children=0`;
   var preferredChoiceBookUrl = (synxisId) => `https://preferredhotels.com/choicepoints/book/hotel/${synxisId}`;
   var takesChoicePoints = (h3) => h3.choicePoints > 0;
@@ -9467,8 +9466,7 @@
         code: "choice",
         name: "Choice Privileges points",
         program: choiceMode,
-        tip: "Booking needs your Choice Privileges login: enter the portal from Start booking on the partner page, then the Book links open the hotel on preferredhotels.com (pick the dates there).",
-        tipLink: { url: PARTNER_PAGE_URL, text: "Partner page \u2197" }
+        tip: "The Book links open the hotel on preferredhotels.com (pick the dates there)."
       }
     ],
     // The Choice points portal lives under /choicepoints
