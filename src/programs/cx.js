@@ -241,29 +241,35 @@ async function cxFillMiles(results) {
   return results
 }
 
-async function cxDoSearch(origin, destination, date) {
+// The availability POST drives a stateful flow on the TAB_ID, so two in flight at once overwrite
+// each other's date and only one date's flights come back. Serialize them across the worker pool.
+let cxQueue = Promise.resolve()
+function cxEnqueue(fn) {
+  const run = cxQueue.then(fn)
+  cxQueue = run.catch(() => {})
+  return run
+}
+
+const cxPostAvailability = (origin, destination, date) => fetch(cxCaptured.formSubmitUrl, {
+  method: 'POST', credentials: 'include',
+  headers: { 'content-type': 'application/x-www-form-urlencoded', 'accept': 'application/json, text/plain, */*' },
+  body: cxBuildParams(origin, destination, date),
+})
+
+async function cxFetchAvailability(origin, destination, date) {
   await sleep(CX_DELAY_MS)
-  const res = await fetch(cxCaptured.formSubmitUrl, {
-    method: 'POST', credentials: 'include',
-    headers: { 'content-type': 'application/x-www-form-urlencoded', 'accept': 'application/json, text/plain, */*' },
-    body: cxBuildParams(origin, destination, date),
-  })
+  let res = await cxPostAvailability(origin, destination, date)
   // TAB_ID expired — refresh and retry once
   if (res.status === 404 || res.status >= 300) {
-    const ok = await cxRefreshTabId()
-    if (!ok) return []
-    const res2 = await fetch(cxCaptured.formSubmitUrl, {
-      method: 'POST', credentials: 'include',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', 'accept': 'application/json, text/plain, */*' },
-      body: cxBuildParams(origin, destination, date),
-    })
-    if (!res2.ok) return []
-    const data2 = await res2.json()
-    return cxFillMiles(cxParseResponse(data2, origin, destination, date))
+    if (!await cxRefreshTabId()) return null
+    res = await cxPostAvailability(origin, destination, date)
   }
-  if (!res.ok) return []
-  const data = await res.json()
-  return cxFillMiles(cxParseResponse(data, origin, destination, date))
+  return res.ok ? res.json() : null
+}
+
+async function cxDoSearch(origin, destination, date) {
+  const data = await cxEnqueue(() => cxFetchAvailability(origin, destination, date))
+  return data ? cxFillMiles(cxParseResponse(data, origin, destination, date)) : []
 }
 
 export const cxProgram = {

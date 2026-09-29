@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.8.1
+// @version      1.8.2
 // @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
@@ -6427,30 +6427,31 @@
     for (const r3 of results) delete r3.rbds;
     return results;
   }
-  async function cxDoSearch(origin, destination, date) {
-    await sleep(CX_DELAY_MS);
-    const res = await fetch(cxCaptured.formSubmitUrl, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/x-www-form-urlencoded", "accept": "application/json, text/plain, */*" },
-      body: cxBuildParams(origin, destination, date)
+  var cxQueue = Promise.resolve();
+  function cxEnqueue(fn) {
+    const run = cxQueue.then(fn);
+    cxQueue = run.catch(() => {
     });
+    return run;
+  }
+  var cxPostAvailability = (origin, destination, date) => fetch(cxCaptured.formSubmitUrl, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/x-www-form-urlencoded", "accept": "application/json, text/plain, */*" },
+    body: cxBuildParams(origin, destination, date)
+  });
+  async function cxFetchAvailability(origin, destination, date) {
+    await sleep(CX_DELAY_MS);
+    let res = await cxPostAvailability(origin, destination, date);
     if (res.status === 404 || res.status >= 300) {
-      const ok = await cxRefreshTabId();
-      if (!ok) return [];
-      const res2 = await fetch(cxCaptured.formSubmitUrl, {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/x-www-form-urlencoded", "accept": "application/json, text/plain, */*" },
-        body: cxBuildParams(origin, destination, date)
-      });
-      if (!res2.ok) return [];
-      const data2 = await res2.json();
-      return cxFillMiles(cxParseResponse(data2, origin, destination, date));
+      if (!await cxRefreshTabId()) return null;
+      res = await cxPostAvailability(origin, destination, date);
     }
-    if (!res.ok) return [];
-    const data = await res.json();
-    return cxFillMiles(cxParseResponse(data, origin, destination, date));
+    return res.ok ? res.json() : null;
+  }
+  async function cxDoSearch(origin, destination, date) {
+    const data = await cxEnqueue(() => cxFetchAvailability(origin, destination, date));
+    return data ? cxFillMiles(cxParseResponse(data, origin, destination, date)) : [];
   }
   var cxProgram = {
     id: "cx",
