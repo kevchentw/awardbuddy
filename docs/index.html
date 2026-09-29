@@ -612,7 +612,7 @@
 <main id="top">
   <div class="hero-bg">
     <div class="wrap hero">
-      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> Results kept after reload in <span id="cur-ver">v1.7.0</span> <span class="arrow">→</span></a>
+      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> Type dates or pick them by keyboard in <span id="cur-ver">v1.8.3</span> <span class="arrow">→</span></a>
       <h1 data-i18n="hero.h1">Search award space across <span class="grad">every date at once.</span></h1>
       <p class="lede" data-i18n="hero.lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
       <div class="cta">
@@ -881,13 +881,36 @@
       </div>
       <ul class="log" id="log">
         <li class="reveal">
-          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.7.0">1.7.0</a><small><time datetime="2026-09-28">Sep 28, 2026</time></small></div>
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.8.3">1.8.3</a><small><time datetime="2026-09-29">Sep 29, 2026</time></small></div>
           <div>
-            <h3 data-i18n="c170h">Recent searches, kept across reloads <span class="latest">Latest</span></h3>
+            <h3 data-i18n="c183h">Multi-date fixes for Cathay, JAL and ANA <span class="latest">Latest</span></h3>
+            <ul data-i18n="c183u">
+              <li>Cathay Pacific searches over several dates now return flights for every date, not just one.</li>
+              <li>JAL and ANA searches run one at a time per session, so dates searched together no longer overwrite each other.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.8.1">1.8.1</a><small><time datetime="2026-09-29">Sep 29, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c181h">A better date picker</h3>
+            <ul data-i18n="c181u">
+              <li>Type dates straight into the field, like <code>10/1-10/5</code> or <code>12/28-1/3</code>. Dates without a year roll forward.</li>
+              <li>Arrow keys move between days, Enter picks and Esc closes. Click the month title to jump to another month.</li>
+              <li>Alaska fares that mix cabins (say, domestic first plus long-haul business) are listed under the fare's cabin, with each flight's cabin shown.</li>
+              <li>Booking I Prefer hotels with Choice points doesn't need a Choice login, so the login tip is gone.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.7.1">1.7.1</a><small><time datetime="2026-09-28">Sep 28, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c170h">Recent searches, kept across reloads</h3>
             <ul data-i18n="c170u">
               <li>The panel remembers your last search's dates, month range, and Search or Calendar mode, and the month range for hotels. Dates already past are skipped.</li>
               <li>The last search's results stay in the panel when you reload the page (in the same tab).</li>
               <li>New <b>Recent searches</b> list: pick one of your last 10 searches to run it again.</li>
+              <li>Cathay Pacific shows the right miles for each flight and cabin, including mixed-cabin itineraries.</li>
             </ul>
           </div>
         </li>
@@ -902,7 +925,7 @@
             </ul>
           </div>
         </li>
-        <li class="reveal">
+        <li class="more">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.1">1.5.1</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
             <h3 data-i18n="c151h">More reliable EVA Air search</h3>
@@ -913,7 +936,7 @@
             </ul>
           </div>
         </li>
-        <li class="reveal">
+        <li class="more">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.5.0">1.5.0</a><small><time datetime="2026-09-27">Sep 27, 2026</time></small></div>
           <div>
             <h3 data-i18n="c150h">Choice Privileges hotel search</h3>
@@ -1006,7 +1029,7 @@
   const ZH = {
     'nav.features': '功能', 'nav.programs': '支援計畫', 'nav.changelog': '更新紀錄', 'nav.install': '安裝',
 
-    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.7.0</span> 重新整理後保留搜尋結果 <span class="arrow">→</span>',
+    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.8.3</span> 日期可以直接打字或用鍵盤選 <span class="arrow">→</span>',
     'hero.h1': '哩程票、點數房<br><span class="grad">所有日期</span>一次查完',
     'hero.lede': 'Award Buddy 會在航空公司和飯店官網上多加一個搜尋面板。選好航線或飯店、設定日期區間，它就會直接在官網上幫你把每種組合都查一遍，最後整理成一張可以排序的表格和月曆。',
     'hero.install': '安裝 Award Buddy', 'hero.see': '看看支援哪些計畫',
@@ -1084,8 +1107,12 @@
     'c.kicker': '更新紀錄', 'c.h2': '最近更新了什麼',
     'c.sub': '每個版本都可以到 <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a> 下載。',
     'c.older': '看更早的版本', 'c.fewer': '收起更早的版本',
-    'c170h': '最近搜尋，重新整理也不會消失 <span class="latest">最新</span>',
-    'c170u': '<li>面板會記住上次搜尋的日期、月份範圍，以及用的是一般搜尋還是月曆模式，飯店也會記住月份。已經過去的日期會自動略過。</li><li>重新整理頁面後，上次搜尋的結果還會留在面板上（同一個分頁內）。</li><li>新增「最近搜尋」清單：從最近 10 次搜尋中挑一個，就能再查一次。</li>',
+    'c183h': '國泰、日航、全日空多日期搜尋修正 <span class="latest">最新</span>',
+    'c183u': '<li>國泰航空一次查好幾個日期時，每個日期的航班都會查到，不會只剩一天。</li><li>日航和全日空同一個 session 一次只跑一個查詢，同時查的日期不會再互相蓋掉。</li>',
+    'c181h': '更好用的日期選擇器',
+    'c181u': '<li>可以直接在欄位裡打日期，例如 <code>10/1-10/5</code> 或 <code>12/28-1/3</code>。沒寫年份的日期會自動往後算。</li><li>方向鍵移動日期、Enter 選取、Esc 關閉。點月份標題可以直接跳到其他月份。</li><li>阿拉斯加航空的混艙票（例如美國國內頭等艙加長程商務艙）會列在票價的艙等下，並標出每個航段的艙等。</li><li>用 Choice 點數訂 I Prefer 飯店不需要登入 Choice，所以拿掉了登入提示。</li>',
+    'c170h': '最近搜尋，重新整理也不會消失',
+    'c170u': '<li>面板會記住上次搜尋的日期、月份範圍，以及用的是一般搜尋還是月曆模式，飯店也會記住月份。已經過去的日期會自動略過。</li><li>重新整理頁面後，上次搜尋的結果還會留在面板上（同一個分頁內）。</li><li>新增「最近搜尋」清單：從最近 10 次搜尋中挑一個，就能再查一次。</li><li>國泰航空會顯示每個航班、每種艙等正確的哩程，混艙行程也一樣。</li>',
     'c160h': 'I Prefer 點數房搜尋',
     'c160u': '<li>新增飯店計畫：I Prefer（Preferred Hotels &amp; Resorts），支援 iprefer.com 和 preferredhotels.com。</li><li>兩種查法：用 I Prefer 點數，或在 300 多家接受 Choice Privileges 點數的飯店用 Choice 點數。Choice 的稅費會以現金顯示。</li><li>可以用名稱、代碼、城市、州或國家找飯店，也能直接從目前頁面挑。</li>',
     'c151h': '長榮航空搜尋更穩定',
