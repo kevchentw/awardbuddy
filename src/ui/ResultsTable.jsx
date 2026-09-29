@@ -150,11 +150,11 @@ export function ResultsTable({ results }) {
               {hasStopover && <td class="ab-route">{r.stopover ? `${r.stopover.at} · ${r.stopover.days}d` : ''}</td>}
               {detailed && <><td style={{ fontSize: 11, color: '#555', lineHeight: 1.4 }}>
                 {r.segs?.map((s, j) => {
-                  const cab = r.segCabinsJ?.[j]
+                  const cabs = [...new Set([r.segCabinsJ?.[j], ...Object.values(r.segCabins ?? {}).map(sc => sc[j])].filter(Boolean))]
                   return (
                     <div key={j}>
                       {s.flight}
-                      {cab && <> <span style={{ fontSize: 9, fontWeight: 600, padding: '0 3px', borderRadius: 2, background: CABIN_COLORS[cab], color: '#fff' }}>{cab}</span></>}
+                      {cabs.map(cab => <span key={cab}> <span title={CABIN_LABELS[cab]} style={{ fontSize: 9, fontWeight: 600, padding: '0 3px', borderRadius: 2, background: CABIN_COLORS[cab], color: '#fff' }}>{cab}</span></span>)}
                     </div>
                   )
                 })}

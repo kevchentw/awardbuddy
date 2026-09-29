@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.7.0
+// @version      1.7.1
 // @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
@@ -4426,13 +4426,13 @@
           hasStopover && /* @__PURE__ */ u3("td", { class: "ab-route", children: r3.stopover ? `${r3.stopover.at} \xB7 ${r3.stopover.days}d` : "" }),
           detailed && /* @__PURE__ */ u3(S, { children: [
             /* @__PURE__ */ u3("td", { style: { fontSize: 11, color: "#555", lineHeight: 1.4 }, children: r3.segs?.map((s3, j3) => {
-              const cab = r3.segCabinsJ?.[j3];
+              const cabs = [...new Set([r3.segCabinsJ?.[j3], ...Object.values(r3.segCabins ?? {}).map((sc) => sc[j3])].filter(Boolean))];
               return /* @__PURE__ */ u3("div", { children: [
                 s3.flight,
-                cab && /* @__PURE__ */ u3(S, { children: [
+                cabs.map((cab) => /* @__PURE__ */ u3("span", { children: [
                   " ",
-                  /* @__PURE__ */ u3("span", { style: { fontSize: 9, fontWeight: 600, padding: "0 3px", borderRadius: 2, background: CABIN_COLORS[cab], color: "#fff" }, children: cab })
-                ] })
+                  /* @__PURE__ */ u3("span", { title: CABIN_LABELS[cab], style: { fontSize: 9, fontWeight: 600, padding: "0 3px", borderRadius: 2, background: CABIN_COLORS[cab], color: "#fff" }, children: cab })
+                ] }, cab))
               ] }, j3);
             }) }),
             /* @__PURE__ */ u3("td", { children: hhmm(r3.segs?.[0]?.dep) }),
@@ -6109,16 +6109,12 @@
     const upsell = av?.upsell;
     const flights = upsell?.bounds?.[0]?.flights;
     if (!flights?.length) return [];
-    const miles = {};
-    try {
-      const rp = JSON.parse(data.requestParams ?? "{}");
-      if (rp.MILES_ECO) miles.Y = +rp.MILES_ECO;
-      if (rp.MILES_PEY) miles.N = +rp.MILES_PEY;
-      if (rp.MILES_BUS) miles.J = +rp.MILES_BUS;
-      if (rp.MILES_FIR) miles.F = +rp.MILES_FIR;
-    } catch {
+    const recoRbds = {};
+    for (const reco of Object.values(upsell.recommendations ?? {})) {
+      recoRbds[reco.id] = Object.values(reco.rbdsPerBound?.[0]?.segmentRBDs ?? {}).map((r3) => r3.code);
     }
     const flightCabins = {};
+    const flightRbds = {};
     for (const assoc of Object.values(upsell.associations ?? {})) {
       const { flightId, fareFamily, lsa } = assoc.boundAssociations[0];
       if (!lsa) continue;
@@ -6126,6 +6122,7 @@
       if (!cabin) continue;
       if (!flightCabins[flightId]) flightCabins[flightId] = { F: null, J: null, N: null, Y: null };
       flightCabins[flightId][cabin] = lsa;
+      (flightRbds[flightId] ?? (flightRbds[flightId] = {}))[cabin] = recoRbds[assoc.recoId] ?? [];
     }
     const results = [];
     for (const flight of flights) {
@@ -6139,8 +6136,102 @@
         dep: new Date(seg.flightIdentifier.originDate).toISOString(),
         arr: new Date(seg.destinationDate).toISOString()
       }));
-      results.push({ date, origin, destination, segs, cabins, miles, duration: Math.round(flight.duration / 6e4), bookUrl: CX_AWARD_PAGE });
+      results.push({ date, origin, destination, segs, cabins, miles: {}, rbds: flightRbds[flight.id], duration: Math.round(flight.duration / 6e4), bookUrl: CX_AWARD_PAGE });
     }
+    return results;
+  }
+  var CX_MILES_INFO_URL = "https://api.cathaypacific.com/redibe/milesInfo/v2.0";
+  var CX_MILES_CABIN = { F: "FIR", J: "BUS", N: "PEY", Y: "ECO" };
+  var CX_CABIN_ORDER = ["F", "J", "N", "Y"];
+  var cxMilesCache = {};
+  var CX_RBD_CABIN = Object.fromEntries(Object.entries({
+    CX: "F:Z,J:U,N:T,Y:X",
+    "4C": "J:U,N:R,Y:T",
+    "4M": "J:U,N:R,Y:T",
+    "9W": "F:R,J:D,Y:X",
+    AA: "F:Z,J:U,N:X,Y:T",
+    AB: "J:U,Y:X",
+    AE: "F:Z,J:U,N:X,Y:T",
+    AS: "F:AE,N:Z,Y:WT",
+    AT: "J:U,Y:X",
+    AX: "F:Z,J:U,N:X,Y:T",
+    AY: "J:U,Y:X",
+    BA: "F:Z,J:U,N:P,Y:X",
+    BI: "J:I,Y:P",
+    CA: "F:O,J:I,Y:X",
+    EI: "J:U,Y:T",
+    FJ: "J:U,Y:X",
+    GF: "J:P,Y:T",
+    HG: "J:U,Y:X",
+    IB: "J:U,Y:X",
+    IT: "J:U,Y:X",
+    JC: "F:Z,J:U,Y:S",
+    JJ: "J:U,N:R,Y:T",
+    JL: "F:ZA,J:U,Y:ST",
+    JO: "F:Z,J:U,Y:S",
+    KA: "F:Z,J:U,Y:X",
+    LA: "J:U,N:R,Y:T",
+    LP: "J:U,N:R,Y:T",
+    LU: "J:U,N:R,Y:T",
+    MA: "J:R,Y:X",
+    MH: "J:U,Y:X",
+    MU: "F:A,J:D,Y:I",
+    MX: "J:U,Y:X",
+    NU: "F:Z,J:U,Y:ST",
+    QF: "F:P,J:U,N:Z,Y:X",
+    QR: "F:Z,J:U,Y:X",
+    RJ: "J:U,Y:X",
+    S7: "J:U,Y:E",
+    UL: "J:U,Y:X",
+    WY: "F:A,J:U,Y:X",
+    XL: "J:U,N:R,Y:T",
+    XM: "F:Z,J:U,Y:S",
+    ZH: "F:O,J:I,Y:X"
+  }).map(([airline, spec]) => [airline, Object.fromEntries(spec.split(",").flatMap((part) => {
+    const [cabin, codes2] = part.split(":");
+    return [...codes2].map((code) => [code, cabin]);
+  }))]));
+  function cxMilesKey(segs, segCabins) {
+    const airports = [segs[0].origin, ...segs.map((s3) => s3.destination)].join(":");
+    const airlines = segs.map((s3) => s3.airline).join(":");
+    const cabins = segCabins.map((c3) => CX_MILES_CABIN[c3]).join(":");
+    return `${airports}_${airlines}_STD_${cabins}`;
+  }
+  var CX_CABIN_FROM_MILES = Object.fromEntries(Object.entries(CX_MILES_CABIN).map(([c3, m3]) => [m3, c3]));
+  var cxSegCabinsFromKey = (key) => key.split("_STD_")[1].split(":").map((m3) => CX_CABIN_FROM_MILES[m3]);
+  function cxMilesCandidates(segs, cabin, rbds = []) {
+    const lower = CX_CABIN_ORDER.slice(CX_CABIN_ORDER.indexOf(cabin));
+    let combos2 = [[]];
+    segs.forEach((seg, i3) => {
+      const known = CX_RBD_CABIN[seg.airline]?.[rbds[i3]];
+      const options = known ? [known] : lower;
+      combos2 = combos2.flatMap((c3) => options.map((o3) => [...c3, o3]));
+    });
+    return combos2.map((c3) => cxMilesKey(segs, c3));
+  }
+  async function cxFillMiles(results) {
+    const keyed = results.flatMap((r3) => Object.entries(r3.cabins).filter(([, lsa]) => lsa !== null).map(([cabin]) => ({ r: r3, cabin, keys: cxMilesCandidates(r3.segs, cabin, r3.rbds?.[cabin]) })));
+    const missing = [...new Set(keyed.flatMap((k5) => k5.keys).filter((k5) => !(k5 in cxMilesCache)))];
+    if (missing.length) {
+      try {
+        const res = await fetch(CX_MILES_INFO_URL, {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json", "accept": "application/json, text/plain, */*" },
+          body: JSON.stringify({ milesInfoList: missing })
+        });
+        if (res.ok) Object.assign(cxMilesCache, (await res.json()).milesInfo);
+      } catch {
+      }
+    }
+    for (const { r: r3, cabin, keys } of keyed) {
+      const key = keys.find((k5) => cxMilesCache[k5] > 0);
+      if (!key) continue;
+      r3.miles[cabin] = cxMilesCache[key];
+      const segCabins = cxSegCabinsFromKey(key);
+      if (segCabins.some((c3) => c3 !== cabin)) (r3.segCabins ?? (r3.segCabins = {}))[cabin] = segCabins;
+    }
+    for (const r3 of results) delete r3.rbds;
     return results;
   }
   async function cxDoSearch(origin, destination, date) {
@@ -6162,11 +6253,11 @@
       });
       if (!res2.ok) return [];
       const data2 = await res2.json();
-      return cxParseResponse(data2, origin, destination, date);
+      return cxFillMiles(cxParseResponse(data2, origin, destination, date));
     }
     if (!res.ok) return [];
     const data = await res.json();
-    return cxParseResponse(data, origin, destination, date);
+    return cxFillMiles(cxParseResponse(data, origin, destination, date));
   }
   var cxProgram = {
     id: "cx",
