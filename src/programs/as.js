@@ -9,6 +9,17 @@ const AS_CAL_URL = 'https://www.alaskaair.com/search/calendar/__data.json'
 const AS_CAL_FARE_TYPE = { Y: 'Main', N: 'Partner Premium', J: 'Partner Business', F: 'First Class' }
 const AS_DELAY_MS = 800
 
+// The solution key names the fare's cabin (e.g. REFUNDABLE_BUSINESS); sol.cabins is per segment,
+// so a mixed-cabin business fare can read ['FIRST', 'BUSINESS'] (AA domestic first + long-haul business)
+export function asFareCabin(key, sol) {
+  const k = key.toUpperCase()
+  if (k.includes('FIRST')) return 'F'
+  if (k.includes('BUSINESS')) return 'J'
+  if (k.includes('PREMIUM')) return 'N'
+  if (/MAIN|COACH|ECONOMY/.test(k)) return 'Y'
+  return AS_CABIN_MAP[sol.cabins?.[0]]
+}
+
 function asBuildRequest(origin, destination, date) {
   return JSON.stringify({
     origins: [origin], destinations: [destination], dates: [date],
@@ -50,22 +61,22 @@ function asParseCalendarChunk(body) {
   return []
 }
 
-function asParseResponse(data, origin, destination, date) {
+export function asParseResponse(data, origin, destination, date) {
   if (!data?.rows) return []
   const results = []
   for (const row of data.rows) {
-    const solutions = Object.values(row.solutions ?? {})
-    if (!solutions.length) continue
     const byCabin = {}
-    for (const sol of solutions) {
-      const raw = sol.cabins?.[0]; if (!raw) continue
-      if (!byCabin[raw] || sol.atmosPoints < byCabin[raw].atmosPoints) byCabin[raw] = sol
+    for (const [key, sol] of Object.entries(row.solutions ?? {})) {
+      const c = asFareCabin(key, sol); if (!c) continue
+      if (!byCabin[c] || sol.atmosPoints < byCabin[c].atmosPoints) byCabin[c] = sol
     }
     const cabins = { F: null, J: null, N: null, Y: null }, miles = {}
-    for (const [raw, sol] of Object.entries(byCabin)) {
-      const c = AS_CABIN_MAP[raw]; if (!c) continue
+    let segCabins
+    for (const [c, sol] of Object.entries(byCabin)) {
       cabins[c] = sol.seatsRemaining
       if (sol.atmosPoints > 0) miles[c] = sol.atmosPoints
+      const perSeg = (sol.cabins ?? []).map(raw => AS_CABIN_MAP[raw] || 'Y')
+      if (perSeg.some(sc => sc !== c)) (segCabins ??= {})[c] = perSeg
     }
     if (!Object.values(cabins).some(v => v !== null)) continue
     const segs = (row.segments ?? []).map(seg => ({
@@ -75,7 +86,7 @@ function asParseResponse(data, origin, destination, date) {
       dep: seg.departureTime, arr: seg.arrivalTime,
     }))
     const bookUrl = `https://www.alaskaair.com/search/results?A=1&O=${origin}&D=${destination}&OD=${date}&OT=Anytime&RT=false&UPG=none&ShoppingMethod=onlineaward&locale=en-us`
-    results.push({ date, origin, destination, segs, cabins, miles, duration: row.duration, bookUrl })
+    results.push({ date, origin, destination, segs, cabins, miles, duration: row.duration, bookUrl, ...(segCabins ? { segCabins } : {}) })
   }
   return results
 }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.8.0
+// @version      1.8.1
 // @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
@@ -4458,6 +4458,7 @@
         r3.mixPct[c3],
         "%mx"
       ] }),
+      !r3.mixPct?.[c3] && r3.segCabins?.[c3] && /* @__PURE__ */ u3("span", { style: { color: "#bbb" }, title: `Mixed cabin: ${r3.segs?.map((s3, j3) => `${s3.flight} ${CABIN_LABELS[r3.segCabins[c3][j3]]}`).join(", ")}`, children: " mx" }),
       seats !== true && /* @__PURE__ */ u3("span", { style: { color: "#bbb", fontSize: 10 }, children: [
         " (",
         seats,
@@ -5674,6 +5675,14 @@
   var AS_CAL_URL = "https://www.alaskaair.com/search/calendar/__data.json";
   var AS_CAL_FARE_TYPE = { Y: "Main", N: "Partner Premium", J: "Partner Business", F: "First Class" };
   var AS_DELAY_MS = 800;
+  function asFareCabin(key, sol) {
+    const k5 = key.toUpperCase();
+    if (k5.includes("FIRST")) return "F";
+    if (k5.includes("BUSINESS")) return "J";
+    if (k5.includes("PREMIUM")) return "N";
+    if (/MAIN|COACH|ECONOMY/.test(k5)) return "Y";
+    return AS_CABIN_MAP[sol.cabins?.[0]];
+  }
   function asBuildRequest(origin, destination, date) {
     return JSON.stringify({
       origins: [origin],
@@ -5746,20 +5755,19 @@
     if (!data?.rows) return [];
     const results = [];
     for (const row of data.rows) {
-      const solutions = Object.values(row.solutions ?? {});
-      if (!solutions.length) continue;
       const byCabin2 = {};
-      for (const sol of solutions) {
-        const raw = sol.cabins?.[0];
-        if (!raw) continue;
-        if (!byCabin2[raw] || sol.atmosPoints < byCabin2[raw].atmosPoints) byCabin2[raw] = sol;
+      for (const [key, sol] of Object.entries(row.solutions ?? {})) {
+        const c3 = asFareCabin(key, sol);
+        if (!c3) continue;
+        if (!byCabin2[c3] || sol.atmosPoints < byCabin2[c3].atmosPoints) byCabin2[c3] = sol;
       }
       const cabins = { F: null, J: null, N: null, Y: null }, miles = {};
-      for (const [raw, sol] of Object.entries(byCabin2)) {
-        const c3 = AS_CABIN_MAP[raw];
-        if (!c3) continue;
+      let segCabins;
+      for (const [c3, sol] of Object.entries(byCabin2)) {
         cabins[c3] = sol.seatsRemaining;
         if (sol.atmosPoints > 0) miles[c3] = sol.atmosPoints;
+        const perSeg = (sol.cabins ?? []).map((raw) => AS_CABIN_MAP[raw] || "Y");
+        if (perSeg.some((sc) => sc !== c3)) (segCabins ?? (segCabins = {}))[c3] = perSeg;
       }
       if (!Object.values(cabins).some((v3) => v3 !== null)) continue;
       const segs = (row.segments ?? []).map((seg) => ({
@@ -5771,7 +5779,7 @@
         arr: seg.arrivalTime
       }));
       const bookUrl = `https://www.alaskaair.com/search/results?A=1&O=${origin}&D=${destination}&OD=${date}&OT=Anytime&RT=false&UPG=none&ShoppingMethod=onlineaward&locale=en-us`;
-      results.push({ date, origin, destination, segs, cabins, miles, duration: row.duration, bookUrl });
+      results.push({ date, origin, destination, segs, cabins, miles, duration: row.duration, bookUrl, ...segCabins ? { segCabins } : {} });
     }
     return results;
   }

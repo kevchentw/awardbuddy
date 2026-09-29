@@ -30,6 +30,8 @@ function CabinCell({ r, c }) {
       {r.segs && <span class="ab-cab-stops">{stops === 0 ? 'direct' : `${stops} stop`}</span>}
       <span class="ab-cab-miles" style={{ color: CABIN_COLORS[c] }}> {miles ? `${(miles / 1000).toFixed(1).replace(/\.0$/, '')}k` : ''}</span>
       {!!r.mixPct?.[c] && c !== 'Y' &&<span style={{ color: '#bbb' }}> {r.mixPct[c]}%mx</span>}
+      {!r.mixPct?.[c] && r.segCabins?.[c] &&
+        <span style={{ color: '#bbb' }} title={`Mixed cabin: ${r.segs?.map((s, j) => `${s.flight} ${CABIN_LABELS[r.segCabins[c][j]]}`).join(', ')}`}> mx</span>}
       {seats !== true && <span style={{ color: '#bbb', fontSize: 10 }}> ({seats})</span>}
     </td>
   )
