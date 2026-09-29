@@ -1,7 +1,7 @@
 // Run: npm test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cxMilesKey, cxMilesCandidates } from '../src/programs/cx.js'
+import { cxMilesKey, cxMilesCandidates, cxSegCabinsFromKey } from '../src/programs/cx.js'
 
 const seg = (airline, origin, destination) => ({ airline, origin, destination })
 
@@ -25,4 +25,9 @@ test('cxMilesCandidates tries lower cabins for an unknown booking class', () => 
     'NRT:HKG:JFK_JL:CX_STD_ECO:PEY',
   ])
   assert.deepEqual(cxMilesCandidates([seg('CX', 'HKG', 'NRT')], 'Y'), ['HKG:NRT_CX_STD_ECO'])
+})
+
+test('cxSegCabinsFromKey reads back each segment cabin', () => {
+  assert.deepEqual(cxSegCabinsFromKey('NRT:HKG:JFK_JL:CX_STD_ECO:PEY'), ['Y', 'N'])
+  assert.deepEqual(cxSegCabinsFromKey('HKG:NRT_CX_STD_FIR'), ['F'])
 })

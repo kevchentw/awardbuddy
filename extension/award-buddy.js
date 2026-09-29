@@ -4394,13 +4394,13 @@
           hasStopover && /* @__PURE__ */ u3("td", { class: "ab-route", children: r3.stopover ? `${r3.stopover.at} \xB7 ${r3.stopover.days}d` : "" }),
           detailed && /* @__PURE__ */ u3(S, { children: [
             /* @__PURE__ */ u3("td", { style: { fontSize: 11, color: "#555", lineHeight: 1.4 }, children: r3.segs?.map((s3, j3) => {
-              const cab = r3.segCabinsJ?.[j3];
+              const cabs = [...new Set([r3.segCabinsJ?.[j3], ...Object.values(r3.segCabins ?? {}).map((sc) => sc[j3])].filter(Boolean))];
               return /* @__PURE__ */ u3("div", { children: [
                 s3.flight,
-                cab && /* @__PURE__ */ u3(S, { children: [
+                cabs.map((cab) => /* @__PURE__ */ u3("span", { children: [
                   " ",
-                  /* @__PURE__ */ u3("span", { style: { fontSize: 9, fontWeight: 600, padding: "0 3px", borderRadius: 2, background: CABIN_COLORS[cab], color: "#fff" }, children: cab })
-                ] })
+                  /* @__PURE__ */ u3("span", { title: CABIN_LABELS[cab], style: { fontSize: 9, fontWeight: 600, padding: "0 3px", borderRadius: 2, background: CABIN_COLORS[cab], color: "#fff" }, children: cab })
+                ] }, cab))
               ] }, j3);
             }) }),
             /* @__PURE__ */ u3("td", { children: hhmm(r3.segs?.[0]?.dep) }),
@@ -6165,6 +6165,8 @@
     const cabins = segCabins.map((c3) => CX_MILES_CABIN[c3]).join(":");
     return `${airports}_${airlines}_STD_${cabins}`;
   }
+  var CX_CABIN_FROM_MILES = Object.fromEntries(Object.entries(CX_MILES_CABIN).map(([c3, m3]) => [m3, c3]));
+  var cxSegCabinsFromKey = (key) => key.split("_STD_")[1].split(":").map((m3) => CX_CABIN_FROM_MILES[m3]);
   function cxMilesCandidates(segs, cabin, rbds = []) {
     const lower = CX_CABIN_ORDER.slice(CX_CABIN_ORDER.indexOf(cabin));
     let combos2 = [[]];
@@ -6191,8 +6193,11 @@
       }
     }
     for (const { r: r3, cabin, keys } of keyed) {
-      const miles = keys.map((k5) => cxMilesCache[k5]).find((m3) => m3 > 0);
-      if (miles) r3.miles[cabin] = miles;
+      const key = keys.find((k5) => cxMilesCache[k5] > 0);
+      if (!key) continue;
+      r3.miles[cabin] = cxMilesCache[key];
+      const segCabins = cxSegCabinsFromKey(key);
+      if (segCabins.some((c3) => c3 !== cabin)) (r3.segCabins ?? (r3.segCabins = {}))[cabin] = segCabins;
     }
     for (const r3 of results) delete r3.rbds;
     return results;

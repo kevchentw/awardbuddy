@@ -197,6 +197,9 @@ export function cxMilesKey(segs, segCabins) {
   return `${airports}_${airlines}_STD_${cabins}`
 }
 
+const CX_CABIN_FROM_MILES = Object.fromEntries(Object.entries(CX_MILES_CABIN).map(([c, m]) => [m, c]))
+export const cxSegCabinsFromKey = key => key.split('_STD_')[1].split(':').map(m => CX_CABIN_FROM_MILES[m])
+
 // Keys to try in order for a fare in `cabin`. A segment whose booking class isn't in the
 // table (e.g. JL "Y") may sit in a lower cabin, so try the fare cabin first, then lower ones.
 export function cxMilesCandidates(segs, cabin, rbds = []) {
@@ -225,10 +228,14 @@ async function cxFillMiles(results) {
       if (res.ok) Object.assign(cxMilesCache, (await res.json()).milesInfo)
     } catch {}
   }
-  // milesInfo returns -1 for a cabin combination that doesn't exist
+  // milesInfo returns -1 for a cabin combination that doesn't exist. The key that prices
+  // gives each segment's cabin; keep it when the fare mixes cabins.
   for (const { r, cabin, keys } of keyed) {
-    const miles = keys.map(k => cxMilesCache[k]).find(m => m > 0)
-    if (miles) r.miles[cabin] = miles
+    const key = keys.find(k => cxMilesCache[k] > 0)
+    if (!key) continue
+    r.miles[cabin] = cxMilesCache[key]
+    const segCabins = cxSegCabinsFromKey(key)
+    if (segCabins.some(c => c !== cabin)) (r.segCabins ??= {})[cabin] = segCabins
   }
   for (const r of results) delete r.rbds
   return results
