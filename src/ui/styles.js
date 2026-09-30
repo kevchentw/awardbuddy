@@ -111,7 +111,7 @@ export const CSS = `
   .ab-cab-stops { font-size: 10px; color: #888; }
   .ab-cab-miles { font-weight: 600; }
   .ab-route { color: #666; font-size: 11px; }
-  .ab-months { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .ab-months { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .ab-month-btn { padding: 5px 0; border-radius: 6px; border: 1px solid #ddd; font-size: 12px; cursor: pointer; background: #fff; color: #555; }
   .ab-month-btn:hover { border-color: var(--ab-color); }
   .ab-month-btn.sel { background: var(--ab-color); border-color: transparent; color: #fff; }

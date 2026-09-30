@@ -3905,7 +3905,7 @@
   .ab-cab-stops { font-size: 10px; color: #888; }
   .ab-cab-miles { font-weight: 600; }
   .ab-route { color: #666; font-size: 11px; }
-  .ab-months { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .ab-months { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .ab-month-btn { padding: 5px 0; border-radius: 6px; border: 1px solid #ddd; font-size: 12px; cursor: pointer; background: #fff; color: #555; }
   .ab-month-btn:hover { border-color: var(--ab-color); }
   .ab-month-btn.sel { background: var(--ab-color); border-color: transparent; color: #fff; }
@@ -4157,7 +4157,7 @@
   }));
   function MonthRangePicker({ from, to, onChange }) {
     const now = /* @__PURE__ */ new Date();
-    const months = Array.from({ length: 12 }, (_3, i3) => {
+    const months = Array.from({ length: 14 }, (_3, i3) => {
       const d3 = new Date(now.getFullYear(), now.getMonth() + i3, 1);
       return [`${d3.getFullYear()}-${pad(d3.getMonth() + 1)}`, `${MONTH_NAMES[d3.getMonth()].slice(0, 3)}${d3.getMonth() === 0 || i3 === 0 ? ` ${String(d3.getFullYear()).slice(2)}` : ""}`];
     });
