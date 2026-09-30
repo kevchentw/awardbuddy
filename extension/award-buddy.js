@@ -8635,9 +8635,11 @@
   // src/programs/dl.js
   var DL_OFFERS_URL = "https://offer-api-prd.delta.com/prd/rm-offer-gql";
   var DL_GAP_MS = 1500;
-  var DL_BACKOFF_MS = 2e4;
+  var DL_CAL_GAP_MS = 5e3;
+  var DL_BACKOFF_MS = 3e4;
   var DL_PAGE_SIZE = 50;
   var DL_MAX_PAGES = 3;
+  var DL_CAL_MAX_REQUESTS = 20;
   var DL_RATE_LIMIT_MESSAGE = "\u26A0 Delta is limiting searches \u2014 wait a minute, then search again";
   var DL_QUERY = `query ($offerSearchCriteria: OfferSearchCriteriaInput!) {
   gqlSearchOffers(offerSearchCriteria: $offerSearchCriteria) {
@@ -8665,8 +8667,25 @@
     }
   }
 }`;
+  var DL_CAL_QUERY = `query ($offerSearchCriteria: OfferSearchCriteriaInput!) {
+  gqlSearchOffers(offerSearchCriteria: $offerSearchCriteria) {
+    gqlOffersSets {
+      offers {
+        soldOut
+        additionalOfferProperties { offered }
+        offerItems { retailItems { retailItemMetaData { fareInformation {
+          brandByFlightLegs { brandId }
+          priceCalendar { priceCalendarDate }
+        } } } }
+        offerPricing { totalAmt { milesEquivalentPrice { mileCnt } } }
+      }
+    }
+  }
+}`;
   var DL_PRIORITY_CABIN = { 1: "Y", 2: "Y", 5: "Y", 8: "F", 11: "N", 14: "J" };
   var DL_BRAND_CABIN = { BMAIN: "Y", CMAIN: "Y", CDCP: "Y", CDPS: "N", CFIRST: "F", CD1: "J" };
+  var DL_CAL_BRAND = { Y: "BE", N: "DPPS", F: "DPPS", J: "D1" };
+  var DL_CABIN_RANK = { Y: 0, F: 1, N: 2, J: 3 };
   function dlBrandCabin(brandId) {
     const b2 = String(brandId ?? "").toUpperCase();
     if (DL_BRAND_CABIN[b2]) return DL_BRAND_CABIN[b2];
@@ -8756,6 +8775,52 @@
     }
     return results;
   }
+  function dlParseCalendar(data, fallbackCabin) {
+    const days = [];
+    let last = null;
+    for (const offer of (data?.data?.gqlSearchOffers?.gqlOffersSets ?? []).flatMap((s3) => s3.offers ?? [])) {
+      const fare = offer.offerItems?.[0]?.retailItems?.[0]?.retailItemMetaData?.fareInformation?.[0];
+      const raw = fare?.priceCalendar?.priceCalendarDate?.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!raw) continue;
+      const date = `${raw[1]}-${raw[2].padStart(2, "0")}-${raw[3].padStart(2, "0")}`;
+      if (!last || date > last) last = date;
+      const miles = offer.offerPricing?.[0]?.totalAmt?.milesEquivalentPrice?.mileCnt;
+      if (offer.soldOut || !offer.additionalOfferProperties?.offered || !(miles > 0)) continue;
+      const legCabins = (fare.brandByFlightLegs ?? []).map((b2) => dlBrandCabin(b2.brandId));
+      const cabin = legCabins.length ? legCabins.reduce((a3, b2) => DL_CABIN_RANK[b2] > DL_CABIN_RANK[a3] ? b2 : a3) : fallbackCabin;
+      days.push({ date, cabin, miles });
+    }
+    return { days, last };
+  }
+  function dlCalBrands(cabinFilter) {
+    const cabins = cabinFilter?.length ? cabinFilter.filter((c3) => c3 in DL_CAL_BRAND) : ["F", "J", "N", "Y"];
+    return [...new Set(cabins.map((c3) => DL_CAL_BRAND[c3]))];
+  }
+  function dlCalRange(fromMonth, toMonth) {
+    const spans = monthSpans(fromMonth, toMonth);
+    return spans.length ? { start: spans[0].start, end: spans.at(-1).end } : null;
+  }
+  function dlCalVariables(origin, destination, date, brand) {
+    return {
+      offerSearchCriteria: {
+        productGroups: [{ productCategoryCode: "FLIGHTS" }],
+        customers: [{ passengerTypeCode: "ADT", passengerId: "1" }],
+        offersCriteria: {
+          pricingCriteria: { priceableIn: ["MILES"] },
+          preferences: { nonStopOnly: false, refundableOnly: false, excludeBrandTypes: [] },
+          flightRequestCriteria: {
+            sortByBrandId: brand,
+            calendarSearch: true,
+            searchOriginDestination: [{
+              departureLocalTs: `${date}T00:00:00`,
+              origins: [{ airportCode: origin }],
+              destinations: [{ airportCode: destination }]
+            }]
+          }
+        }
+      }
+    };
+  }
   function dlVariables(origin, destination, date, page) {
     return {
       offerSearchCriteria: {
@@ -8782,7 +8847,7 @@
       }
     };
   }
-  function dlFetchOnce(origin, destination, date, page) {
+  function dlFetchOnce(variables, query) {
     return fetch(DL_OFFERS_URL, {
       method: "POST",
       headers: {
@@ -8795,14 +8860,14 @@
         "x-app-type": "dcom-shop",
         "x-app-route": "search"
       },
-      body: JSON.stringify({ variables: dlVariables(origin, destination, date, page), query: DL_QUERY })
+      body: JSON.stringify({ variables, query })
     }).catch(() => null);
   }
   var dlQueue = Promise.resolve();
   var dlLastAt = 0;
-  function dlEnqueue(fn) {
+  function dlEnqueue(fn, gapMs) {
     const run = dlQueue.then(async () => {
-      await sleep(Math.max(0, dlLastAt + DL_GAP_MS - Date.now()));
+      await sleep(Math.max(0, dlLastAt + gapMs - Date.now()));
       try {
         return await fn();
       } finally {
@@ -8813,14 +8878,15 @@
     });
     return run;
   }
-  async function dlFetch(origin, destination, date, page) {
-    const send = () => dlEnqueue(() => dlFetchOnce(origin, destination, date, page));
+  var dlLimited = (res) => res?.status === 429 || res?.status === 444;
+  async function dlFetch(variables, query, gapMs) {
+    const send = () => dlEnqueue(() => dlFetchOnce(variables, query), gapMs);
     let res = await send();
-    if (res?.status === 429) {
+    if (dlLimited(res)) {
       await sleep(DL_BACKOFF_MS);
       res = await send();
     }
-    if (res?.status === 429) return "SESSION_EXPIRED";
+    if (dlLimited(res)) return "SESSION_EXPIRED";
     if (!res?.ok) return null;
     return res.json().catch(() => null);
   }
@@ -8836,12 +8902,47 @@
     async onSearch({ origin, destination, date }) {
       const results = [];
       for (let page = 1; page <= DL_MAX_PAGES; page++) {
-        const data = await dlFetch(origin, destination, date, page);
+        const data = await dlFetch(dlVariables(origin, destination, date, page), DL_QUERY, DL_GAP_MS);
         if (data === "SESSION_EXPIRED") return results.length ? results : data;
         results.push(...dlParseResponse(data, origin, destination, date));
         if (!(data?.data?.gqlSearchOffers?.offerDataList?.responseProperties?.pageResultCnt > page)) break;
       }
       return results;
+    },
+    // A 5-week window moves the cursor forward 29-35 days
+    calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
+      const range = dlCalRange(fromMonth, toMonth);
+      if (!range) return 0;
+      const days = (Date.parse(range.end) - Date.parse(range.start)) / 864e5 + 1;
+      return dlCalBrands(cabinFilter).length * Math.ceil(days / 32);
+    },
+    async onCalendarSearch(origin, destination, cabinFilter, fromMonth, toMonth, onProgress) {
+      const range = dlCalRange(fromMonth, toMonth);
+      if (!range) return {};
+      const brands = dlCalBrands(cabinFilter);
+      let total = this.calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter), done = 0;
+      const byDate = {};
+      for (const brand of brands) {
+        const brandCabins = Object.keys(DL_CAL_BRAND).filter((c3) => DL_CAL_BRAND[c3] === brand);
+        let cursor = range.start;
+        for (let n2 = 0; cursor <= range.end && n2 < DL_CAL_MAX_REQUESTS; n2++) {
+          total = Math.max(total, done + 1);
+          onProgress?.(null, { done, total, label: `Searching ${brandCabins.join("/")} \u2013 ${cursor.slice(0, 7)}` });
+          const data = await dlFetch(dlCalVariables(origin, destination, addDays(cursor, 7), brand), DL_CAL_QUERY, DL_CAL_GAP_MS);
+          if (data === "SESSION_EXPIRED") return data;
+          const { days, last } = dlParseCalendar(data, brandCabins[0]);
+          const partial = {};
+          for (const { date, cabin: c3, miles } of days) {
+            if (date < range.start || date > range.end) continue;
+            if (byDate[date]?.[c3] <= miles) continue;
+            byDate[date] = { ...byDate[date], [c3]: miles };
+            partial[date] = { ...partial[date], [c3]: miles };
+          }
+          onProgress?.(Object.keys(partial).length ? partial : null, { done: ++done, total });
+          cursor = last && last >= cursor ? addDays(last, 1) : addDays(cursor, 35);
+        }
+      }
+      return byDate;
     }
   };
 

@@ -1,7 +1,7 @@
 // Run: npm test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dlBrandCabin, dlParseResponse } from '../src/programs/dl.js'
+import { dlBrandCabin, dlParseCalendar, dlParseResponse } from '../src/programs/dl.js'
 
 const seg = (num, carrier, flight, from, to) => ({
   flightSegmentNum: String(num), originAirportCode: from, destinationAirportCode: to,
@@ -75,4 +75,38 @@ test('dlParseResponse files partner fares under their column and skips unpriced 
 
 test('dlParseResponse returns nothing for a GraphQL error', () => {
   assert.deepEqual(dlParseResponse({ errors: [{ message: 'RetailOfferError' }] }, 'ATL', 'SEA', '2026-12-12'), [])
+})
+
+const calDay = (date, mileCnt, brands, offered = true) => ({
+  soldOut: false,
+  additionalOfferProperties: { offered },
+  offerItems: [{ retailItems: [{ retailItemMetaData: { fareInformation: [{
+    brandByFlightLegs: brands.map(brandId => ({ brandId })),
+    priceCalendar: { priceCalendarDate: date },
+  }] } }] }],
+  offerPricing: [{ totalAmt: { milesEquivalentPrice: { mileCnt } } }],
+})
+
+test('dlParseCalendar files each day under the cabin it flies and pads dates', () => {
+  // Asked for Premium Select (DPPS) on a route without it: Delta returns First fares
+  const data = { data: { gqlSearchOffers: { gqlOffersSets: [{ offers: [
+    calDay('2026-12-30', 0, [], false),
+    calDay('2026-12-31', 53300, ['CFIRST']),
+    calDay('2027-1-01', 499900, ['CFIRST', 'CD1']),
+    calDay('2027-1-02', 57900, ['CDPS']),
+    calDay('2027-01-03', 184700, ['CFIRST', 'CDPS']),
+  ] }] } } }
+  assert.deepEqual(dlParseCalendar(data, 'N'), {
+    days: [
+      { date: '2026-12-31', cabin: 'F', miles: 53300 },
+      { date: '2027-01-01', cabin: 'J', miles: 499900 },
+      { date: '2027-01-02', cabin: 'N', miles: 57900 },
+      { date: '2027-01-03', cabin: 'N', miles: 184700 },
+    ],
+    last: '2027-01-03',
+  })
+})
+
+test('dlParseCalendar returns no window for an error', () => {
+  assert.deepEqual(dlParseCalendar({ errors: [{ message: 'RetailOfferError' }] }, 'J'), { days: [], last: null })
 })
