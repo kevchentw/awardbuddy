@@ -61,10 +61,10 @@ export const calToRows = (calData, fromMonth, toMonth) => Object.entries(calData
     return { date, origin, destination, miles, cabins: Object.fromEntries(Object.keys(miles).map(c => [c, true])) }
   }))
 
-// Next 12 months as chips: first click picks a single month, a later month extends the range
+// Next 14 months as chips: first click picks a single month, a later month extends the range
 export function MonthRangePicker({ from, to, onChange }) {
   const now = new Date()
-  const months = Array.from({ length: 12 }, (_, i) => {
+  const months = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
     return [`${d.getFullYear()}-${pad(d.getMonth() + 1)}`, `${MONTH_NAMES[d.getMonth()].slice(0, 3)}${d.getMonth() === 0 || i === 0 ? ` ${String(d.getFullYear()).slice(2)}` : ''}`]
   })
