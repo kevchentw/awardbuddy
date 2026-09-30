@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.8.4
-// @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
+// @version      1.9.0
+// @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, Delta, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
 // @updateURL    https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js
@@ -19,6 +19,7 @@
 // @match        https://*.ana.co.jp/*
 // @match        https://www.aircanada.com/*
 // @match        https://www.aa.com/*
+// @match        https://www.delta.com/*
 // @match        https://www.ihg.com/*
 // @match        https://www.marriott.com/*
 // @match        https://www.hilton.com/*
@@ -8664,6 +8665,219 @@
     }
   };
 
+  // src/programs/dl.js
+  var DL_OFFERS_URL = "https://offer-api-prd.delta.com/prd/rm-offer-gql";
+  var DL_GAP_MS = 1500;
+  var DL_BACKOFF_MS = 2e4;
+  var DL_PAGE_SIZE = 50;
+  var DL_MAX_PAGES = 3;
+  var DL_RATE_LIMIT_MESSAGE = "\u26A0 Delta is limiting searches \u2014 wait a minute, then search again";
+  var DL_QUERY = `query ($offerSearchCriteria: OfferSearchCriteriaInput!) {
+  gqlSearchOffers(offerSearchCriteria: $offerSearchCriteria) {
+    gqlOffersSets {
+      trips {
+        totalTripTime { hourCnt minuteCnt }
+        flightSegment {
+          flightSegmentNum originAirportCode destinationAirportCode scheduledDepartureLocalTs scheduledArrivalLocalTs
+          marketingCarrier { carrierCode carrierNum }
+        }
+      }
+      offers {
+        soldOut
+        additionalOfferProperties { unavailableForSale dominantSegmentBrandId }
+        offerItems { retailItems { retailItemMetaData { fareInformation {
+          brandByFlightLegs { brandId flightSegmentNum }
+          availableSeatCnt
+          farePrice { totalFarePrice { milesEquivalentPrice { mileCnt } } }
+        } } } }
+      }
+    }
+    offerDataList {
+      retailItemDefinitionList { retailItemBrandId retailItemPriorityText }
+      responseProperties { pageResultCnt }
+    }
+  }
+}`;
+  var DL_PRIORITY_CABIN = { 1: "Y", 2: "Y", 5: "Y", 8: "F", 11: "N", 14: "J" };
+  var DL_BRAND_CABIN = { BMAIN: "Y", CMAIN: "Y", CDCP: "Y", CDPS: "N", CFIRST: "F", CD1: "J" };
+  function dlBrandCabin(brandId) {
+    const b2 = String(brandId ?? "").toUpperCase();
+    if (DL_BRAND_CABIN[b2]) return DL_BRAND_CABIN[b2];
+    if (/(D1|BU|UP)$/.test(b2)) return "J";
+    if (/(PE|PS)$/.test(b2)) return "N";
+    if (/(FIRST|FI|FR)$/.test(b2)) return "F";
+    return "Y";
+  }
+  function dlColumnCabin(def) {
+    return DL_PRIORITY_CABIN[def?.retailItemPriorityText] ?? dlBrandCabin(def?.retailItemBrandId);
+  }
+  function dlBookUrl(origin, destination, date) {
+    const [y3, m3, d3] = date.split("-");
+    const params = new URLSearchParams({
+      action: "findFlights",
+      tripType: "ONE_WAY",
+      priceSchedule: "price",
+      originCity: origin,
+      destinationCity: destination,
+      departureDate: `${m3}/${d3}/${y3}`,
+      departureTime: "AT",
+      returnDate: "",
+      returnTime: "AT",
+      paxCount: "1",
+      searchByCabin: "true",
+      cabinFareClass: "BE",
+      deltaOnlySearch: "false",
+      deltaOnly: "off",
+      Go: "Find Flights",
+      meetingEventCode: "",
+      refundableFlightsOnly: "false",
+      compareAirport: "false",
+      awardTravel: "true",
+      shopWithMiles: "on"
+    });
+    return `https://www.delta.com/flight-search/search?${params}`;
+  }
+  function dlParseResponse(data, origin, destination, date) {
+    const g2 = data?.data?.gqlSearchOffers;
+    if (!g2?.gqlOffersSets) return [];
+    const columns = (g2.offerDataList?.retailItemDefinitionList ?? []).map(dlColumnCabin);
+    const bookUrl = dlBookUrl(origin, destination, date);
+    const results = [];
+    for (const set of g2.gqlOffersSets) {
+      const trip = set.trips?.[0];
+      if (!trip?.flightSegment?.length) continue;
+      const cabins = { F: null, J: null, N: null, Y: null }, miles = {};
+      let segCabins;
+      set.offers?.forEach((offer, i3) => {
+        const c3 = columns[i3];
+        const fare = offer.offerItems?.[0]?.retailItems?.[0]?.retailItemMetaData?.fareInformation?.[0];
+        const mileCnt = fare?.farePrice?.[0]?.totalFarePrice?.milesEquivalentPrice?.mileCnt;
+        if (!c3 || offer.soldOut || offer.additionalOfferProperties?.unavailableForSale || !(mileCnt > 0)) return;
+        if (miles[c3] && miles[c3] <= mileCnt) return;
+        miles[c3] = mileCnt;
+        cabins[c3] = fare.availableSeatCnt ?? true;
+        const dominant = offer.additionalOfferProperties?.dominantSegmentBrandId;
+        const perSeg = trip.flightSegment.map((seg) => {
+          const brand = fare.brandByFlightLegs?.find((b2) => b2.flightSegmentNum === seg.flightSegmentNum)?.brandId;
+          return !brand || brand === dominant ? c3 : dlBrandCabin(brand);
+        });
+        if (perSeg.some((sc) => sc !== c3)) (segCabins ?? (segCabins = {}))[c3] = perSeg;
+        else if (segCabins) delete segCabins[c3];
+      });
+      if (!Object.values(cabins).some((v3) => v3 !== null)) continue;
+      const segs = trip.flightSegment.map((seg) => ({
+        airline: seg.marketingCarrier?.carrierCode,
+        flight: `${seg.marketingCarrier?.carrierCode}${seg.marketingCarrier?.carrierNum}`,
+        origin: seg.originAirportCode,
+        destination: seg.destinationAirportCode,
+        dep: seg.scheduledDepartureLocalTs,
+        arr: seg.scheduledArrivalLocalTs
+      }));
+      const t3 = trip.totalTripTime;
+      const duration = t3 ? (t3.hourCnt ?? 0) * 60 + (t3.minuteCnt ?? 0) : null;
+      results.push({
+        date,
+        origin: segs[0].origin,
+        destination: segs.at(-1).destination,
+        segs,
+        cabins,
+        miles,
+        duration,
+        bookUrl,
+        ...segCabins && Object.keys(segCabins).length ? { segCabins } : {}
+      });
+    }
+    return results;
+  }
+  function dlVariables(origin, destination, date, page) {
+    return {
+      offerSearchCriteria: {
+        productGroups: [{ productCategoryCode: "FLIGHTS" }],
+        offersCriteria: {
+          resultsPageNum: page,
+          resultsPerRequestNum: DL_PAGE_SIZE,
+          preferences: { refundableOnly: false, showGlobalRegionalUpgradeCertificate: true, nonStopOnly: false, excludeBrandTypes: [] },
+          pricingCriteria: { priceableIn: ["MILES"] },
+          flightRequestCriteria: {
+            currentTripIndexId: "0",
+            sortableOptionId: null,
+            selectedOfferId: "",
+            searchOriginDestination: [{
+              departureLocalTs: `${date}T00:00:00`,
+              origins: [{ airportCode: origin }],
+              destinations: [{ airportCode: destination }]
+            }],
+            sortByBrandId: "MAIN",
+            additionalCriteriaMap: { rollOutTag: "GBB" }
+          }
+        },
+        customers: [{ passengerTypeCode: "ADT", passengerId: "1" }]
+      }
+    };
+  }
+  function dlFetchOnce(origin, destination, date, page) {
+    return fetch(DL_OFFERS_URL, {
+      method: "POST",
+      headers: {
+        Authorization: "GUEST",
+        "Content-Type": "application/json",
+        TransactionId: `${crypto.randomUUID()}_${Date.now()}`,
+        applicationId: "DC",
+        channelId: "DCOM",
+        Airline: "DL",
+        "x-app-type": "dcom-shop",
+        "x-app-route": "search"
+      },
+      body: JSON.stringify({ variables: dlVariables(origin, destination, date, page), query: DL_QUERY })
+    }).catch(() => null);
+  }
+  var dlQueue = Promise.resolve();
+  var dlLastAt = 0;
+  function dlEnqueue(fn) {
+    const run = dlQueue.then(async () => {
+      await sleep(Math.max(0, dlLastAt + DL_GAP_MS - Date.now()));
+      try {
+        return await fn();
+      } finally {
+        dlLastAt = Date.now();
+      }
+    });
+    dlQueue = run.catch(() => {
+    });
+    return run;
+  }
+  async function dlFetch(origin, destination, date, page) {
+    const send = () => dlEnqueue(() => dlFetchOnce(origin, destination, date, page));
+    let res = await send();
+    if (res?.status === 429) {
+      await sleep(DL_BACKOFF_MS);
+      res = await send();
+    }
+    if (res?.status === 429) return "SESSION_EXPIRED";
+    if (!res?.ok) return null;
+    return res.json().catch(() => null);
+  }
+  var dlProgram = {
+    id: "dl",
+    name: "Delta SkyMiles",
+    color: "#003366",
+    cabins: ["F", "J", "N", "Y"],
+    airports: COMMON_AIRPORTS,
+    requiresSession: false,
+    matches: ["www.delta.com"],
+    expiredMessage: DL_RATE_LIMIT_MESSAGE,
+    async onSearch({ origin, destination, date }) {
+      const results = [];
+      for (let page = 1; page <= DL_MAX_PAGES; page++) {
+        const data = await dlFetch(origin, destination, date, page);
+        if (data === "SESSION_EXPIRED") return results.length ? results : data;
+        results.push(...dlParseResponse(data, origin, destination, date));
+        if (!(data?.data?.gqlSearchOffers?.offerDataList?.responseProperties?.pageResultCnt > page)) break;
+      }
+      return results;
+    }
+  };
+
   // src/programs/ihg.js
   var IHG_API = "https://apis.ihg.com";
   var IHG_API_KEY = "se9ym5iAzaW8pxfBjkmgbuGjJcr3Pj6Y";
@@ -9714,7 +9928,7 @@
   };
 
   // src/entrypoint.js
-  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram, choiceProgram, ipreferProgram];
+  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, dlProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram, choiceProgram, ipreferProgram];
   var program = ALL_PROGRAMS.find((p3) => p3.matchHost?.(location.hostname) ?? p3.matches.includes(location.hostname));
   if (program) {
     if (document.body) mountPanel(program);
