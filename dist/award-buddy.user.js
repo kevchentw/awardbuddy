@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.8.4
-// @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
+// @version      1.9.0
+// @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, Delta, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
 // @updateURL    https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js
@@ -19,6 +19,7 @@
 // @match        https://*.ana.co.jp/*
 // @match        https://www.aircanada.com/*
 // @match        https://www.aa.com/*
+// @match        https://www.delta.com/*
 // @match        https://www.ihg.com/*
 // @match        https://www.marriott.com/*
 // @match        https://www.hilton.com/*
@@ -8664,6 +8665,321 @@
     }
   };
 
+  // src/programs/dl.js
+  var DL_OFFERS_URL = "https://offer-api-prd.delta.com/prd/rm-offer-gql";
+  var DL_GAP_MS = 1500;
+  var DL_CAL_GAP_MS = 5e3;
+  var DL_BACKOFF_MS = 3e4;
+  var DL_PAGE_SIZE = 50;
+  var DL_MAX_PAGES = 3;
+  var DL_CAL_MAX_REQUESTS = 20;
+  var DL_RATE_LIMIT_MESSAGE = "\u26A0 Delta is limiting searches \u2014 wait a minute, then search again";
+  var DL_QUERY = `query ($offerSearchCriteria: OfferSearchCriteriaInput!) {
+  gqlSearchOffers(offerSearchCriteria: $offerSearchCriteria) {
+    gqlOffersSets {
+      trips {
+        totalTripTime { hourCnt minuteCnt }
+        flightSegment {
+          flightSegmentNum originAirportCode destinationAirportCode scheduledDepartureLocalTs scheduledArrivalLocalTs
+          marketingCarrier { carrierCode carrierNum }
+        }
+      }
+      offers {
+        soldOut
+        additionalOfferProperties { unavailableForSale dominantSegmentBrandId }
+        offerItems { retailItems { retailItemMetaData { fareInformation {
+          brandByFlightLegs { brandId flightSegmentNum }
+          availableSeatCnt
+          farePrice { totalFarePrice { milesEquivalentPrice { mileCnt } } }
+        } } } }
+      }
+    }
+    offerDataList {
+      retailItemDefinitionList { retailItemBrandId retailItemPriorityText }
+      responseProperties { pageResultCnt }
+    }
+  }
+}`;
+  var DL_CAL_QUERY = `query ($offerSearchCriteria: OfferSearchCriteriaInput!) {
+  gqlSearchOffers(offerSearchCriteria: $offerSearchCriteria) {
+    gqlOffersSets {
+      offers {
+        soldOut
+        additionalOfferProperties { offered }
+        offerItems { retailItems { retailItemMetaData { fareInformation {
+          brandByFlightLegs { brandId }
+          priceCalendar { priceCalendarDate }
+        } } } }
+        offerPricing { totalAmt { milesEquivalentPrice { mileCnt } } }
+      }
+    }
+  }
+}`;
+  var DL_PRIORITY_CABIN = { 1: "Y", 2: "Y", 5: "Y", 8: "F", 11: "N", 14: "J" };
+  var DL_BRAND_CABIN = { BMAIN: "Y", CMAIN: "Y", CDCP: "Y", CDPS: "N", CFIRST: "F", CD1: "J" };
+  var DL_CAL_BRAND = { Y: "BE", N: "DPPS", F: "DPPS", J: "D1" };
+  var DL_CABIN_RANK = { Y: 0, F: 1, N: 2, J: 3 };
+  function dlBrandCabin(brandId) {
+    const b2 = String(brandId ?? "").toUpperCase();
+    if (DL_BRAND_CABIN[b2]) return DL_BRAND_CABIN[b2];
+    if (/(D1|BU|UP)$/.test(b2)) return "J";
+    if (/(PE|PS)$/.test(b2)) return "N";
+    if (/(FIRST|FI|FR)$/.test(b2)) return "F";
+    return "Y";
+  }
+  function dlColumnCabin(def) {
+    return DL_PRIORITY_CABIN[def?.retailItemPriorityText] ?? dlBrandCabin(def?.retailItemBrandId);
+  }
+  function dlBookUrl(origin, destination, date) {
+    const [y3, m3, d3] = date.split("-");
+    const params = new URLSearchParams({
+      action: "findFlights",
+      tripType: "ONE_WAY",
+      priceSchedule: "price",
+      originCity: origin,
+      destinationCity: destination,
+      departureDate: `${m3}/${d3}/${y3}`,
+      departureTime: "AT",
+      returnDate: "",
+      returnTime: "AT",
+      paxCount: "1",
+      searchByCabin: "true",
+      cabinFareClass: "BE",
+      deltaOnlySearch: "false",
+      deltaOnly: "off",
+      Go: "Find Flights",
+      meetingEventCode: "",
+      refundableFlightsOnly: "false",
+      compareAirport: "false",
+      awardTravel: "true",
+      shopWithMiles: "on"
+    });
+    return `https://www.delta.com/flight-search/search?${params}`;
+  }
+  function dlParseResponse(data, origin, destination, date) {
+    const g2 = data?.data?.gqlSearchOffers;
+    if (!g2?.gqlOffersSets) return [];
+    const columns = (g2.offerDataList?.retailItemDefinitionList ?? []).map(dlColumnCabin);
+    const bookUrl = dlBookUrl(origin, destination, date);
+    const results = [];
+    for (const set of g2.gqlOffersSets) {
+      const trip = set.trips?.[0];
+      if (!trip?.flightSegment?.length) continue;
+      const cabins = { F: null, J: null, N: null, Y: null }, miles = {};
+      let segCabins;
+      set.offers?.forEach((offer, i3) => {
+        const c3 = columns[i3];
+        const fare = offer.offerItems?.[0]?.retailItems?.[0]?.retailItemMetaData?.fareInformation?.[0];
+        const mileCnt = fare?.farePrice?.[0]?.totalFarePrice?.milesEquivalentPrice?.mileCnt;
+        if (!c3 || offer.soldOut || offer.additionalOfferProperties?.unavailableForSale || !(mileCnt > 0)) return;
+        if (miles[c3] && miles[c3] <= mileCnt) return;
+        miles[c3] = mileCnt;
+        cabins[c3] = fare.availableSeatCnt ?? true;
+        const dominant = offer.additionalOfferProperties?.dominantSegmentBrandId;
+        const perSeg = trip.flightSegment.map((seg) => {
+          const brand = fare.brandByFlightLegs?.find((b2) => b2.flightSegmentNum === seg.flightSegmentNum)?.brandId;
+          return !brand || brand === dominant ? c3 : dlBrandCabin(brand);
+        });
+        if (perSeg.some((sc) => sc !== c3)) (segCabins ?? (segCabins = {}))[c3] = perSeg;
+        else if (segCabins) delete segCabins[c3];
+      });
+      if (!Object.values(cabins).some((v3) => v3 !== null)) continue;
+      const segs = trip.flightSegment.map((seg) => ({
+        airline: seg.marketingCarrier?.carrierCode,
+        flight: `${seg.marketingCarrier?.carrierCode}${seg.marketingCarrier?.carrierNum}`,
+        origin: seg.originAirportCode,
+        destination: seg.destinationAirportCode,
+        dep: seg.scheduledDepartureLocalTs,
+        arr: seg.scheduledArrivalLocalTs
+      }));
+      const t3 = trip.totalTripTime;
+      const duration = t3 ? (t3.hourCnt ?? 0) * 60 + (t3.minuteCnt ?? 0) : null;
+      results.push({
+        date,
+        origin: segs[0].origin,
+        destination: segs.at(-1).destination,
+        segs,
+        cabins,
+        miles,
+        duration,
+        bookUrl,
+        ...segCabins && Object.keys(segCabins).length ? { segCabins } : {}
+      });
+    }
+    return results;
+  }
+  function dlParseCalendar(data, fallbackCabin) {
+    const days = [];
+    let last = null;
+    for (const offer of (data?.data?.gqlSearchOffers?.gqlOffersSets ?? []).flatMap((s3) => s3.offers ?? [])) {
+      const fare = offer.offerItems?.[0]?.retailItems?.[0]?.retailItemMetaData?.fareInformation?.[0];
+      const raw = fare?.priceCalendar?.priceCalendarDate?.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!raw) continue;
+      const date = `${raw[1]}-${raw[2].padStart(2, "0")}-${raw[3].padStart(2, "0")}`;
+      if (!last || date > last) last = date;
+      const miles = offer.offerPricing?.[0]?.totalAmt?.milesEquivalentPrice?.mileCnt;
+      if (offer.soldOut || !offer.additionalOfferProperties?.offered || !(miles > 0)) continue;
+      const legCabins = (fare.brandByFlightLegs ?? []).map((b2) => dlBrandCabin(b2.brandId));
+      const cabin = legCabins.length ? legCabins.reduce((a3, b2) => DL_CABIN_RANK[b2] > DL_CABIN_RANK[a3] ? b2 : a3) : fallbackCabin;
+      days.push({ date, cabin, miles });
+    }
+    return { days, last };
+  }
+  function dlCalBrands(cabinFilter) {
+    const cabins = cabinFilter?.length ? cabinFilter.filter((c3) => c3 in DL_CAL_BRAND) : ["F", "J", "N", "Y"];
+    return [...new Set(cabins.map((c3) => DL_CAL_BRAND[c3]))];
+  }
+  function dlCalRange(fromMonth, toMonth) {
+    const spans = monthSpans(fromMonth, toMonth);
+    return spans.length ? { start: spans[0].start, end: spans.at(-1).end } : null;
+  }
+  function dlCalVariables(origin, destination, date, brand) {
+    return {
+      offerSearchCriteria: {
+        productGroups: [{ productCategoryCode: "FLIGHTS" }],
+        customers: [{ passengerTypeCode: "ADT", passengerId: "1" }],
+        offersCriteria: {
+          pricingCriteria: { priceableIn: ["MILES"] },
+          preferences: { nonStopOnly: false, refundableOnly: false, excludeBrandTypes: [] },
+          flightRequestCriteria: {
+            sortByBrandId: brand,
+            calendarSearch: true,
+            searchOriginDestination: [{
+              departureLocalTs: `${date}T00:00:00`,
+              origins: [{ airportCode: origin }],
+              destinations: [{ airportCode: destination }]
+            }]
+          }
+        }
+      }
+    };
+  }
+  function dlVariables(origin, destination, date, page) {
+    return {
+      offerSearchCriteria: {
+        productGroups: [{ productCategoryCode: "FLIGHTS" }],
+        offersCriteria: {
+          resultsPageNum: page,
+          resultsPerRequestNum: DL_PAGE_SIZE,
+          preferences: { refundableOnly: false, showGlobalRegionalUpgradeCertificate: true, nonStopOnly: false, excludeBrandTypes: [] },
+          pricingCriteria: { priceableIn: ["MILES"] },
+          flightRequestCriteria: {
+            currentTripIndexId: "0",
+            sortableOptionId: null,
+            selectedOfferId: "",
+            searchOriginDestination: [{
+              departureLocalTs: `${date}T00:00:00`,
+              origins: [{ airportCode: origin }],
+              destinations: [{ airportCode: destination }]
+            }],
+            sortByBrandId: "MAIN",
+            additionalCriteriaMap: { rollOutTag: "GBB" }
+          }
+        },
+        customers: [{ passengerTypeCode: "ADT", passengerId: "1" }]
+      }
+    };
+  }
+  function dlFetchOnce(variables, query) {
+    return fetch(DL_OFFERS_URL, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        Authorization: "GUEST",
+        "Content-Type": "application/json",
+        TransactionId: `${crypto.randomUUID()}_${Date.now()}`,
+        applicationId: "DC",
+        channelId: "DCOM",
+        Airline: "DL",
+        "x-app-type": "dcom-shop",
+        "x-app-route": "search"
+      },
+      body: JSON.stringify({ variables, query })
+    }).catch(() => null);
+  }
+  var dlQueue = Promise.resolve();
+  var dlLastAt = 0;
+  function dlEnqueue(fn, gapMs) {
+    const run = dlQueue.then(async () => {
+      await sleep(Math.max(0, dlLastAt + gapMs - Date.now()));
+      try {
+        return await fn();
+      } finally {
+        dlLastAt = Date.now();
+      }
+    });
+    dlQueue = run.catch(() => {
+    });
+    return run;
+  }
+  var dlLimited = (res) => res?.status === 429 || res?.status === 444;
+  async function dlFetch(variables, query, gapMs) {
+    const send = () => dlEnqueue(() => dlFetchOnce(variables, query), gapMs);
+    let res = await send();
+    if (dlLimited(res)) {
+      await sleep(DL_BACKOFF_MS);
+      res = await send();
+    }
+    if (dlLimited(res)) return "SESSION_EXPIRED";
+    if (!res?.ok) return null;
+    return res.json().catch(() => null);
+  }
+  var dlProgram = {
+    id: "dl",
+    name: "Delta SkyMiles",
+    color: "#003366",
+    cabins: ["F", "J", "N", "Y"],
+    airports: COMMON_AIRPORTS,
+    requiresSession: false,
+    matches: ["www.delta.com"],
+    expiredMessage: DL_RATE_LIMIT_MESSAGE,
+    async onSearch({ origin, destination, date }) {
+      const results = [];
+      for (let page = 1; page <= DL_MAX_PAGES; page++) {
+        const data = await dlFetch(dlVariables(origin, destination, date, page), DL_QUERY, DL_GAP_MS);
+        if (data === "SESSION_EXPIRED") return results.length ? results : data;
+        results.push(...dlParseResponse(data, origin, destination, date));
+        if (!(data?.data?.gqlSearchOffers?.offerDataList?.responseProperties?.pageResultCnt > page)) break;
+      }
+      return results;
+    },
+    // A 5-week window moves the cursor forward 29-35 days
+    calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
+      const range = dlCalRange(fromMonth, toMonth);
+      if (!range) return 0;
+      const days = (Date.parse(range.end) - Date.parse(range.start)) / 864e5 + 1;
+      return dlCalBrands(cabinFilter).length * Math.ceil(days / 32);
+    },
+    async onCalendarSearch(origin, destination, cabinFilter, fromMonth, toMonth, onProgress) {
+      const range = dlCalRange(fromMonth, toMonth);
+      if (!range) return {};
+      const brands = dlCalBrands(cabinFilter);
+      let total = this.calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter), done = 0;
+      const byDate = {};
+      for (const brand of brands) {
+        const brandCabins = Object.keys(DL_CAL_BRAND).filter((c3) => DL_CAL_BRAND[c3] === brand);
+        let cursor = range.start;
+        for (let n2 = 0; cursor <= range.end && n2 < DL_CAL_MAX_REQUESTS; n2++) {
+          total = Math.max(total, done + 1);
+          onProgress?.(null, { done, total, label: `Searching ${brandCabins.join("/")} \u2013 ${cursor.slice(0, 7)}` });
+          const data = await dlFetch(dlCalVariables(origin, destination, addDays(cursor, 7), brand), DL_CAL_QUERY, DL_CAL_GAP_MS);
+          if (data === "SESSION_EXPIRED") return data;
+          const { days, last } = dlParseCalendar(data, brandCabins[0]);
+          const partial = {};
+          for (const { date, cabin: c3, miles } of days) {
+            if (date < range.start || date > range.end) continue;
+            if (byDate[date]?.[c3] <= miles) continue;
+            byDate[date] = { ...byDate[date], [c3]: miles };
+            partial[date] = { ...partial[date], [c3]: miles };
+          }
+          onProgress?.(Object.keys(partial).length ? partial : null, { done: ++done, total });
+          cursor = last && last >= cursor ? addDays(last, 1) : addDays(cursor, 35);
+        }
+      }
+      return byDate;
+    }
+  };
+
   // src/programs/ihg.js
   var IHG_API = "https://apis.ihg.com";
   var IHG_API_KEY = "se9ym5iAzaW8pxfBjkmgbuGjJcr3Pj6Y";
@@ -9714,7 +10030,7 @@
   };
 
   // src/entrypoint.js
-  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram, choiceProgram, ipreferProgram];
+  var ALL_PROGRAMS = [asProgram, lifemilesProgram, cxProgram, brProgram, jxProgram, fbProgram, jalProgram, anaProgram, acProgram, aaProgram, dlProgram, ihgProgram, marriottProgram, hiltonProgram, hyattProgram, choiceProgram, ipreferProgram];
   var program = ALL_PROGRAMS.find((p3) => p3.matchHost?.(location.hostname) ?? p3.matches.includes(location.hostname));
   if (program) {
     if (document.body) mountPanel(program);

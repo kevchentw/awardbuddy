@@ -13,7 +13,7 @@ const VERSION = require('./package.json').version
 const REPO_URL = 'https://github.com/kevchentw/awardbuddy'
 // Tampermonkey checks this for a higher @version to auto-update
 const USERSCRIPT_URL = 'https://raw.githubusercontent.com/kevchentw/awardbuddy/main/dist/award-buddy.user.js'
-const DESCRIPTION = 'Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels'
+const DESCRIPTION = 'Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, Delta, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels'
 const ICON_SIZES = [16, 32, 48, 128]  // assets/icons/icon-<size>.png, shared with ../award-buddy
 const MATCHES = [
   'https://www.alaskaair.com/*',
@@ -28,6 +28,7 @@ const MATCHES = [
   'https://*.ana.co.jp/*',
   'https://www.aircanada.com/*',
   'https://www.aa.com/*',
+  'https://www.delta.com/*',
   'https://www.ihg.com/*',
   'https://www.marriott.com/*',
   'https://www.hilton.com/*',

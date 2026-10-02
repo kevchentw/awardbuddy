@@ -22,6 +22,7 @@ It runs in your browser on the airline's or hotel's page, using your own session
 | Air Canada (Aeroplan) | aircanada.com | | Open the award search page |
 | ANA | ana.co.jp | | Log in to the award booking page |
 | Cathay Pacific | cathaypacific.com | | Open the award booking page |
+| Delta Air Lines (SkyMiles) | delta.com | ✓ | Not needed |
 | EVA Air (Infinity MileageLands) | evaair.com | ✓ | Log in |
 | Flying Blue (Air France / KLM) | airfrance.us, klm.com | ✓ | Open the award search page |
 | Japan Airlines (JMB) | jal.co.jp | ✓ (JAL flights only) | Log in |
@@ -81,6 +82,8 @@ Go to a supported site. A button appears in the corner of the page (✈ on airli
 
 1. Enter one or more origins and destinations, a date range, and optionally the cabins you want.
 2. Click **Search**. Results come in as each request finishes. You can sort by date, duration or miles, and filter by cabin, number of stops or day of week. Each row links to the airline's booking page for that flight.
+
+On Delta, Basic, Main and Comfort fares all count as Economy (the lowest one is shown), Premium Select as Prem Eco, Delta One and partner business as Business, and Delta First as First. The **Book** link opens Delta's flexible-dates page for that day; pick the date and click **Continue**. Delta's calendar mode shows the lowest fare per day, filed under the cabin it flies; one request covers five weeks per cabin, and Prem Eco and First share a request (on routes without Premium Select it shows domestic First).
 
 **Calendar mode** (on programs that support it) searches whole months and shows the lowest price per day on a calendar. It needs far fewer requests than searching day by day.
 
