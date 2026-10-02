@@ -3,7 +3,8 @@ import { sleep, addDays, monthSpans } from '../common/search.js'
 
 // Delta SkyMiles – no login required
 // The award search is the site's own GraphQL POST to offer-api-prd.delta.com. Logged out, the page
-// sends Authorization: GUEST and no cookies are needed. About 7 back-to-back searches get a 429, and
+// sends Authorization: GUEST, with cookies like the page does: without them the request gets a 429
+// bot challenge ({"cpr_chlge":"true"}) that makes the page reload. About 7 back-to-back searches get a 429, and
 // about 9 calendar requests a few seconds apart get a 444, so requests are serialized with a gap and
 // a 429 / 444 gets one retry after a pause.
 // Each offer set's offers[] lines up with offerDataList.retailItemDefinitionList: column i is a Delta
@@ -232,6 +233,7 @@ function dlVariables(origin, destination, date, page) {
 function dlFetchOnce(variables, query) {
   return fetch(DL_OFFERS_URL, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       Authorization: 'GUEST',
       'Content-Type': 'application/json',

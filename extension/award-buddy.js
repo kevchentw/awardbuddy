@@ -8850,6 +8850,7 @@
   function dlFetchOnce(variables, query) {
     return fetch(DL_OFFERS_URL, {
       method: "POST",
+      credentials: "include",
       headers: {
         Authorization: "GUEST",
         "Content-Type": "application/json",
