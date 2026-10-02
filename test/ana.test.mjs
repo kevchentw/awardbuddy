@@ -65,6 +65,6 @@ test('anaMergeResults folds the per-cabin searches into one row per itinerary', 
   const n = anaParseResults(page(en).replace("'1400'", "'950'").replace('50000', '72000'), '2026-10-16', 'SEA', 'FUK')
   const [r, ...rest] = anaMergeResults([y, n])
   assert.equal(rest.length, 0)
-  assert.deepEqual(r.cabins, { F: null, J: null, N: 1, Y: 1 })
+  assert.deepEqual(r.cabins, { F: null, J: null, N: true, Y: true })
   assert.deepEqual(r.miles, { Y: 50000, N: 72000 })
 })

@@ -163,7 +163,7 @@ export function anaParseResults(html, date, origin, destination) {
       const r = results[obIdx]
       const mi = +miles
       if (r.cabins[cabin] === null) {
-        r.cabins[cabin] = 1
+        r.cabins[cabin] = true  // the page gives no seat count
         r.miles[cabin] = mi
       } else if (mi < (r.miles[cabin] ?? Infinity)) {
         r.miles[cabin] = mi
@@ -199,10 +199,13 @@ async function anaPost(action, fields) {
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(fields).toString(),
   })
-  return res.ok ? res.text() : null
+  // A dead session or a rejected flow redirects to session_error / browser_back_error (HTTP 200)
+  if (!res.ok || /error/.test(new URL(res.url).pathname)) return null
+  return res.text()
 }
 
-// → results HTML for one cabin (the result page only lists the requested class), or null on an error
+// → results HTML for one cabin (the result page only lists the requested class), or null when the
+// session is unusable
 async function anaFetchResults(origin, destination, date, cabin) {
   const inputRes = await fetch(anaInputUrl(), { credentials: 'include' })
   if (!inputRes.ok) return null
@@ -275,6 +278,7 @@ export const anaProgram = {
   },
 
   isSessionReady() { return !!anaCaptured.aswcid },
+  expiredMessage: '⚠ ANA session expired — reload the award search page and try again',
 
   async onSearch({ origin, destination, date, cabinFilter }) {
     if (!anaCaptured.aswcid) return []
@@ -282,7 +286,8 @@ export const anaProgram = {
     const lists = []
     for (const cabin of cabins) {
       const html = await anaEnqueue(() => anaFetchResults(origin, destination, date, cabin))
-      if (html) lists.push(anaParseResults(html, date, origin, destination))
+      if (!html) return 'SESSION_EXPIRED'
+      lists.push(anaParseResults(html, date, origin, destination))
     }
     return anaMergeResults(lists)
   },

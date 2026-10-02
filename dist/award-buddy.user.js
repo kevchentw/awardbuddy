@@ -4435,6 +4435,11 @@
   var DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   var stopsOf = (r3) => (r3.segs?.length ?? 1) - 1;
   var hhmm = (iso) => iso?.slice(11, 16) || "";
+  var arrDays = (r3) => {
+    const dep = r3.segs?.[0]?.dep, arr = r3.segs?.[r3.segs.length - 1]?.arr;
+    if (!dep || !arr) return 0;
+    return Math.round((Date.parse(arr.slice(0, 10)) - Date.parse(dep.slice(0, 10))) / 864e5) || 0;
+  };
   function filterAndSort(results, filters, sort, cols) {
     const rows = results.filter((r3) => (!filters.cabin || r3.cabins?.[filters.cabin] != null) && (filters.stops == null || stopsOf(r3) <= filters.stops) && (filters.dow == null || (/* @__PURE__ */ new Date(r3.date + "T12:00:00")).getDay() === filters.dow));
     const val = (r3) => sort.key === "date" ? r3.date : sort.key === "dur" ? r3.duration ?? 9999 : cols.includes(sort.key) ? r3.miles?.[sort.key] ?? Infinity : 0;
@@ -4624,7 +4629,13 @@
               ] }, j3);
             }) }),
             /* @__PURE__ */ u3("td", { children: hhmm(r3.segs?.[0]?.dep) }),
-            /* @__PURE__ */ u3("td", { children: hhmm(r3.segs?.[r3.segs.length - 1]?.arr) }),
+            /* @__PURE__ */ u3("td", { children: [
+              hhmm(r3.segs?.[r3.segs.length - 1]?.arr),
+              arrDays(r3) !== 0 && /* @__PURE__ */ u3("sup", { style: { color: "#999" }, children: [
+                arrDays(r3) > 0 ? "+" : "",
+                arrDays(r3)
+              ] })
+            ] }),
             /* @__PURE__ */ u3("td", { style: { color: "#888" }, children: r3.duration ? `${Math.floor(r3.duration / 60)}h${String(r3.duration % 60).padStart(2, "0")}m` : "" })
           ] }),
           cols.map((c3) => /* @__PURE__ */ u3(CabinCell, { r: r3, c: c3 }, c3))
@@ -8081,7 +8092,7 @@
         const r3 = results[obIdx];
         const mi = +miles;
         if (r3.cabins[cabin] === null) {
-          r3.cabins[cabin] = 1;
+          r3.cabins[cabin] = true;
           r3.miles[cabin] = mi;
         } else if (mi < (r3.miles[cabin] ?? Infinity)) {
           r3.miles[cabin] = mi;
@@ -8115,7 +8126,8 @@
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(fields).toString()
     });
-    return res.ok ? res.text() : null;
+    if (!res.ok || /error/.test(new URL(res.url).pathname)) return null;
+    return res.text();
   }
   async function anaFetchResults(origin, destination, date, cabin) {
     const inputRes = await fetch(anaInputUrl(), { credentials: "include" });
@@ -8187,13 +8199,15 @@
     isSessionReady() {
       return !!anaCaptured.aswcid;
     },
+    expiredMessage: "\u26A0 ANA session expired \u2014 reload the award search page and try again",
     async onSearch({ origin, destination, date, cabinFilter }) {
       if (!anaCaptured.aswcid) return [];
       const cabins = cabinFilter.length ? cabinFilter : ["F", "J", "N", "Y"];
       const lists = [];
       for (const cabin of cabins) {
         const html = await anaEnqueue(() => anaFetchResults(origin, destination, date, cabin));
-        if (html) lists.push(anaParseResults(html, date, origin, destination));
+        if (!html) return "SESSION_EXPIRED";
+        lists.push(anaParseResults(html, date, origin, destination));
       }
       return anaMergeResults(lists);
     }

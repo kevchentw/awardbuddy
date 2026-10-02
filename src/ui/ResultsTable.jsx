@@ -6,6 +6,12 @@ const PAGE_SIZE = 50
 export const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const stopsOf = r => (r.segs?.length ?? 1) - 1
 const hhmm = iso => iso?.slice(11, 16) || ''
+// Calendar days between the first departure and the last arrival (local dates)
+const arrDays = r => {
+  const dep = r.segs?.[0]?.dep, arr = r.segs?.[r.segs.length - 1]?.arr
+  if (!dep || !arr) return 0
+  return Math.round((Date.parse(arr.slice(0, 10)) - Date.parse(dep.slice(0, 10))) / 864e5) || 0
+}
 
 function filterAndSort(results, filters, sort, cols) {
   const rows = results.filter(r =>
@@ -162,7 +168,7 @@ export function ResultsTable({ results }) {
                 })}
               </td>
               <td>{hhmm(r.segs?.[0]?.dep)}</td>
-              <td>{hhmm(r.segs?.[r.segs.length - 1]?.arr)}</td>
+              <td>{hhmm(r.segs?.[r.segs.length - 1]?.arr)}{arrDays(r) !== 0 && <sup style={{ color: '#999' }}>{arrDays(r) > 0 ? '+' : ''}{arrDays(r)}</sup>}</td>
               <td style={{ color: '#888' }}>{r.duration ? `${Math.floor(r.duration / 60)}h${String(r.duration % 60).padStart(2, '0')}m` : ''}</td></>}
               {cols.map(c => <CabinCell key={c} r={r} c={c} />)}
             </tr>

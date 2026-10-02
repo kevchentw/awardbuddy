@@ -882,9 +882,21 @@
       </div>
       <ul class="log" id="log">
         <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.9.1">1.9.1</a><small><time datetime="2026-10-02">Oct 2, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c191h">ANA search fixes <span class="latest">Latest</span></h3>
+            <ul data-i18n="c191u">
+              <li>ANA flights that land the next day are no longer dropped, so connections show every flight and the right destination.</li>
+              <li>Origin and destination show airport codes on the Japanese ANA site and on partner flights, instead of garbled text.</li>
+              <li>ANA search works when the page is on the round-trip tab, and searching without a cabin filter now checks every cabin.</li>
+              <li>An expired ANA session shows a warning instead of "no availability". Arrivals on a later day are marked +1.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="reveal">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.9.0">1.9.0</a><small><time datetime="2026-09-30">Sep 30, 2026</time></small></div>
           <div>
-            <h3 data-i18n="c190h">Delta SkyMiles award search <span class="latest">Latest</span></h3>
+            <h3 data-i18n="c190h">Delta SkyMiles award search</h3>
             <ul data-i18n="c190u">
               <li>New airline program: Delta SkyMiles on delta.com. No login needed.</li>
               <li>Delta's own flights and partners like Air France, KLM, Virgin Atlantic and Korean Air, with Delta One, Premium Select, First and Economy prices and seats left. Fares that mix cabins show each flight's cabin.</li>
@@ -1120,7 +1132,9 @@
     'c.kicker': '更新紀錄', 'c.h2': '最近更新了什麼',
     'c.sub': '每個版本都可以到 <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a> 下載。',
     'c.older': '看更早的版本', 'c.fewer': '收起更早的版本',
-    'c190h': '達美航空哩程票搜尋 <span class="latest">最新</span>',
+    'c191h': '全日空搜尋修正 <span class="latest">最新</span>',
+    'c191u': '<li>全日空隔日抵達的航班不會再被漏掉，轉機行程會列出每一段航班和正確的目的地。</li><li>日文版全日空網站和合作夥伴航班的出發地、目的地會顯示機場代碼，不再是亂碼。</li><li>頁面停在「往復」分頁時也能搜尋；沒選艙等時會查所有艙等。</li><li>全日空 session 過期時會顯示警告，不再顯示「沒有空位」。隔日抵達的時間會標上 +1。</li>',
+    'c190h': '達美航空哩程票搜尋',
     'c190u': '<li>新增航空計畫：達美航空 SkyMiles（delta.com），不用登入。</li><li>可以查達美自家航班，以及法航、荷航、維珍航空、大韓航空等合作夥伴，列出 Delta One、Premium Select、頭等艙和經濟艙的哩程與剩餘座位。混艙票會標出每個航段的艙等。</li><li>月曆模式會列出每個艙等每天的最低哩程，一次查五週。</li><li>月曆模式和飯店搜尋的月份選擇器，現在可以選到 14 個月後。</li>',
     'c183h': '國泰、日航、全日空多日期搜尋修正',
     'c183u': '<li>國泰航空一次查好幾個日期時，每個日期的航班都會查到，不會只剩一天。</li><li>日航和全日空同一個 session 一次只跑一個查詢，同時查的日期不會再互相蓋掉。</li>',
