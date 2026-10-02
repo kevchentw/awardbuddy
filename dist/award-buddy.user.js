@@ -7990,7 +7990,7 @@
   var anaCaptured = { aswcid: null, basePath: null };
   var anaSessionCallback = null;
   function anaTryCapture() {
-    if (location.hostname !== ANA_HOST) return false;
+    if (location.hostname !== ANA_HOST || !location.pathname.includes("/pages/award/")) return false;
     const m3 = location.pathname.match(/^\/(rei[^/]+)\//);
     const q2 = new URLSearchParams(location.search);
     const aswcid = q2.get("aswcid");
@@ -8281,7 +8281,9 @@
     cabins: ["F", "J", "N", "Y"],
     airports: COMMON_AIRPORTS,
     requiresSession: true,
-    loginUrl: `https://${ANA_HOST}${ANA_INPUT_PATH}?aswcid=1`,
+    // The entry ANA's own award calendar links to: the member login, then the award search page
+    // (opening the input page with ?aswcid=1 lands on the session error page)
+    loginUrl: `https://${ANA_HOST}${ANA_INPUT_PATH}?CONNECTION_KIND=JPN&LANG=en`,
     matches: [],
     matchHost: (h3) => h3.endsWith(".ana.co.jp"),
     onSessionReady(cb) {

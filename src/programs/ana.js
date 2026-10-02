@@ -16,8 +16,9 @@ const ANA_SERVICE_LEVEL_CABIN = { 200: 'F', 400: 'F', 600: 'J', 800: 'J', 950: '
 const anaCaptured = { aswcid: null, basePath: null }
 let anaSessionCallback = null
 
+// Only award pages count: the login and session-error pages also carry an aswcid (aswcid=1)
 function anaTryCapture() {
-  if (location.hostname !== ANA_HOST) return false
+  if (location.hostname !== ANA_HOST || !location.pathname.includes('/pages/award/')) return false
   const m = location.pathname.match(/^\/(rei[^/]+)\//)
   const q = new URLSearchParams(location.search)
   const aswcid = q.get('aswcid')
@@ -368,7 +369,9 @@ export const anaProgram = {
   cabins: ['F', 'J', 'N', 'Y'],
   airports: COMMON_AIRPORTS,
   requiresSession: true,
-  loginUrl: `https://${ANA_HOST}${ANA_INPUT_PATH}?aswcid=1`,
+  // The entry ANA's own award calendar links to: the member login, then the award search page
+  // (opening the input page with ?aswcid=1 lands on the session error page)
+  loginUrl: `https://${ANA_HOST}${ANA_INPUT_PATH}?CONNECTION_KIND=JPN&LANG=en`,
   matches: [],
   matchHost: h => h.endsWith('.ana.co.jp'),
 
