@@ -1,7 +1,7 @@
 // Run: npm test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { anaMergeResults, anaParseResults } from '../src/programs/ana.js'
+import { anaMergeResults, anaParseCalendar, anaParseResults } from '../src/programs/ana.js'
 
 // obList / segment map as the result page writes them (SEA-HND-FUK, overnight to HND)
 const page = (segs) => `var obList = new Array();
@@ -67,4 +67,16 @@ test('anaMergeResults folds the per-cabin searches into one row per itinerary', 
   assert.equal(rest.length, 0)
   assert.deepEqual(r.cabins, { F: null, J: null, N: true, Y: true })
   assert.deepEqual(r.miles, { Y: 50000, N: 72000 })
+})
+
+test('anaParseCalendar keeps the open days of one direction inside the range', () => {
+  const rows = [
+    ['Departure', 'Arrival', '2026/10/3', '2026/10/4', '2026/10/31', '2026/11/1', '2026/11/2'],
+    ['HND', 'LAX', 2, 1, 3, 0, 2],
+    ['LAX', 'HND', 1, 2, 1, 3, 1],
+  ]
+  assert.deepEqual(anaParseCalendar(rows, 'HND', 'LAX', '2026-10-01', '2026-10-31'), ['2026-10-03', '2026-10-31'])
+  assert.deepEqual(anaParseCalendar(rows, 'LAX', 'HND', '2026-10-04', '2026-11-30'), ['2026-10-04', '2026-11-01'])
+  assert.deepEqual(anaParseCalendar(rows, 'NRT', 'LAX', '2026-10-01', '2026-11-30'), [])
+  assert.deepEqual(anaParseCalendar(null, 'HND', 'LAX', '2026-10-01', '2026-11-30'), [])
 })

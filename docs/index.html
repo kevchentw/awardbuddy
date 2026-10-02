@@ -612,7 +612,7 @@
 <main id="top">
   <div class="hero-bg">
     <div class="wrap hero">
-      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> Delta SkyMiles award search in <span id="cur-ver">v1.9.0</span> <span class="arrow">→</span></a>
+      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> ANA award calendar in <span id="cur-ver">v1.10.0</span> <span class="arrow">→</span></a>
       <h1 data-i18n="hero.h1">Search award space across <span class="grad">every date at once.</span></h1>
       <p class="lede" data-i18n="hero.lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
       <div class="cta">
@@ -827,7 +827,7 @@
             <tr><td class="name"><img class="plogo" src="logos/as.png" alt=""><strong data-i18n="n.AS">Alaska Airlines</strong><small>Atmos Rewards · alaskaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.alaskaair.com/" data-i18n="p.go">Start search →</a></td></tr>
             <tr><td class="name"><img class="plogo" src="logos/aa.png" alt=""><strong data-i18n="n.AA">American Airlines</strong><small>AAdvantage · aa.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-page" data-i18n="p.runone">Run one search</span><span class="hint" data-i18n="h.aa">Run an award search on the page, then Get session</span></td><td class="go"><a href="https://www.aa.com/" data-i18n="p.go">Start search →</a></td></tr>
             <tr><td class="name"><img class="plogo" src="logos/ac.png" alt=""><strong data-i18n="n.AC">Air Canada</strong><small>Aeroplan · aircanada.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page" data-i18n="p.opensearch">Open search page</span></td><td class="go"><a href="https://www.aircanada.com/aeroplan/redeem/availability/outbound" data-i18n="p.go">Start search →</a></td></tr>
-            <tr><td class="name"><img class="plogo" src="logos/nh.png" alt=""><strong data-i18n="n.NH">ANA</strong><small>ANA Mileage Club · ana.co.jp</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span><span class="hint" data-i18n="h.nh">Then open the award booking page</span></td><td class="go"><a href="https://aswbe-i.ana.co.jp/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml?aswcid=1" data-i18n="p.go">Start search →</a></td></tr>
+            <tr><td class="name"><img class="plogo" src="logos/nh.png" alt=""><strong data-i18n="n.NH">ANA</strong><small>ANA Mileage Club · ana.co.jp</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span><small data-i18n="p.anaonly">Nonstop ANA flights to/from Japan</small></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span><span class="hint" data-i18n="h.nh">Then open the award booking page</span></td><td class="go"><a href="https://aswbe-i.ana.co.jp/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml?aswcid=1" data-i18n="p.go">Start search →</a></td></tr>
             <tr><td class="name"><img class="plogo" src="logos/cx.png" alt=""><strong data-i18n="n.CX">Cathay Pacific</strong><small>Asia Miles · cathaypacific.com</small></td><td class="cal"><span class="no" aria-label="No">—</span></td><td class="sess"><span class="need need-page" data-i18n="p.openbooking">Open booking page</span></td><td class="go"><a href="https://www.cathaypacific.com/cx/en_HK/book-a-trip/redeem-flights/redeem-flight-awards.html" data-i18n="p.go">Start search →</a></td></tr>
             <tr><td class="name"><img class="plogo" src="logos/dl.png" alt=""><strong data-i18n="n.DL">Delta Air Lines</strong><small>SkyMiles · delta.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-none" data-i18n="p.nologin">No login</span></td><td class="go"><a href="https://www.delta.com/flightsearch/book-a-flight" data-i18n="p.go">Start search →</a></td></tr>
             <tr><td class="name"><img class="plogo" src="logos/br.png" alt=""><strong data-i18n="n.BR">EVA Air</strong><small>Infinity MileageLands · evaair.com</small></td><td class="cal"><span class="yes" aria-label="Yes">✓</span></td><td class="sess"><span class="need need-login" data-i18n="p.login">Log in</span><span class="hint" data-i18n="h.br">Then run one search by hand</span></td><td class="go"><a href="https://booking.evaair.com/flyeva/eva/b2c/plan-your-journey/award-upgrade-availability/login.aspx?lang=en-us" data-i18n="p.go">Start search →</a></td></tr>
@@ -882,9 +882,20 @@
       </div>
       <ul class="log" id="log">
         <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.10.0">1.10.0</a><small><time datetime="2026-10-02">Oct 2, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c1100h">ANA calendar mode <span class="latest">Latest</span></h3>
+            <ul data-i18n="c1100u">
+              <li>Calendar mode for ANA, from ANA's public award calendar: open days per cabin for whole months, about 6 months ahead. No login needed, so it also works on ANA's award calendar page.</li>
+              <li>It covers only nonstop ANA-operated flights to and from Japan, and shows open seats without mileage. Use Search mode for other routes.</li>
+              <li>A Member status menu (General member by default) shows the calendar for Bronze, Platinum, Diamond or Super Flyers members, who see more seats. Only members with that status can book them.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="reveal">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.9.1">1.9.1</a><small><time datetime="2026-10-02">Oct 2, 2026</time></small></div>
           <div>
-            <h3 data-i18n="c191h">ANA search fixes <span class="latest">Latest</span></h3>
+            <h3 data-i18n="c191h">ANA search fixes</h3>
             <ul data-i18n="c191u">
               <li>ANA flights that land the next day are no longer dropped, so connections show every flight and the right destination.</li>
               <li>Origin and destination show airport codes on the Japanese ANA site and on partner flights, instead of garbled text.</li>
@@ -1054,7 +1065,7 @@
   const ZH = {
     'nav.features': '功能', 'nav.programs': '支援計畫', 'nav.changelog': '更新紀錄', 'nav.install': '安裝',
 
-    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.9.0</span> 支援達美航空哩程票搜尋 <span class="arrow">→</span>',
+    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.10.0</span> 全日空哩程票月曆模式 <span class="arrow">→</span>',
     'hero.h1': '哩程票、點數房<br><span class="grad">所有日期</span>一次查完',
     'hero.lede': 'Award Buddy 會在航空公司和飯店官網上多加一個搜尋面板。選好航線或飯店、設定日期區間，它就會直接在官網上幫你把每種組合都查一遍，最後整理成一張可以排序的表格和月曆。',
     'hero.install': '安裝 Award Buddy', 'hero.see': '看看支援哪些計畫',
@@ -1109,7 +1120,7 @@
     'lg.login': '<span class="need need-login">登入</span>要先登入會員',
     'th.prog': '計畫', 'th.cal': '月曆', 'th.before': '查詢前準備',
     'p.go': '開始搜尋 →', 'p.nologin': '免登入', 'p.runone': '先查一次', 'p.opensearch': '開啟搜尋頁',
-    'p.openbooking': '開啟訂位頁', 'p.login': '登入', 'p.jalonly': '限日航自家航班', 'p.withchoice': '用 Choice 點數',
+    'p.openbooking': '開啟訂位頁', 'p.login': '登入', 'p.jalonly': '限日航自家航班', 'p.anaonly': '限全日空往返日本直飛', 'p.withchoice': '用 Choice 點數',
     'h.aa': '先在頁面上手動查一次哩程票，再按 Get session', 'h.nh': '登入後打開哩程兌換訂位頁', 'h.br': '登入後先手動查一次',
     'p.hotelnote': '飯店搜尋涵蓋用點數兌換的標準點數房。可以用飯店名稱、城市或機場加入飯店，直接從目前頁面挑，或輸入飯店代碼（例如 IHG <code>TPEKM</code>、Hyatt <code>TYOPH</code>）。之後會再支援更多飯店集團。',
     'n.AS': '阿拉斯加航空', 'n.AA': '美國航空', 'n.AC': '加拿大航空', 'n.NH': '全日空', 'n.CX': '國泰航空',
@@ -1132,7 +1143,9 @@
     'c.kicker': '更新紀錄', 'c.h2': '最近更新了什麼',
     'c.sub': '每個版本都可以到 <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a> 下載。',
     'c.older': '看更早的版本', 'c.fewer': '收起更早的版本',
-    'c191h': '全日空搜尋修正 <span class="latest">最新</span>',
+    'c1100h': '全日空月曆模式 <span class="latest">最新</span>',
+    'c1100u': '<li>全日空新增月曆模式，資料來自全日空公開的哩程票月曆：一次查整個月每個艙等哪幾天有位，約可查 6 個月內。不用登入，在全日空的哩程票月曆頁上也能用。</li><li>只涵蓋往返日本、全日空自營的直飛航班，只標出有位的日期，沒有哩程數。其他航線請用搜尋模式。</li><li>新增「Member status」選單（預設一般會員），可以看銅卡、白金卡、鑽石卡或 SFC 會員的月曆，這些等級看得到更多位子，但只有具備該等級的會員才訂得到。</li>',
+    'c191h': '全日空搜尋修正',
     'c191u': '<li>全日空隔日抵達的航班不會再被漏掉，轉機行程會列出每一段航班和正確的目的地。</li><li>日文版全日空網站和合作夥伴航班的出發地、目的地會顯示機場代碼，不再是亂碼。</li><li>頁面停在「往復」分頁時也能搜尋；沒選艙等時會查所有艙等。</li><li>全日空 session 過期時會顯示警告，不再顯示「沒有空位」。隔日抵達的時間會標上 +1。</li>',
     'c190h': '達美航空哩程票搜尋',
     'c190u': '<li>新增航空計畫：達美航空 SkyMiles（delta.com），不用登入。</li><li>可以查達美自家航班，以及法航、荷航、維珍航空、大韓航空等合作夥伴，列出 Delta One、Premium Select、頭等艙和經濟艙的哩程與剩餘座位。混艙票會標出每個航段的艙等。</li><li>月曆模式會列出每個艙等每天的最低哩程，一次查五週。</li><li>月曆模式和飯店搜尋的月份選擇器，現在可以選到 14 個月後。</li>',

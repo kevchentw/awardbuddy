@@ -69,13 +69,19 @@ function formFromRecent(program, form, q) {
   }
 }
 
+// Calendar-mode dropdowns (type 'select', one value each), passed to onCalendarSearch as { key: value }
+const calOptionFields = program => program.calendarOptions ?? []
+const calOptionValue = (fd, form) => fd.choices.some(c => c.value === form.options[fd.key]) ? form.options[fd.key] : fd.default
+const calOptionValues = (program, form) => Object.fromEntries(calOptionFields(program).map(fd => [fd.key, calOptionValue(fd, form)]))
+
 function summary(program, form, calMode) {
   const route = `${codes(form.origins).join(', ') || '?'} → ${codes(form.dests).join(', ') || '?'}`
   const when = calMode ? `${form.fromMonth} – ${form.toMonth}` : form.start ? `${form.start} – ${form.end || form.start}` : '?'
   const cabins = form.cabins.length ? form.cabins.map(c => CABIN_LABELS[c]).join('/') : 'Any cabin'
   const carrier = program.carriers?.find(c => c.code === form.carrier)?.name
   const opts = optionFields(program, form).map(fd => `${fd.label} ${[optionRaw(fd, form)].flat().join(', ') || '?'}`)
-  return [route, when, cabins, carrier, ...opts].filter(Boolean).join(' · ')
+  const calOpts = calMode ? calOptionFields(program).map(fd => fd.choices.find(c => c.value === calOptionValue(fd, form))?.label) : []
+  return [route, when, cabins, carrier, ...opts, ...calOpts].filter(Boolean).join(' · ')
 }
 
 function requestHint(program, form, calMode) {
@@ -172,7 +178,7 @@ function FlightSearch({ program, session }) {
         for (const d of dests) {
           if (ctl.stop) break
           route = `${o}→${d}`
-          const result = await program.onCalendarSearch(o, d, cabinFilter, fromMonth, toMonth, onProgress)
+          const result = await program.onCalendarSearch(o, d, cabinFilter, fromMonth, toMonth, onProgress, calOptionValues(program, f))
           if (result === 'SESSION_EXPIRED') {
             setStatus(program.expiredMessage ?? '⚠ Session expired — navigate to the award booking page to refresh')
             run.end(); return
@@ -282,16 +288,30 @@ function FlightSearch({ program, session }) {
         </div>
       )}
       {hasCalendar && !calMode && program.searchTip && <div class="ab-tip">💡 {program.searchTip}</div>}
+      {hasCalendar && calMode && program.calendarTip && <div class="ab-tip">💡 {program.calendarTip}</div>}
       <div class="ab-row">
         {airportField('origins', 'Origins', 'e.g. TPE, TSA')}
         {airportField('dests', 'Destinations', 'e.g. NRT, HND')}
       </div>
-      {calMode ? (
+      {calMode ? (<>
         <div class="ab-row">
           <div class="ab-field"><label>Months (click start, then end)</label>
             <MonthRangePicker from={form.fromMonth} to={form.toMonth} onChange={(fromMonth, toMonth) => set({ fromMonth, toMonth })} /></div>
         </div>
-      ) : (
+        {calOptionFields(program).length > 0 && (
+          <div class="ab-row">
+            {calOptionFields(program).map(fd => (
+              <div class="ab-field" key={fd.key}>
+                <label>{fd.label}</label>
+                <select value={calOptionValue(fd, form)} onChange={e => set({ options: { ...form.options, [fd.key]: e.currentTarget.value } })}>
+                  {fd.choices.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                {fd.hint && <div style={{ fontSize: 11, color: '#888', marginTop: 3 }}>{fd.hint}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </>) : (
         <div class="ab-row">
           <div class="ab-field">
             <label>Dates</label>
@@ -312,7 +332,7 @@ function FlightSearch({ program, session }) {
       </div>
       <div style={{ fontSize: 11, color: '#888', marginBottom: 6, minHeight: 14 }}>{requestHint(program, form, calMode)}</div>
       </>}
-      <SearchControls run={run} session={session} onSearch={search} />
+      <SearchControls run={run} session={calMode && program.calendarRequiresSession === false ? { ...session, ready: true } : session} onSearch={search} />
       <div>
         {cal && <CalendarView calData={cal.data} fromMonth={cal.fromMonth} toMonth={cal.toMonth} />}
         <ResultsTable results={cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results} />

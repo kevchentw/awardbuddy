@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Award Buddy
 // @namespace    https://github.com/kevchentw/awardbuddy
-// @version      1.9.1
+// @version      1.10.0
 // @description  Award flight and hotel search across many dates at once — Alaska Airlines, LifeMiles, Cathay Pacific, EVA Air, Flying Blue, Starlux Airlines, Japan Airlines, ANA, Air Canada, American Airlines, Delta, IHG, Marriott, Hilton, Hyatt, Choice & I Prefer hotels
 // @homepageURL  https://github.com/kevchentw/awardbuddy
 // @supportURL   https://github.com/kevchentw/awardbuddy/issues
@@ -5399,13 +5399,17 @@
       cabins: Array.isArray(q2.cabins) ? q2.cabins.filter((c3) => program2.cabins.includes(c3)) : []
     };
   }
+  var calOptionFields = (program2) => program2.calendarOptions ?? [];
+  var calOptionValue = (fd, form) => fd.choices.some((c3) => c3.value === form.options[fd.key]) ? form.options[fd.key] : fd.default;
+  var calOptionValues = (program2, form) => Object.fromEntries(calOptionFields(program2).map((fd) => [fd.key, calOptionValue(fd, form)]));
   function summary(program2, form, calMode) {
     const route = `${codes(form.origins).join(", ") || "?"} \u2192 ${codes(form.dests).join(", ") || "?"}`;
     const when = calMode ? `${form.fromMonth} \u2013 ${form.toMonth}` : form.start ? `${form.start} \u2013 ${form.end || form.start}` : "?";
     const cabins = form.cabins.length ? form.cabins.map((c3) => CABIN_LABELS[c3]).join("/") : "Any cabin";
     const carrier = program2.carriers?.find((c3) => c3.code === form.carrier)?.name;
     const opts = optionFields(program2, form).map((fd) => `${fd.label} ${[optionRaw(fd, form)].flat().join(", ") || "?"}`);
-    return [route, when, cabins, carrier, ...opts].filter(Boolean).join(" \xB7 ");
+    const calOpts = calMode ? calOptionFields(program2).map((fd) => fd.choices.find((c3) => c3.value === calOptionValue(fd, form))?.label) : [];
+    return [route, when, cabins, carrier, ...opts, ...calOpts].filter(Boolean).join(" \xB7 ");
   }
   function requestHint(program2, form, calMode) {
     const routes = codes(form.origins).length * codes(form.dests).length;
@@ -5504,7 +5508,7 @@
           for (const d3 of dests) {
             if (ctl.stop) break;
             route = `${o3}\u2192${d3}`;
-            const result = await program2.onCalendarSearch(o3, d3, cabinFilter, fromMonth, toMonth, onProgress);
+            const result = await program2.onCalendarSearch(o3, d3, cabinFilter, fromMonth, toMonth, onProgress, calOptionValues(program2, f4));
             if (result === "SESSION_EXPIRED") {
               setStatus(program2.expiredMessage ?? "\u26A0 Session expired \u2014 navigate to the award booking page to refresh");
               run.end();
@@ -5607,14 +5611,25 @@
           "\u{1F4A1} ",
           program2.searchTip
         ] }),
+        hasCalendar && calMode && program2.calendarTip && /* @__PURE__ */ u3("div", { class: "ab-tip", children: [
+          "\u{1F4A1} ",
+          program2.calendarTip
+        ] }),
         /* @__PURE__ */ u3("div", { class: "ab-row", children: [
           airportField("origins", "Origins", "e.g. TPE, TSA"),
           airportField("dests", "Destinations", "e.g. NRT, HND")
         ] }),
-        calMode ? /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-          /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
-          /* @__PURE__ */ u3(MonthRangePicker, { from: form.fromMonth, to: form.toMonth, onChange: (fromMonth, toMonth) => set({ fromMonth, toMonth }) })
-        ] }) }) : /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+        calMode ? /* @__PURE__ */ u3(S, { children: [
+          /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+            /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
+            /* @__PURE__ */ u3(MonthRangePicker, { from: form.fromMonth, to: form.toMonth, onChange: (fromMonth, toMonth) => set({ fromMonth, toMonth }) })
+          ] }) }),
+          calOptionFields(program2).length > 0 && /* @__PURE__ */ u3("div", { class: "ab-row", children: calOptionFields(program2).map((fd) => /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+            /* @__PURE__ */ u3("label", { children: fd.label }),
+            /* @__PURE__ */ u3("select", { value: calOptionValue(fd, form), onChange: (e3) => set({ options: { ...form.options, [fd.key]: e3.currentTarget.value } }), children: fd.choices.map((c3) => /* @__PURE__ */ u3("option", { value: c3.value, children: c3.label }, c3.value)) }),
+            fd.hint && /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#888", marginTop: 3 }, children: fd.hint })
+          ] }, fd.key)) })
+        ] }) : /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
           /* @__PURE__ */ u3("label", { children: "Dates" }),
           /* @__PURE__ */ u3(DateRangePicker, { start: form.start, end: form.end, onChange: (start, end) => set({ start, end }) })
         ] }) }),
@@ -5633,7 +5648,7 @@
         ] }),
         /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#888", marginBottom: 6, minHeight: 14 }, children: requestHint(program2, form, calMode) })
       ] }),
-      /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
+      /* @__PURE__ */ u3(SearchControls, { run, session: calMode && program2.calendarRequiresSession === false ? { ...session, ready: true } : session, onSearch: search }),
       /* @__PURE__ */ u3("div", { children: [
         cal && /* @__PURE__ */ u3(CalendarView, { calData: cal.data, fromMonth: cal.fromMonth, toMonth: cal.toMonth }),
         /* @__PURE__ */ u3(ResultsTable, { results: cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results }),
@@ -7983,6 +7998,7 @@
     const changed = anaCaptured.aswcid !== aswcid || anaCaptured.basePath !== (m3?.[1] ?? null);
     anaCaptured.aswcid = aswcid;
     anaCaptured.basePath = m3?.[1] ?? null;
+    if (changed) anaInput = null;
     if (changed && anaSessionCallback) anaSessionCallback();
     return true;
   }
@@ -8129,21 +8145,21 @@
     if (!res.ok || /error/.test(new URL(res.url).pathname)) return null;
     return res.text();
   }
-  async function anaFetchResults(origin, destination, date, cabin) {
+  async function anaOneWayInput() {
     const inputRes = await fetch(anaInputUrl(), { credentials: "include" });
     if (!inputRes.ok) return null;
-    let parsed = anaParseInputPage(await inputRes.text());
-    if (!parsed) return null;
-    if (!parsed.oneWay && parsed.oneWayLink) {
-      const switched = await anaPost(parsed.action, {
-        ...ANA_ONE_WAY_FIELDS,
-        [parsed.oneWayLink]: parsed.oneWayLink,
-        "javax.faces.ViewState": parsed.viewState
-      });
-      parsed = switched && anaParseInputPage(switched);
-      if (!parsed) return null;
-    }
-    return anaPost(parsed.action, {
+    const parsed = anaParseInputPage(await inputRes.text());
+    if (!parsed || parsed.oneWay || !parsed.oneWayLink) return parsed;
+    const switched = await anaPost(parsed.action, {
+      ...ANA_ONE_WAY_FIELDS,
+      [parsed.oneWayLink]: parsed.oneWayLink,
+      "javax.faces.ViewState": parsed.viewState
+    });
+    return switched ? anaParseInputPage(switched) : null;
+  }
+  var anaInput = null;
+  async function anaFetchResults(origin, destination, date, cabin) {
+    const search = (input) => anaPost(input.action, {
       ...ANA_ONE_WAY_FIELDS,
       "departureAirportCode:field": origin,
       "departureAirportCode:field_pctext": origin,
@@ -8157,9 +8173,18 @@
       "child:count": "0",
       "hiddenDomesticChildAge": "false",
       "infant:count": "0",
-      [parsed.searchBtn]: "Search",
-      "javax.faces.ViewState": parsed.viewState
+      [input.searchBtn]: "Search",
+      "javax.faces.ViewState": input.viewState
     });
+    const reused = !!anaInput;
+    anaInput ?? (anaInput = await anaOneWayInput());
+    let html = anaInput && await search(anaInput);
+    if (!html && reused) {
+      anaInput = await anaOneWayInput();
+      html = anaInput && await search(anaInput);
+    }
+    if (!html) anaInput = null;
+    return html;
   }
   function anaMergeResults(lists) {
     const byFlights = /* @__PURE__ */ new Map();
@@ -8178,6 +8203,76 @@
       }
     }
     return [...byFlights.values()];
+  }
+  var ANA_CAL_URL = "https://cam.ana.co.jp/amctop/";
+  var ANA_CAL_CLASS = { Y: "X", N: "R", J: "I", F: "O" };
+  var ANA_CAL_STATUSES = [
+    { value: "N", label: "General member" },
+    { value: "B", label: "Bronze" },
+    { value: "P", label: "Platinum" },
+    { value: "D", label: "Diamond" },
+    { value: "S", label: "Super Flyers (SFC)" }
+  ];
+  var ANA_CAL_ZONES = ["Z2", "Z3", "Z4", "Z5", "Z6", "Z7", "ZA"];
+  var ANA_CAL_TTL_MS = 10 * 60 * 1e3;
+  var ANA_CAL_TIMEOUT_MS = 1e4;
+  var anaCalRouteKey = (rows) => rows.slice(1).map((r3) => `${r3[0]}\u2192${r3[1]}`);
+  function anaParseCalendar(rows, origin, destination, start, end) {
+    if (!Array.isArray(rows) || !Array.isArray(rows[0])) return [];
+    const row = rows.slice(1).find((r3) => r3[0] === origin && r3[1] === destination);
+    if (!row) return [];
+    const dates = [];
+    for (let i3 = 2; i3 < rows[0].length; i3++) {
+      const m3 = String(rows[0][i3]).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      if (!m3 || !(+row[i3] >= 2)) continue;
+      const date = `${m3[1]}-${m3[2].padStart(2, "0")}-${m3[3].padStart(2, "0")}`;
+      if (date >= start && date <= end) dates.push(date);
+    }
+    return dates;
+  }
+  var anaCalQueue = Promise.resolve();
+  function anaCalLoad(file) {
+    const run = anaCalQueue.then(() => new Promise((resolve) => {
+      const prev = window.cal;
+      const script = document.createElement("script");
+      let rows = null;
+      const done = () => {
+        clearTimeout(timer);
+        script.remove();
+        window.cal = prev;
+        resolve(rows);
+      };
+      const timer = setTimeout(done, ANA_CAL_TIMEOUT_MS);
+      window.cal = (data) => {
+        rows = data;
+      };
+      script.onload = script.onerror = done;
+      script.src = `${ANA_CAL_URL}${file}?_=${Date.now()}`;
+      document.head.appendChild(script);
+    }));
+    anaCalQueue = run;
+    return run;
+  }
+  var anaCalFiles = /* @__PURE__ */ new Map();
+  var anaCalZoneOf = {};
+  function anaCalRows(cls, zone, status = "N") {
+    const key = `${cls}_${zone}_${status}`;
+    const hit = anaCalFiles.get(key);
+    if (hit && Date.now() - hit.at < ANA_CAL_TTL_MS) return hit.rows;
+    const rows = anaCalLoad(`CAL_${key}.js`).then((data) => {
+      if (Array.isArray(data)) for (const route of anaCalRouteKey(data)) anaCalZoneOf[route] = zone;
+      return data;
+    });
+    anaCalFiles.set(key, { at: Date.now(), rows });
+    return rows;
+  }
+  async function anaCalRouteRows(cls, origin, destination, status) {
+    const route = `${origin}\u2192${destination}`;
+    for (const zone of ANA_CAL_ZONES) {
+      if (anaCalZoneOf[route]) break;
+      await anaCalRows("X", zone);
+    }
+    return anaCalZoneOf[route] ? anaCalRows(cls, anaCalZoneOf[route], status) : null;
   }
   var anaProgram = {
     id: "ana",
@@ -8210,6 +8305,39 @@
         lists.push(anaParseResults(html, date, origin, destination));
       }
       return anaMergeResults(lists);
+    },
+    calendarRequiresSession: false,
+    calendarTip: "Calendar mode covers only nonstop ANA-operated flights to/from Japan (no partners or connections), about 6 months ahead. It shows days with open seats, without mileage. Use Search mode for other routes.",
+    calendarOptions: [{
+      key: "status",
+      label: "Member status",
+      type: "select",
+      default: "N",
+      choices: ANA_CAL_STATUSES,
+      hint: "Elite tiers see more seats, but only members with that status can book them"
+    }],
+    calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
+      return cabinFilter?.length || 4;
+    },
+    async onCalendarSearch(origin, destination, cabinFilter, fromMonth, toMonth, onProgress, options = {}) {
+      const status = ANA_CAL_STATUSES.some((s3) => s3.value === options.status) ? options.status : "N";
+      const spans = monthSpans(fromMonth, toMonth);
+      if (!spans.length) return {};
+      const start = spans[0].start, end = spans.at(-1).end;
+      const cabins = cabinFilter.length ? cabinFilter : ["F", "J", "N", "Y"];
+      const byDate = {};
+      let done = 0;
+      for (const cabin of cabins) {
+        onProgress?.(null, { done, total: cabins.length, label: `Searching ${cabin}` });
+        const rows = await anaCalRouteRows(ANA_CAL_CLASS[cabin], origin, destination, status);
+        const partial = {};
+        for (const date of anaParseCalendar(rows, origin, destination, start, end)) {
+          partial[date] = { [cabin]: 0 };
+          byDate[date] = { ...byDate[date], [cabin]: 0 };
+        }
+        onProgress?.(Object.keys(partial).length ? partial : null, { done: ++done, total: cabins.length });
+      }
+      return byDate;
     }
   };
 

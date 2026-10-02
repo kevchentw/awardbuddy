@@ -1,8 +1,9 @@
 import { COMMON_AIRPORTS } from '../common/constants.js'
+import { monthSpans } from '../common/search.js'
 
 // ANA (All Nippon Airways) – award availability via session-based ANA booking engine
 // Session: browser cookies on aswbe-i.ana.co.jp; aswcid captured from URL
-// Per-day search only; parses addRecommendation() and obList data from result HTML
+// Search: one day per request; parses addRecommendation() and obList data from result HTML
 
 const ANA_HOST = 'aswbe-i.ana.co.jp'
 const ANA_INPUT_PATH = '/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml'
@@ -24,6 +25,7 @@ function anaTryCapture() {
   const changed = anaCaptured.aswcid !== aswcid || anaCaptured.basePath !== (m?.[1] ?? null)
   anaCaptured.aswcid = aswcid
   anaCaptured.basePath = m?.[1] ?? null
+  if (changed) anaInput = null
   if (changed && anaSessionCallback) anaSessionCallback()
   return true
 }
@@ -204,27 +206,30 @@ async function anaPost(action, fields) {
   return res.text()
 }
 
+// → the parsed input page on the one-way tab, or null when the session is unusable
+async function anaOneWayInput() {
+  const inputRes = await fetch(anaInputUrl(), { credentials: 'include' })
+  if (!inputRes.ok) return null
+  const parsed = anaParseInputPage(await inputRes.text())
+  // A one-way search posted while the session sits on the round-trip tab (the default) lands on
+  // browser_back_error; submit the one-way tab link first, it answers with a fresh input page
+  if (!parsed || parsed.oneWay || !parsed.oneWayLink) return parsed
+  const switched = await anaPost(parsed.action, {
+    ...ANA_ONE_WAY_FIELDS,
+    [parsed.oneWayLink]: parsed.oneWayLink,
+    'javax.faces.ViewState': parsed.viewState,
+  })
+  return switched ? anaParseInputPage(switched) : null
+}
+
+// The input page's ViewState keeps working for later searches (other cabins and dates), so it is
+// fetched once and reused until a search is rejected
+let anaInput = null
+
 // → results HTML for one cabin (the result page only lists the requested class), or null when the
 // session is unusable
 async function anaFetchResults(origin, destination, date, cabin) {
-  const inputRes = await fetch(anaInputUrl(), { credentials: 'include' })
-  if (!inputRes.ok) return null
-  let parsed = anaParseInputPage(await inputRes.text())
-  if (!parsed) return null
-
-  // A one-way search posted while the session sits on the round-trip tab (the default) lands on
-  // browser_back_error; submit the one-way tab link first, it answers with a fresh input page
-  if (!parsed.oneWay && parsed.oneWayLink) {
-    const switched = await anaPost(parsed.action, {
-      ...ANA_ONE_WAY_FIELDS,
-      [parsed.oneWayLink]: parsed.oneWayLink,
-      'javax.faces.ViewState': parsed.viewState,
-    })
-    parsed = switched && anaParseInputPage(switched)
-    if (!parsed) return null
-  }
-
-  return anaPost(parsed.action, {
+  const search = input => anaPost(input.action, {
     ...ANA_ONE_WAY_FIELDS,
     'departureAirportCode:field': origin,
     'departureAirportCode:field_pctext': origin,
@@ -238,9 +243,19 @@ async function anaFetchResults(origin, destination, date, cabin) {
     'child:count': '0',
     'hiddenDomesticChildAge': 'false',
     'infant:count': '0',
-    [parsed.searchBtn]: 'Search',
-    'javax.faces.ViewState': parsed.viewState,
+    [input.searchBtn]: 'Search',
+    'javax.faces.ViewState': input.viewState,
   })
+
+  const reused = !!anaInput
+  anaInput ??= await anaOneWayInput()
+  let html = anaInput && await search(anaInput)
+  if (!html && reused) {
+    anaInput = await anaOneWayInput()
+    html = anaInput && await search(anaInput)
+  }
+  if (!html) anaInput = null
+  return html
 }
 
 // Per-cabin result lists → one row per itinerary
@@ -258,6 +273,92 @@ export function anaMergeResults(lists) {
     }
   }
   return [...byFlights.values()]
+}
+
+// Calendar: the public award calendar (cam.ana.co.jp/psz/tokutencal) reads one static JSONP file per
+// class and zone, CAL_<class>_<zone>_<status>.js, no session needed:
+//   cal([["Departure","Arrival","2026/10/3",…], ["NRT","LAX",1,1,2,…], ["LAX","NRT",…], …])
+// A row per direction of each nonstop ANA route to/from Japan, a state per day for about 6 months:
+// 3 wide open, 2 open, 1 tight / waitlisted, 0 unavailable. No mileage. The status is the member's
+// tier: elite tiers are shown more seats, which only that tier can book (the files themselves are
+// public). The files send no CORS header, so they load as a script with the fixed callback cal().
+// A class a zone doesn't offer is a 404 or a file left over from years ago.
+const ANA_CAL_URL = 'https://cam.ana.co.jp/amctop/'
+const ANA_CAL_CLASS = { Y: 'X', N: 'R', J: 'I', F: 'O' }
+const ANA_CAL_STATUSES = [
+  { value: 'N', label: 'General member' },
+  { value: 'B', label: 'Bronze' },
+  { value: 'P', label: 'Platinum' },
+  { value: 'D', label: 'Diamond' },
+  { value: 'S', label: 'Super Flyers (SFC)' },
+]
+const ANA_CAL_ZONES = ['Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'ZA']
+const ANA_CAL_TTL_MS = 10 * 60 * 1000
+const ANA_CAL_TIMEOUT_MS = 10000
+
+const anaCalRouteKey = rows => rows.slice(1).map(r => `${r[0]}→${r[1]}`)
+
+// File rows → dates in [start, end] with open seats on the route
+export function anaParseCalendar(rows, origin, destination, start, end) {
+  if (!Array.isArray(rows) || !Array.isArray(rows[0])) return []
+  const row = rows.slice(1).find(r => r[0] === origin && r[1] === destination)
+  if (!row) return []
+  const dates = []
+  for (let i = 2; i < rows[0].length; i++) {
+    const m = String(rows[0][i]).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+    if (!m || !(+row[i] >= 2)) continue
+    const date = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+    if (date >= start && date <= end) dates.push(date)
+  }
+  return dates
+}
+
+// One script at a time: every file calls the same global cal()
+let anaCalQueue = Promise.resolve()
+function anaCalLoad(file) {
+  const run = anaCalQueue.then(() => new Promise(resolve => {
+    const prev = window.cal
+    const script = document.createElement('script')
+    let rows = null
+    const done = () => {
+      clearTimeout(timer)
+      script.remove()
+      window.cal = prev
+      resolve(rows)
+    }
+    const timer = setTimeout(done, ANA_CAL_TIMEOUT_MS)
+    window.cal = data => { rows = data }
+    script.onload = script.onerror = done
+    script.src = `${ANA_CAL_URL}${file}?_=${Date.now()}`
+    document.head.appendChild(script)
+  }))
+  anaCalQueue = run
+  return run
+}
+
+const anaCalFiles = new Map()  // "X_Z6_N" → { at, rows: Promise }
+const anaCalZoneOf = {}        // "HND→LAX" → zone, learned from the files
+function anaCalRows(cls, zone, status = 'N') {
+  const key = `${cls}_${zone}_${status}`
+  const hit = anaCalFiles.get(key)
+  if (hit && Date.now() - hit.at < ANA_CAL_TTL_MS) return hit.rows
+  const rows = anaCalLoad(`CAL_${key}.js`).then(data => {
+    if (Array.isArray(data)) for (const route of anaCalRouteKey(data)) anaCalZoneOf[route] = zone
+    return data
+  })
+  anaCalFiles.set(key, { at: Date.now(), rows })
+  return rows
+}
+
+// The route's zone isn't known until a file listing it has loaded: look through the economy files,
+// which every zone has and which list every route
+async function anaCalRouteRows(cls, origin, destination, status) {
+  const route = `${origin}→${destination}`
+  for (const zone of ANA_CAL_ZONES) {
+    if (anaCalZoneOf[route]) break
+    await anaCalRows('X', zone)
+  }
+  return anaCalZoneOf[route] ? anaCalRows(cls, anaCalZoneOf[route], status) : null
 }
 
 export const anaProgram = {
@@ -290,5 +391,37 @@ export const anaProgram = {
       lists.push(anaParseResults(html, date, origin, destination))
     }
     return anaMergeResults(lists)
+  },
+
+  calendarRequiresSession: false,
+  calendarTip: 'Calendar mode covers only nonstop ANA-operated flights to/from Japan (no partners or connections), about 6 months ahead. It shows days with open seats, without mileage. Use Search mode for other routes.',
+  calendarOptions: [{
+    key: 'status', label: 'Member status', type: 'select', default: 'N', choices: ANA_CAL_STATUSES,
+    hint: 'Elite tiers see more seats, but only members with that status can book them',
+  }],
+
+  calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
+    return cabinFilter?.length || 4
+  },
+
+  async onCalendarSearch(origin, destination, cabinFilter, fromMonth, toMonth, onProgress, options = {}) {
+    const status = ANA_CAL_STATUSES.some(s => s.value === options.status) ? options.status : 'N'
+    const spans = monthSpans(fromMonth, toMonth)
+    if (!spans.length) return {}
+    const start = spans[0].start, end = spans.at(-1).end
+    const cabins = cabinFilter.length ? cabinFilter : ['F', 'J', 'N', 'Y']
+    const byDate = {}
+    let done = 0
+    for (const cabin of cabins) {
+      onProgress?.(null, { done, total: cabins.length, label: `Searching ${cabin}` })
+      const rows = await anaCalRouteRows(ANA_CAL_CLASS[cabin], origin, destination, status)
+      const partial = {}
+      for (const date of anaParseCalendar(rows, origin, destination, start, end)) {
+        partial[date] = { [cabin]: 0 }
+        byDate[date] = { ...byDate[date], [cabin]: 0 }
+      }
+      onProgress?.(Object.keys(partial).length ? partial : null, { done: ++done, total: cabins.length })
+    }
+    return byDate
   },
 }
