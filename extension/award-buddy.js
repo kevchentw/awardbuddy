@@ -7927,7 +7927,7 @@
   var ANA_HOST = "aswbe-i.ana.co.jp";
   var ANA_INPUT_PATH = "/international_asw/pages/award/search/roundtrip/award_search_roundtrip_input.xhtml";
   var ANA_CFF = { F: "CFF3", J: "CFF2", N: "CFF4", Y: "CFF1" };
-  var ANA_SERVICE_LEVEL_CABIN = { 200: "F", 400: "F", 600: "J", 800: "J", 1e3: "N", 1200: "Y", 1400: "Y" };
+  var ANA_SERVICE_LEVEL_CABIN = { 200: "F", 400: "F", 600: "J", 800: "J", 950: "N", 1e3: "N", 1200: "Y", 1400: "Y" };
   var anaCaptured = { aswcid: null, basePath: null };
   var anaSessionCallback = null;
   function anaTryCapture() {
@@ -7955,30 +7955,69 @@
     const viewState = vsM[1];
     const btnM = html.match(/name="(j_idt\d+)" value="Search"/) ?? html.match(/name="(j_idt\d+)" value="検索する"/);
     if (!btnM) return null;
-    return { action, viewState, searchBtn: btnM[1] };
+    const oneWay = html.match(/name="hiddenSearchMode"[^>]*value="([^"]*)"/)?.[1] === "ONE_WAY";
+    const oneWayLink = html.match(/id="onewayButton"[\s\S]{0,400}?(j_idt\d+)/)?.[1] ?? null;
+    return { action, viewState, searchBtn: btnM[1], oneWay, oneWayLink };
   }
-  function anaParseResults(html, date) {
+  var anaUnescape = (s3) => s3.replace(/\\u([0-9a-fA-F]{4})/g, (_3, h3) => String.fromCharCode(parseInt(h3, 16)));
+  function anaAirport(name) {
+    const text = anaUnescape(name);
+    return text.match(/\(([A-Z]{3})\)/)?.[1] ?? text;
+  }
+  var anaIsCode = (s3) => /^[A-Z]{3}$/.test(s3);
+  function anaDayOffset(suffix) {
+    const text = anaUnescape(suffix).replace(/<[^>]+>/g, "").trim();
+    if (!text) return 0;
+    if (text.includes("\u7FCC\u3005")) return 2;
+    return +(text.match(/\d/)?.[0] ?? 1);
+  }
+  function anaAddDays(date, days) {
+    if (!days) return date;
+    const d3 = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+    d3.setUTCDate(d3.getUTCDate() + days);
+    return d3.toISOString().slice(0, 10);
+  }
+  function anaParseResults(html, date, origin, destination) {
     try {
       const obListM = html.match(/var obList = new Array\(\);([\s\S]*?)var ibList/);
       if (!obListM) return [];
       const flightMap = {};
-      const flightRe = /new f\('(\d+)'[^,]*,[^,]*,'[^']*','([^']+)','([^']+)','(\d{2}:\d{2})','(\d{2}:\d{2})','([A-Z]{2}\d+)'[^)]*\)/g;
+      const flightRe = /new f\('(\d+)'[^,]*,[^,]*,'[^']*','([^']+)','([^']+)','(\d{2}:\d{2})[^']*','(\d{2}:\d{2})([^']*)','([A-Z0-9]{2}\d+)'[^)]*\)/g;
       let m3;
       while ((m3 = flightRe.exec(obListM[1])) !== null) {
-        const [, idx, orig, dest, dep, arr, flight] = m3;
+        const [, idx, orig, dest, dep, arr, arrDay, flight] = m3;
         if (!flightMap[idx]) flightMap[idx] = { segs: [] };
-        const seg = { flight, origin: orig.match(/\(([A-Z]{3})\)/)?.[1] ?? orig, destination: dest.match(/\(([A-Z]{3})\)/)?.[1] ?? dest, dep, arr };
+        const seg = { flight, origin: anaAirport(orig), destination: anaAirport(dest), dep, arr, arrDays: anaDayOffset(arrDay), date: null };
         if (!flightMap[idx].segs.some((s3) => s3.flight === seg.flight)) {
           flightMap[idx].segs.push(seg);
         }
       }
-      const segMapRe = /addOutboundSegmentInfoMap\('(\d+)_(\d+)',\s*'[A-Z]{2}',\s*'(\d+)',\s*'([A-Z]{3})',\s*'([A-Z]{3})'/g;
+      const segMapRe = /addOutboundSegmentInfoMap\('(\d+)_(\d+)',\s*'[A-Z0-9]{2}',\s*'(\d+)',\s*'([A-Z]{3})',\s*'([A-Z]{3})'(?:,\s*'[^']*',\s*'(\d{4})(\d{2})(\d{2})')?/g;
       while ((m3 = segMapRe.exec(html)) !== null) {
-        const [, flightIdx, segIdx, flightNum, orig, dest] = m3;
-        if (flightMap[flightIdx]?.segs[+segIdx]) {
-          flightMap[flightIdx].segs[+segIdx].origin = orig;
-          flightMap[flightIdx].segs[+segIdx].destination = dest;
+        const [, flightIdx, segIdx, flightNum, orig, dest, y3, mo, d3] = m3;
+        const seg = flightMap[flightIdx]?.segs[+segIdx];
+        if (seg) {
+          seg.origin = orig;
+          seg.destination = dest;
+          if (y3) seg.date = `${y3}-${mo}-${d3}`;
         }
+      }
+      for (const { segs } of Object.values(flightMap)) {
+        segs.forEach((seg, i3) => {
+          const prev = segs[i3 - 1], next = segs[i3 + 1];
+          if (!anaIsCode(seg.origin)) {
+            if (!prev && origin) seg.origin = origin;
+            else if (prev && anaIsCode(prev.destination)) seg.origin = prev.destination;
+          }
+          if (!anaIsCode(seg.destination)) {
+            if (!next && destination) seg.destination = destination;
+            else if (next && anaIsCode(next.origin)) seg.destination = next.origin;
+          }
+          if (!seg.date) {
+            const prevArr = prev && anaAddDays(prev.date, prev.arrDays);
+            seg.date = !prev ? date : seg.dep < prev.arr ? anaAddDays(prevArr, 1) : prevArr;
+          }
+        });
       }
       const recRe = /addRecommendation\((\d+),\s*\d+,\s*null,\s*'(\d+)',\s*null,\s*[\d.]+,\s*null,\s*[\d.]+,\s*\w+,\s*\d+,\s*null,\s*(\d+)/g;
       const results = {};
@@ -7998,8 +8037,8 @@
               flight: s3.flight,
               origin: s3.origin,
               destination: s3.destination,
-              dep: `${date}T${s3.dep}:00`,
-              arr: `${date}T${s3.arr}:00`
+              dep: `${s3.date}T${s3.dep}:00`,
+              arr: `${anaAddDays(s3.date, s3.arrDays)}T${s3.arr}:00`
             })),
             cabins: { F: null, J: null, N: null, Y: null },
             miles: {},
@@ -8027,29 +8066,47 @@
     });
     return run;
   }
-  async function anaFetchResults(origin, destination, date, cabinFilter) {
-    const cabins = cabinFilter.length ? cabinFilter : ["F", "J", "N", "Y"];
+  var ANA_ONE_WAY_FIELDS = {
+    "conditionInput": "conditionInput",
+    "conditionInput_operationTicket": "",
+    "conditionInput_cmnPageTicket": "0",
+    "hiddenSearchMode": "ONE_WAY",
+    "itineraryButtonCheck": "oneWay",
+    "hiddenAction": "AwardRoundTripSearchInputAction",
+    "hiddenRoundtripOpenJawSelected": "0"
+  };
+  async function anaPost(action, fields) {
+    const res = await fetch(action, {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(fields).toString()
+    });
+    return res.ok ? res.text() : null;
+  }
+  async function anaFetchResults(origin, destination, date, cabin) {
     const inputRes = await fetch(anaInputUrl(), { credentials: "include" });
     if (!inputRes.ok) return null;
-    const inputHtml = await inputRes.text();
-    const parsed = anaParseInputPage(inputHtml);
+    let parsed = anaParseInputPage(await inputRes.text());
     if (!parsed) return null;
-    const cff = ANA_CFF[cabins[0]] ?? "CFF1";
-    const body = new URLSearchParams({
-      "conditionInput": "conditionInput",
-      "conditionInput_operationTicket": "",
-      "conditionInput_cmnPageTicket": "0",
-      "hiddenSearchMode": "ONE_WAY",
-      "itineraryButtonCheck": "oneWay",
-      "hiddenAction": "AwardRoundTripSearchInputAction",
-      "hiddenRoundtripOpenJawSelected": "0",
+    if (!parsed.oneWay && parsed.oneWayLink) {
+      const switched = await anaPost(parsed.action, {
+        ...ANA_ONE_WAY_FIELDS,
+        [parsed.oneWayLink]: parsed.oneWayLink,
+        "javax.faces.ViewState": parsed.viewState
+      });
+      parsed = switched && anaParseInputPage(switched);
+      if (!parsed) return null;
+    }
+    return anaPost(parsed.action, {
+      ...ANA_ONE_WAY_FIELDS,
       "departureAirportCode:field": origin,
       "departureAirportCode:field_pctext": origin,
       "arrivalAirportCode:field": destination,
       "arrivalAirportCode:field_pctext": destination,
       "awardDepartureDate:field": date.replace(/-/g, ""),
       "hiddenBoardingClassType": "0",
-      "boardingClass": cff,
+      "boardingClass": ANA_CFF[cabin] ?? "CFF1",
       "adult:count": "1",
       "youngAdult:count": "0",
       "child:count": "0",
@@ -8058,13 +8115,24 @@
       [parsed.searchBtn]: "Search",
       "javax.faces.ViewState": parsed.viewState
     });
-    const res = await fetch(parsed.action, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: body.toString()
-    });
-    return res.ok ? res.text() : null;
+  }
+  function anaMergeResults(lists) {
+    const byFlights = /* @__PURE__ */ new Map();
+    for (const r3 of lists.flat()) {
+      const key = r3.segs.map((s3) => s3.flight).join("-");
+      const prev = byFlights.get(key);
+      if (!prev) {
+        byFlights.set(key, r3);
+        continue;
+      }
+      for (const c3 of Object.keys(r3.miles)) {
+        if (prev.cabins[c3] === null || r3.miles[c3] < prev.miles[c3]) {
+          prev.cabins[c3] = r3.cabins[c3];
+          prev.miles[c3] = r3.miles[c3];
+        }
+      }
+    }
+    return [...byFlights.values()];
   }
   var anaProgram = {
     id: "ana",
@@ -8088,8 +8156,13 @@
     },
     async onSearch({ origin, destination, date, cabinFilter }) {
       if (!anaCaptured.aswcid) return [];
-      const html = await anaEnqueue(() => anaFetchResults(origin, destination, date, cabinFilter));
-      return html ? anaParseResults(html, date) : [];
+      const cabins = cabinFilter.length ? cabinFilter : ["F", "J", "N", "Y"];
+      const lists = [];
+      for (const cabin of cabins) {
+        const html = await anaEnqueue(() => anaFetchResults(origin, destination, date, cabin));
+        if (html) lists.push(anaParseResults(html, date, origin, destination));
+      }
+      return anaMergeResults(lists);
     }
   };
 
