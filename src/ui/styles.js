@@ -151,6 +151,11 @@ export const CSS = `
   .ab-cal-day.sel { outline: 2px solid var(--ab-color); outline-offset: -1px; }
   .ab-cal-day-num { font-size: 10px; color: #666; }
   .ab-cal-m { padding: 1px 3px; border-radius: 3px; font-size: 9px; color: #fff; white-space: nowrap; margin-top: 1px; display: block; }
+  .ab-cabin-btn:disabled { opacity: .4; cursor: default; }
+  .ab-zc-hint { font-size: 11px; color: #888; margin-top: 3px; }
+  .ab-zc-chart { margin-bottom: 10px; font-size: 12px; }
+  .ab-zc-chart summary { cursor: pointer; color: #444; font-weight: 600; margin-bottom: 4px; }
+  .ab-zc-chart a { color: var(--ab-color); }
   .ab-drp { position: relative; }
   .ab-drp-input {
     width: 100%; padding: 7px 9px; border: 1px solid #ddd; border-radius: 6px;

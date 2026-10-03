@@ -3978,6 +3978,11 @@
   .ab-cal-day.sel { outline: 2px solid var(--ab-color); outline-offset: -1px; }
   .ab-cal-day-num { font-size: 10px; color: #666; }
   .ab-cal-m { padding: 1px 3px; border-radius: 3px; font-size: 9px; color: #fff; white-space: nowrap; margin-top: 1px; display: block; }
+  .ab-cabin-btn:disabled { opacity: .4; cursor: default; }
+  .ab-zc-hint { font-size: 11px; color: #888; margin-top: 3px; }
+  .ab-zc-chart { margin-bottom: 10px; font-size: 12px; }
+  .ab-zc-chart summary { cursor: pointer; color: #444; font-weight: 600; margin-bottom: 4px; }
+  .ab-zc-chart a { color: var(--ab-color); }
   .ab-drp { position: relative; }
   .ab-drp-input {
     width: 100%; padding: 7px 9px; border: 1px solid #ddd; border-radius: 6px;
@@ -4045,6 +4050,23 @@
       document.addEventListener("click", handler, true);
       return () => document.removeEventListener("click", handler, true);
     }, []);
+  }
+  function zoneCalData(byCabin2, route, milesFor) {
+    const data = {};
+    for (const [cabin, file] of Object.entries(byCabin2)) {
+      for (const r3 of file?.routes ?? []) {
+        if (route && route !== `${r3.from}\u21C4${r3.to}`) continue;
+        for (const [key, states] of [[`${r3.from}\u2192${r3.to}`, r3.out], [`${r3.to}\u2192${r3.from}`, r3.back]]) {
+          states.forEach((s3, i3) => {
+            if (s3 < 2) return;
+            const date = file.dates[i3];
+            data[date] ?? (data[date] = {});
+            data[date][key] = { ...data[date][key], [cabin]: milesFor?.(cabin, date) ?? 0 };
+          });
+        }
+      }
+    }
+    return data;
   }
 
   // node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
@@ -5350,6 +5372,134 @@
     ] });
   }
 
+  // src/ui/ZoneCalendar.jsx
+  var storeKey2 = (program2) => `award-buddy:${program2.id}:zonecal`;
+  function loadSel(program2) {
+    try {
+      return JSON.parse(localStorage.getItem(storeKey2(program2))) || {};
+    } catch {
+      return {};
+    }
+  }
+  function ZoneCalendar({ program: program2 }) {
+    const zc = program2.zoneCalendar;
+    const [sel, setSel] = d2(() => {
+      const saved = loadSel(program2);
+      return {
+        zone: zc.zones.some((z3) => z3.value === saved.zone) ? saved.zone : "",
+        cabins: Array.isArray(saved.cabins) ? saved.cabins.filter((c3) => zc.cabins.includes(c3)) : [],
+        status: zc.statuses.some((s3) => s3.value === saved.status) ? saved.status : zc.statuses[0].value,
+        route: typeof saved.route === "string" ? saved.route : ""
+      };
+    });
+    const set = (patch) => setSel((s3) => ({ ...s3, ...patch }));
+    h2(() => {
+      try {
+        localStorage.setItem(storeKey2(program2), JSON.stringify(sel));
+      } catch {
+      }
+    }, [sel]);
+    const allowed = sel.zone ? zc.cabinsFor(sel.zone) : zc.cabins;
+    const cabins = sel.cabins.filter((c3) => allowed.includes(c3));
+    const wanted = cabins.length ? cabins : allowed;
+    const toggleCabin = (c3) => set({ cabins: sel.cabins.includes(c3) ? sel.cabins.filter((x2) => x2 !== c3) : [...sel.cabins, c3] });
+    const [files, setFiles] = d2(null);
+    const [loading, setLoading] = d2(false);
+    h2(() => {
+      if (!sel.zone) {
+        setFiles(null);
+        return;
+      }
+      let live = true;
+      setLoading(true);
+      (async () => {
+        const out = {};
+        for (const c3 of wanted) out[c3] = await zc.load(sel.zone, c3, sel.status);
+        if (live) {
+          setFiles(out);
+          setLoading(false);
+        }
+      })();
+      return () => {
+        live = false;
+      };
+    }, [sel.zone, sel.status, wanted.join()]);
+    const loaded = files ? Object.values(files).filter(Boolean) : [];
+    const routes = [...new Set(loaded.flatMap((f4) => f4.routes.map((r3) => `${r3.from}\u21C4${r3.to}`)))];
+    const route = routes.includes(sel.route) ? sel.route : "";
+    const calData = files ? zoneCalData(files, route, (c3, date) => zc.miles?.(sel.zone, c3, date)) : {};
+    const chart = sel.zone && zc.chart?.(sel.zone);
+    const allDates = loaded.flatMap((f4) => f4.dates).sort();
+    const fromMonth = allDates[0]?.slice(0, 7), toMonth = allDates.at(-1)?.slice(0, 7);
+    const days = Object.keys(calData).length;
+    return /* @__PURE__ */ u3("div", { children: [
+      /* @__PURE__ */ u3("div", { class: "ab-tip", children: [
+        "\u{1F4A1} ",
+        zc.note
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "ab-row", children: [
+        /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: "Zone" }),
+          /* @__PURE__ */ u3("select", { value: sel.zone, onChange: (e3) => set({ zone: e3.currentTarget.value, route: "" }), children: [
+            /* @__PURE__ */ u3("option", { value: "", children: "Please select" }),
+            zc.zones.map((z3) => /* @__PURE__ */ u3("option", { value: z3.value, children: z3.label }, z3.value))
+          ] })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: "Route" }),
+          /* @__PURE__ */ u3("select", { value: route, disabled: !routes.length, onChange: (e3) => set({ route: e3.currentTarget.value }), children: [
+            /* @__PURE__ */ u3("option", { value: "", children: "All routes" }),
+            routes.map((r3) => /* @__PURE__ */ u3("option", { value: r3, children: r3 }, r3))
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+        /* @__PURE__ */ u3("label", { children: "Member status" }),
+        /* @__PURE__ */ u3("select", { value: sel.status, onChange: (e3) => set({ status: e3.currentTarget.value }), children: zc.statuses.map((s3) => /* @__PURE__ */ u3("option", { value: s3.value, children: s3.label }, s3.value)) }),
+        sel.status !== zc.statuses[0].value && /* @__PURE__ */ u3("div", { class: "ab-zc-hint", children: zc.statusHint })
+      ] }) }),
+      /* @__PURE__ */ u3("div", { style: { marginBottom: 10 }, children: [
+        /* @__PURE__ */ u3("label", { style: { fontSize: 12, color: "#666", display: "block", marginBottom: 5 }, children: "Cabin (leave all off = any)" }),
+        /* @__PURE__ */ u3("div", { class: "ab-cabins", children: zc.cabins.map((c3) => /* @__PURE__ */ u3(
+          "button",
+          {
+            class: "ab-cabin-btn",
+            disabled: !allowed.includes(c3),
+            onClick: () => toggleCabin(c3),
+            style: cabins.includes(c3) ? { background: CABIN_COLORS[c3], color: "#fff", borderColor: "transparent" } : void 0,
+            children: CABIN_LABELS[c3]
+          },
+          c3
+        )) })
+      ] }),
+      chart && /* @__PURE__ */ u3("details", { class: "ab-zc-chart", open: true, children: [
+        /* @__PURE__ */ u3("summary", { children: "Required miles, one way between Japan and this zone" }),
+        /* @__PURE__ */ u3("table", { class: "ab-tbl", children: [
+          /* @__PURE__ */ u3("thead", { children: /* @__PURE__ */ u3("tr", { children: [
+            /* @__PURE__ */ u3("th", { children: "Cabin" }),
+            /* @__PURE__ */ u3("th", { children: "Low" }),
+            /* @__PURE__ */ u3("th", { children: "Regular" }),
+            /* @__PURE__ */ u3("th", { children: "High" })
+          ] }) }),
+          /* @__PURE__ */ u3("tbody", { children: zc.cabins.filter((c3) => chart[c3]).map((c3) => /* @__PURE__ */ u3("tr", { children: [
+            /* @__PURE__ */ u3("td", { style: { color: CABIN_COLORS[c3], fontWeight: 600 }, children: CABIN_LABELS[c3] }),
+            chart[c3].map((m3, i3) => /* @__PURE__ */ u3("td", { children: m3.toLocaleString("en-US") }, i3))
+          ] }, c3)) })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "ab-zc-hint", children: [
+          "Round trip is twice. The season is the departure day's; see ",
+          /* @__PURE__ */ u3("a", { href: zc.chartUrl, target: "_blank", children: "ANA's charts" }),
+          "."
+        ] })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "ab-status", children: !sel.zone ? "Pick a zone to see its open days." : loading ? "Loading\u2026" : !loaded.length ? "\u26A0 Couldn't load the calendar. Try again in a moment." : `${days} date(s) with open seats.` }),
+      !loading && days > 0 && /* @__PURE__ */ u3(S, { children: [
+        /* @__PURE__ */ u3(CalendarView, { calData, fromMonth, toMonth }),
+        /* @__PURE__ */ u3(ResultsTable, { results: calToRows(calData, fromMonth, toMonth) })
+      ] })
+    ] });
+  }
+
   // src/ui/App.jsx
   var codes = (v3) => Array.isArray(v3) ? v3 : v3.split(",").map((s3) => s3.trim().toUpperCase()).filter(Boolean);
   var optionFields = (program2, form) => program2.optionsFor?.(form.carrier) ?? [];
@@ -5363,10 +5513,10 @@
       return [fd.key, fd.type === "airports" ? v3 : fd.type === "numbers" ? parseNumberList(v3) : v3.trim() ? [v3.trim()] : []];
     })));
   }
-  var storeKey2 = (program2) => `award-buddy:${program2.id}`;
+  var storeKey3 = (program2) => `award-buddy:${program2.id}`;
   function loadSaved(program2) {
     try {
-      return JSON.parse(localStorage.getItem(storeKey2(program2))) || {};
+      return JSON.parse(localStorage.getItem(storeKey3(program2))) || {};
     } catch {
       return {};
     }
@@ -5399,17 +5549,13 @@
       cabins: Array.isArray(q2.cabins) ? q2.cabins.filter((c3) => program2.cabins.includes(c3)) : []
     };
   }
-  var calOptionFields = (program2) => program2.calendarOptions ?? [];
-  var calOptionValue = (fd, form) => fd.choices.some((c3) => c3.value === form.options[fd.key]) ? form.options[fd.key] : fd.default;
-  var calOptionValues = (program2, form) => Object.fromEntries(calOptionFields(program2).map((fd) => [fd.key, calOptionValue(fd, form)]));
   function summary(program2, form, calMode) {
     const route = `${codes(form.origins).join(", ") || "?"} \u2192 ${codes(form.dests).join(", ") || "?"}`;
     const when = calMode ? `${form.fromMonth} \u2013 ${form.toMonth}` : form.start ? `${form.start} \u2013 ${form.end || form.start}` : "?";
     const cabins = form.cabins.length ? form.cabins.map((c3) => CABIN_LABELS[c3]).join("/") : "Any cabin";
     const carrier = program2.carriers?.find((c3) => c3.code === form.carrier)?.name;
     const opts = optionFields(program2, form).map((fd) => `${fd.label} ${[optionRaw(fd, form)].flat().join(", ") || "?"}`);
-    const calOpts = calMode ? calOptionFields(program2).map((fd) => fd.choices.find((c3) => c3.value === calOptionValue(fd, form))?.label) : [];
-    return [route, when, cabins, carrier, ...opts, ...calOpts].filter(Boolean).join(" \xB7 ");
+    return [route, when, cabins, carrier, ...opts].filter(Boolean).join(" \xB7 ");
   }
   function requestHint(program2, form, calMode) {
     const routes = codes(form.origins).length * codes(form.dests).length;
@@ -5447,14 +5593,14 @@
     const [form, setForm] = d2(() => initialForm2(program2));
     const set = (patch) => setForm((f4) => ({ ...f4, ...patch }));
     const airports = program2.airportsFor?.(form.carrier) ?? program2.airports;
-    const hasCalendar = !!program2.onCalendarSearch && (program2.calendarFor?.(form.carrier) ?? true);
+    const hasCalendar = !!(program2.onCalendarSearch || program2.zoneCalendar) && (program2.calendarFor?.(form.carrier) ?? true);
     h2(() => {
       if (!hasCalendar) setCalMode(false);
     }, [hasCalendar]);
     h2(() => {
       const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form;
       try {
-        localStorage.setItem(storeKey2(program2), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, calMode, cabins, carrier, options }));
+        localStorage.setItem(storeKey3(program2), JSON.stringify({ origins, dests, start, end, fromMonth, toMonth, calMode, cabins, carrier, options }));
       } catch {
       }
     }, [form, calMode]);
@@ -5476,6 +5622,7 @@
       const { form: f4, calMode: calMode2 } = latest.current;
       const origins = codes(f4.origins), dests = codes(f4.dests);
       const cabinFilter = [...f4.cabins];
+      if (calMode2 && program2.zoneCalendar) return;
       if (calMode2) {
         const { fromMonth, toMonth } = f4;
         if (!origins.length || !dests.length || !fromMonth || !toMonth) {
@@ -5508,7 +5655,7 @@
           for (const d3 of dests) {
             if (ctl.stop) break;
             route = `${o3}\u2192${d3}`;
-            const result = await program2.onCalendarSearch(o3, d3, cabinFilter, fromMonth, toMonth, onProgress, calOptionValues(program2, f4));
+            const result = await program2.onCalendarSearch(o3, d3, cabinFilter, fromMonth, toMonth, onProgress);
             if (result === "SESSION_EXPIRED") {
               setStatus(program2.expiredMessage ?? "\u26A0 Session expired \u2014 navigate to the award booking page to refresh");
               run.end();
@@ -5579,6 +5726,14 @@
       pendingRun.current = false;
       if (!ctl.searching) search();
     }, [form, calMode]);
+    const modeToggle = hasCalendar && /* @__PURE__ */ u3("div", { class: "ab-mode-toggle", children: [
+      /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", !calMode && "active"), onClick: () => setCalMode(false), children: "Search" }),
+      /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", calMode && "active"), onClick: () => setCalMode(true), children: "Calendar" })
+    ] });
+    if (calMode && program2.zoneCalendar) return /* @__PURE__ */ u3(S, { children: [
+      modeToggle,
+      /* @__PURE__ */ u3(ZoneCalendar, { program: program2 })
+    ] });
     const toggleCabin = (c3) => set({ cabins: form.cabins.includes(c3) ? form.cabins.filter((x2) => x2 !== c3) : [...form.cabins, c3] });
     const airportField = (key, label, placeholder) => /* @__PURE__ */ u3("div", { class: "ab-field", children: [
       /* @__PURE__ */ u3("label", { children: airports ? label : `${label}${key === "origins" ? " (comma separated)" : ""}` }),
@@ -5603,33 +5758,19 @@
             }
           )
         ] }, fd.key)) }),
-        hasCalendar && /* @__PURE__ */ u3("div", { class: "ab-mode-toggle", children: [
-          /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", !calMode && "active"), onClick: () => setCalMode(false), children: "Search" }),
-          /* @__PURE__ */ u3("button", { class: cx("ab-mode-btn", calMode && "active"), onClick: () => setCalMode(true), children: "Calendar" })
-        ] }),
+        modeToggle,
         hasCalendar && !calMode && program2.searchTip && /* @__PURE__ */ u3("div", { class: "ab-tip", children: [
           "\u{1F4A1} ",
           program2.searchTip
-        ] }),
-        hasCalendar && calMode && program2.calendarTip && /* @__PURE__ */ u3("div", { class: "ab-tip", children: [
-          "\u{1F4A1} ",
-          program2.calendarTip
         ] }),
         /* @__PURE__ */ u3("div", { class: "ab-row", children: [
           airportField("origins", "Origins", "e.g. TPE, TSA"),
           airportField("dests", "Destinations", "e.g. NRT, HND")
         ] }),
-        calMode ? /* @__PURE__ */ u3(S, { children: [
-          /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-            /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
-            /* @__PURE__ */ u3(MonthRangePicker, { from: form.fromMonth, to: form.toMonth, onChange: (fromMonth, toMonth) => set({ fromMonth, toMonth }) })
-          ] }) }),
-          calOptionFields(program2).length > 0 && /* @__PURE__ */ u3("div", { class: "ab-row", children: calOptionFields(program2).map((fd) => /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-            /* @__PURE__ */ u3("label", { children: fd.label }),
-            /* @__PURE__ */ u3("select", { value: calOptionValue(fd, form), onChange: (e3) => set({ options: { ...form.options, [fd.key]: e3.currentTarget.value } }), children: fd.choices.map((c3) => /* @__PURE__ */ u3("option", { value: c3.value, children: c3.label }, c3.value)) }),
-            fd.hint && /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#888", marginTop: 3 }, children: fd.hint })
-          ] }, fd.key)) })
-        ] }) : /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+        calMode ? /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+          /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
+          /* @__PURE__ */ u3(MonthRangePicker, { from: form.fromMonth, to: form.toMonth, onChange: (fromMonth, toMonth) => set({ fromMonth, toMonth }) })
+        ] }) }) : /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
           /* @__PURE__ */ u3("label", { children: "Dates" }),
           /* @__PURE__ */ u3(DateRangePicker, { start: form.start, end: form.end, onChange: (start, end) => set({ start, end }) })
         ] }) }),
@@ -5648,7 +5789,7 @@
         ] }),
         /* @__PURE__ */ u3("div", { style: { fontSize: 11, color: "#888", marginBottom: 6, minHeight: 14 }, children: requestHint(program2, form, calMode) })
       ] }),
-      /* @__PURE__ */ u3(SearchControls, { run, session: calMode && program2.calendarRequiresSession === false ? { ...session, ready: true } : session, onSearch: search }),
+      /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
       /* @__PURE__ */ u3("div", { children: [
         cal && /* @__PURE__ */ u3(CalendarView, { calData: cal.data, fromMonth: cal.fromMonth, toMonth: cal.toMonth }),
         /* @__PURE__ */ u3(ResultsTable, { results: cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results }),
@@ -8213,22 +8354,91 @@
     { value: "D", label: "Diamond" },
     { value: "S", label: "Super Flyers (SFC)" }
   ];
-  var ANA_CAL_ZONES = ["Z2", "Z3", "Z4", "Z5", "Z6", "Z7", "ZA"];
+  var ANA_CAL_ZONES = [
+    { value: "Z2", label: "Zone 2 South Korea \xB7 Russia 1" },
+    { value: "Z3", label: "Zone 3 Asia 1" },
+    { value: "Z4", label: "Zone 4 Asia 2" },
+    { value: "Z5", label: "Zone 5 Hawaii" },
+    { value: "Z6", label: "Zone 6 North America" },
+    { value: "Z7", label: "Zone 7 Europe \xB7 Russia 2" },
+    { value: "ZA", label: "Zone 10 Oceania \xB7 Micronesia" }
+  ];
+  var ANA_CAL_NO_CABIN = { N: ["Z2", "Z3"], F: ["Z2", "Z3", "Z4", "ZA"] };
+  var ANA_CHART_URL = "https://www.ana.co.jp/en/jp/guide/amc/award/international/terms/";
+  var ANA_ONE_WAY_MILES = {
+    Z2: { Y: [6e3, 7500, 12e3], J: [18e3, 20500, 25e3] },
+    Z3: { Y: [8500, 1e4, 15e3], N: [15e3, 16500, 23500], J: [24e3, 26500, 32500] },
+    Z4: { Y: [15e3, 17500, 25e3], N: [23e3, 25500, 35500], J: [4e4, 42500, 47500], F: [57500, 6e4, 85500] },
+    Z5: { Y: [17500, 2e4, 32500], N: [26500, 29e3, 44e3], J: [4e4, 42500, 67500], F: [6e4, 7e4, 12e4] },
+    Z6: { Y: [2e4, 25e3, 36e3], N: [31e3, 36e3, 50500], J: [5e4, 52500, 82500], F: [75e3, 85e3, 15e4] },
+    Z7: { Y: [22500, 27500, 39e3], N: [33500, 38500, 53500], J: [55e3, 57500, 9e4], F: [82500, 95e3, 165e3] },
+    ZA: { Y: [18500, 22500, 32500], N: [27e3, 31e3, 44e3], J: [4e4, 45e3, 67500] }
+  };
+  var ANA_SEASON_GROUP = { Z2: "asia", Z3: "asia", Z4: "asia", Z6: "longhaul", Z7: "longhaul", Z5: "resort", ZA: "resort" };
+  var ANA_SEASONS = {
+    asia: {
+      2026: {
+        L: [["01-05", "02-13"], ["04-01", "04-28"], ["05-11", "06-30"]],
+        H: [["01-01", "01-04"], ["04-29", "05-10"], ["07-18", "08-23"], ["12-21", "12-31"]]
+      },
+      2027: {
+        L: [["01-05", "02-03"], ["04-12", "04-28"], ["05-10", "06-30"], ["12-01", "12-19"]],
+        H: [["01-01", "01-04"], ["02-04", "02-06"], ["04-29", "05-09"], ["07-16", "08-23"], ["10-01", "10-07"], ["12-20", "12-31"]]
+      },
+      2028: { L: [["01-05", "01-24"]], H: [["01-01", "01-04"], ["01-25", "01-31"]], until: "03-31" }
+    },
+    longhaul: {
+      2026: {
+        L: [["01-06", "02-28"], ["04-01", "04-28"]],
+        H: [["01-01", "01-03"], ["04-29", "05-09"], ["07-16", "08-23"], ["12-19", "12-31"]]
+      },
+      2027: {
+        L: [["01-06", "02-28"]],
+        H: [["01-01", "01-03"], ["04-29", "05-09"], ["07-16", "08-22"], ["12-20", "12-31"]]
+      },
+      2028: { L: [["01-06", "02-29"]], H: [["01-01", "01-03"]], until: "03-31" }
+    },
+    resort: {
+      2026: {
+        L: [["01-07", "02-28"], ["04-01", "04-27"], ["05-10", "05-31"], ["07-01", "07-15"]],
+        H: [["01-01", "01-03"], ["04-28", "05-09"], ["07-16", "08-23"], ["12-19", "12-31"]]
+      },
+      2027: {
+        L: [["01-06", "02-28"], ["04-01", "04-28"], ["05-10", "05-31"]],
+        H: [["01-01", "01-03"], ["04-29", "05-09"], ["07-16", "08-22"], ["12-20", "12-31"]]
+      },
+      2028: { L: [["01-06", "02-29"]], H: [["01-01", "01-03"]], until: "03-31" }
+    }
+  };
+  var ANA_SEASON_INDEX = { L: 0, R: 1, H: 2 };
+  function anaSeason(zone, date) {
+    const year = ANA_SEASONS[ANA_SEASON_GROUP[zone]]?.[date.slice(0, 4)];
+    const md = date.slice(5);
+    if (!year || year.until && md > year.until) return null;
+    for (const s3 of ["L", "H"]) if (year[s3].some(([a3, b2]) => md >= a3 && md <= b2)) return s3;
+    return "R";
+  }
+  function anaMiles(zone, cabin, date) {
+    const season = anaSeason(zone, date);
+    return season ? ANA_ONE_WAY_MILES[zone]?.[cabin]?.[ANA_SEASON_INDEX[season]] ?? null : null;
+  }
   var ANA_CAL_TTL_MS = 10 * 60 * 1e3;
   var ANA_CAL_TIMEOUT_MS = 1e4;
-  var anaCalRouteKey = (rows) => rows.slice(1).map((r3) => `${r3[0]}\u2192${r3[1]}`);
-  function anaParseCalendar(rows, origin, destination, start, end) {
-    if (!Array.isArray(rows) || !Array.isArray(rows[0])) return [];
-    const row = rows.slice(1).find((r3) => r3[0] === origin && r3[1] === destination);
-    if (!row) return [];
-    const dates = [];
-    for (let i3 = 2; i3 < rows[0].length; i3++) {
-      const m3 = String(rows[0][i3]).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
-      if (!m3 || !(+row[i3] >= 2)) continue;
-      const date = `${m3[1]}-${m3[2].padStart(2, "0")}-${m3[3].padStart(2, "0")}`;
-      if (date >= start && date <= end) dates.push(date);
+  function anaParseZoneCalendar(rows, today) {
+    if (!Array.isArray(rows) || !Array.isArray(rows[0])) return null;
+    const cols = [];
+    rows[0].forEach((v3, i3) => {
+      const m3 = i3 >= 2 && String(v3).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      const date = m3 && `${m3[1]}-${m3[2].padStart(2, "0")}-${m3[3].padStart(2, "0")}`;
+      if (date && date >= today) cols.push({ i: i3, date });
+    });
+    const routes = [];
+    for (let i3 = 1; i3 + 1 < rows.length; i3 += 2) {
+      const out = rows[i3], back = rows[i3 + 1];
+      if (out[0] !== back[1] || out[1] !== back[0]) continue;
+      routes.push({ from: out[0], to: out[1], out: cols.map((c3) => +out[c3.i] || 0), back: cols.map((c3) => +back[c3.i] || 0) });
     }
-    return dates;
+    return { dates: cols.map((c3) => c3.date), routes };
   }
   var anaCalQueue = Promise.resolve();
   function anaCalLoad(file) {
@@ -8254,25 +8464,16 @@
     return run;
   }
   var anaCalFiles = /* @__PURE__ */ new Map();
-  var anaCalZoneOf = {};
-  function anaCalRows(cls, zone, status = "N") {
+  function anaCalRows(cls, zone, status) {
     const key = `${cls}_${zone}_${status}`;
     const hit = anaCalFiles.get(key);
     if (hit && Date.now() - hit.at < ANA_CAL_TTL_MS) return hit.rows;
     const rows = anaCalLoad(`CAL_${key}.js`).then((data) => {
-      if (Array.isArray(data)) for (const route of anaCalRouteKey(data)) anaCalZoneOf[route] = zone;
+      if (!Array.isArray(data)) anaCalFiles.delete(key);
       return data;
     });
     anaCalFiles.set(key, { at: Date.now(), rows });
     return rows;
-  }
-  async function anaCalRouteRows(cls, origin, destination, status) {
-    const route = `${origin}\u2192${destination}`;
-    for (const zone of ANA_CAL_ZONES) {
-      if (anaCalZoneOf[route]) break;
-      await anaCalRows("X", zone);
-    }
-    return anaCalZoneOf[route] ? anaCalRows(cls, anaCalZoneOf[route], status) : null;
   }
   var anaProgram = {
     id: "ana",
@@ -8308,38 +8509,23 @@
       }
       return anaMergeResults(lists);
     },
-    calendarRequiresSession: false,
-    calendarTip: "Calendar mode covers only nonstop ANA-operated flights to/from Japan (no partners or connections), about 6 months ahead. It shows days with open seats, without mileage. Use Search mode for other routes.",
-    calendarOptions: [{
-      key: "status",
-      label: "Member status",
-      type: "select",
-      default: "N",
-      choices: ANA_CAL_STATUSES,
-      hint: "Elite tiers see more seats, but only members with that status can book them"
-    }],
-    calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
-      return cabinFilter?.length || 4;
-    },
-    async onCalendarSearch(origin, destination, cabinFilter, fromMonth, toMonth, onProgress, options = {}) {
-      const status = ANA_CAL_STATUSES.some((s3) => s3.value === options.status) ? options.status : "N";
-      const spans = monthSpans(fromMonth, toMonth);
-      if (!spans.length) return {};
-      const start = spans[0].start, end = spans.at(-1).end;
-      const cabins = cabinFilter.length ? cabinFilter : ["F", "J", "N", "Y"];
-      const byDate = {};
-      let done = 0;
-      for (const cabin of cabins) {
-        onProgress?.(null, { done, total: cabins.length, label: `Searching ${cabin}` });
-        const rows = await anaCalRouteRows(ANA_CAL_CLASS[cabin], origin, destination, status);
-        const partial = {};
-        for (const date of anaParseCalendar(rows, origin, destination, start, end)) {
-          partial[date] = { [cabin]: 0 };
-          byDate[date] = { ...byDate[date], [cabin]: 0 };
-        }
-        onProgress?.(Object.keys(partial).length ? partial : null, { done: ++done, total: cabins.length });
+    // Calendar mode shows ANA's award calendar as the site does: every route of a zone, one class
+    zoneCalendar: {
+      zones: ANA_CAL_ZONES,
+      cabins: ["Y", "N", "J", "F"],
+      cabinsFor: (zone) => ["Y", "N", "J", "F"].filter((c3) => !ANA_CAL_NO_CABIN[c3]?.includes(zone)),
+      statuses: ANA_CAL_STATUSES,
+      statusHint: "Elite tiers see more seats, but only members with that status can book them",
+      note: "ANA's award calendar: nonstop ANA flights to/from Japan, about 6 months ahead. Miles are one way from ANA's chart, by the season of the day.",
+      // Required-miles chart for the zone: one row per cabin, [low, regular, high]
+      chart: (zone) => ANA_ONE_WAY_MILES[zone] ?? null,
+      chartUrl: ANA_CHART_URL,
+      miles: anaMiles,
+      async load(zone, cabin, status) {
+        const cls = ANA_CAL_CLASS[cabin];
+        const tier = ANA_CAL_STATUSES.some((s3) => s3.value === status) ? status : "N";
+        return cls ? anaParseZoneCalendar(await anaCalRows(cls, zone, tier), todayISO()) : null;
       }
-      return byDate;
     }
   };
 

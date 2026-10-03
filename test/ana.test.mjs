@@ -1,7 +1,8 @@
 // Run: npm test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { anaMergeResults, anaParseCalendar, anaParseResults } from '../src/programs/ana.js'
+import { anaMergeResults, anaMiles, anaParseResults, anaParseZoneCalendar, anaSeason } from '../src/programs/ana.js'
+import { zoneCalData } from '../src/ui/util.js'
 
 // obList / segment map as the result page writes them (SEA-HND-FUK, overnight to HND)
 const page = (segs) => `var obList = new Array();
@@ -69,14 +70,52 @@ test('anaMergeResults folds the per-cabin searches into one row per itinerary', 
   assert.deepEqual(r.miles, { Y: 50000, N: 72000 })
 })
 
-test('anaParseCalendar keeps the open days of one direction inside the range', () => {
+test('anaParseZoneCalendar pairs the directions of each route from today on', () => {
   const rows = [
-    ['Departure', 'Arrival', '2026/10/3', '2026/10/4', '2026/10/31', '2026/11/1', '2026/11/2'],
-    ['HND', 'LAX', 2, 1, 3, 0, 2],
-    ['LAX', 'HND', 1, 2, 1, 3, 1],
+    ['Departure', 'Arrival', '2026/10/2', '2026/10/3', '2026/10/31', '2026/11/1'],
+    ['NRT', 'LAX', 3, 2, 1, 0],
+    ['LAX', 'NRT', 0, 1, 2, 3],
+    ['HND', 'SEA', 1, 1, 1, 1],
+    ['SEA', 'HND', 2, 2, 2, 2],
   ]
-  assert.deepEqual(anaParseCalendar(rows, 'HND', 'LAX', '2026-10-01', '2026-10-31'), ['2026-10-03', '2026-10-31'])
-  assert.deepEqual(anaParseCalendar(rows, 'LAX', 'HND', '2026-10-04', '2026-11-30'), ['2026-10-04', '2026-11-01'])
-  assert.deepEqual(anaParseCalendar(rows, 'NRT', 'LAX', '2026-10-01', '2026-11-30'), [])
-  assert.deepEqual(anaParseCalendar(null, 'HND', 'LAX', '2026-10-01', '2026-11-30'), [])
+  assert.deepEqual(anaParseZoneCalendar(rows, '2026-10-03'), {
+    dates: ['2026-10-03', '2026-10-31', '2026-11-01'],
+    routes: [
+      { from: 'NRT', to: 'LAX', out: [2, 1, 0], back: [1, 2, 3] },
+      { from: 'HND', to: 'SEA', out: [1, 1, 1], back: [2, 2, 2] },
+    ],
+  })
+  // A file left over from years ago has no days left; one that didn't load is null
+  assert.deepEqual(anaParseZoneCalendar([['Departure', 'Arrival', '2017/10/29'], ['SIN', 'NRT', 1]], '2026-10-03'), { dates: [], routes: [] })
+  assert.equal(anaParseZoneCalendar(null, '2026-10-03'), null)
+})
+
+test('zoneCalData keeps the open days of both directions, per cabin, for one route or all', () => {
+  const file = (out, back) => ({
+    dates: ['2026-10-03', '2026-10-04'],
+    routes: [{ from: 'NRT', to: 'LAX', out, back }, { from: 'HND', to: 'SEA', out: [1, 1], back: [3, 0] }],
+  })
+  const files = { Y: file([3, 1], [0, 2]), J: file([2, 0], [1, 1]), F: null }
+  assert.deepEqual(zoneCalData(files, '', (c, date) => c === 'Y' && date === '2026-10-04' ? 25000 : null), {
+    '2026-10-03': { 'NRT→LAX': { Y: 0, J: 0 }, 'SEA→HND': { Y: 0, J: 0 } },
+    '2026-10-04': { 'LAX→NRT': { Y: 25000 } },
+  })
+  assert.deepEqual(zoneCalData(files, 'HND⇄SEA'), { '2026-10-03': { 'SEA→HND': { Y: 0, J: 0 } } })
+})
+
+test('anaSeason covers every day of the published charts once, and anaMiles reads the chart', () => {
+  for (const zone of ['Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'ZA']) {
+    for (let d = new Date('2026-01-01T00:00:00Z'); d <= new Date('2028-03-31T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)) {
+      assert.ok(anaSeason(zone, d.toISOString().slice(0, 10)), `${zone} ${d.toISOString().slice(0, 10)}`)
+    }
+    assert.equal(anaSeason(zone, '2028-04-01'), null)
+  }
+  // North America: high season from Dec 19, 2026; low Jan 6 – Feb 28, 2027; regular after
+  assert.deepEqual(['2026-12-18', '2026-12-19', '2027-01-06', '2027-03-01'].map(d => anaSeason('Z6', d)), ['R', 'H', 'L', 'R'])
+  // Asia 1: Golden Week high season ends May 10 in 2026, low again from May 11
+  assert.deepEqual(['2026-05-10', '2026-05-11'].map(d => anaSeason('Z3', d)), ['H', 'L'])
+  assert.equal(anaMiles('Z6', 'J', '2026-11-10'), 52500)
+  assert.equal(anaMiles('Z6', 'F', '2026-12-25'), 150000)
+  assert.equal(anaMiles('Z2', 'F', '2026-11-10'), null)
+  assert.equal(anaMiles('Z6', 'Y', '2028-06-01'), null)
 })

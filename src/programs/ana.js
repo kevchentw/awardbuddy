@@ -1,5 +1,5 @@
 import { COMMON_AIRPORTS } from '../common/constants.js'
-import { monthSpans } from '../common/search.js'
+import { todayISO } from '../common/search.js'
 
 // ANA (All Nippon Airways) – award availability via session-based ANA booking engine
 // Session: browser cookies on aswbe-i.ana.co.jp; aswcid captured from URL
@@ -279,11 +279,12 @@ export function anaMergeResults(lists) {
 // Calendar: the public award calendar (cam.ana.co.jp/psz/tokutencal) reads one static JSONP file per
 // class and zone, CAL_<class>_<zone>_<status>.js, no session needed:
 //   cal([["Departure","Arrival","2026/10/3",…], ["NRT","LAX",1,1,2,…], ["LAX","NRT",…], …])
-// A row per direction of each nonstop ANA route to/from Japan, a state per day for about 6 months:
-// 3 wide open, 2 open, 1 tight / waitlisted, 0 unavailable. No mileage. The status is the member's
-// tier: elite tiers are shown more seats, which only that tier can book (the files themselves are
-// public). The files send no CORS header, so they load as a script with the fixed callback cal().
-// A class a zone doesn't offer is a 404 or a file left over from years ago.
+// Rows come in pairs, from and to Japan, for each nonstop ANA route of the zone, with a state per day
+// for about 6 months: 3 wide open, 2 open, 1 tight / waitlisted, 0 unavailable. No mileage. The
+// status is the member's tier: elite tiers are shown more seats, which only that tier can book (the
+// files themselves are public). The files send no CORS header, so they load as a script with the
+// fixed callback cal(). The page leaves out the classes a zone doesn't offer: their files are a 404
+// or left over from years ago. (Its campaign-period overlay, data_sale_info.js, only lists 2019.)
 const ANA_CAL_URL = 'https://cam.ana.co.jp/amctop/'
 const ANA_CAL_CLASS = { Y: 'X', N: 'R', J: 'I', F: 'O' }
 const ANA_CAL_STATUSES = [
@@ -293,25 +294,93 @@ const ANA_CAL_STATUSES = [
   { value: 'D', label: 'Diamond' },
   { value: 'S', label: 'Super Flyers (SFC)' },
 ]
-const ANA_CAL_ZONES = ['Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'ZA']
+const ANA_CAL_ZONES = [
+  { value: 'Z2', label: 'Zone 2 South Korea · Russia 1' },
+  { value: 'Z3', label: 'Zone 3 Asia 1' },
+  { value: 'Z4', label: 'Zone 4 Asia 2' },
+  { value: 'Z5', label: 'Zone 5 Hawaii' },
+  { value: 'Z6', label: 'Zone 6 North America' },
+  { value: 'Z7', label: 'Zone 7 Europe · Russia 2' },
+  { value: 'ZA', label: 'Zone 10 Oceania · Micronesia' },
+]
+const ANA_CAL_NO_CABIN = { N: ['Z2', 'Z3'], F: ['Z2', 'Z3', 'Z4', 'ZA'] }
+
+// Required mileage, one way between Japan and the zone, [low, regular, high] season, from ANA's chart
+// for awards issued on/after 2025-06-24 (ANA_CHART_URL; round trip is twice)
+export const ANA_CHART_URL = 'https://www.ana.co.jp/en/jp/guide/amc/award/international/terms/'
+const ANA_ONE_WAY_MILES = {
+  Z2: { Y: [6000, 7500, 12000], J: [18000, 20500, 25000] },
+  Z3: { Y: [8500, 10000, 15000], N: [15000, 16500, 23500], J: [24000, 26500, 32500] },
+  Z4: { Y: [15000, 17500, 25000], N: [23000, 25500, 35500], J: [40000, 42500, 47500], F: [57500, 60000, 85500] },
+  Z5: { Y: [17500, 20000, 32500], N: [26500, 29000, 44000], J: [40000, 42500, 67500], F: [60000, 70000, 120000] },
+  Z6: { Y: [20000, 25000, 36000], N: [31000, 36000, 50500], J: [50000, 52500, 82500], F: [75000, 85000, 150000] },
+  Z7: { Y: [22500, 27500, 39000], N: [33500, 38500, 53500], J: [55000, 57500, 90000], F: [82500, 95000, 165000] },
+  ZA: { Y: [18500, 22500, 32500], N: [27000, 31000, 44000], J: [40000, 45000, 67500] },
+}
+// Seasonality charts by zone group, [first day "MM-DD", last day] per season, by year of the flight date
+// (only the high and low periods; every other day is regular). The season of a one-way award is the
+// season of its departure date.
+const ANA_SEASON_GROUP = { Z2: 'asia', Z3: 'asia', Z4: 'asia', Z6: 'longhaul', Z7: 'longhaul', Z5: 'resort', ZA: 'resort' }
+const ANA_SEASONS = {
+  asia: {
+    2026: { L: [['01-05', '02-13'], ['04-01', '04-28'], ['05-11', '06-30']],
+      H: [['01-01', '01-04'], ['04-29', '05-10'], ['07-18', '08-23'], ['12-21', '12-31']] },
+    2027: { L: [['01-05', '02-03'], ['04-12', '04-28'], ['05-10', '06-30'], ['12-01', '12-19']],
+      H: [['01-01', '01-04'], ['02-04', '02-06'], ['04-29', '05-09'], ['07-16', '08-23'], ['10-01', '10-07'], ['12-20', '12-31']] },
+    2028: { L: [['01-05', '01-24']], H: [['01-01', '01-04'], ['01-25', '01-31']], until: '03-31' },
+  },
+  longhaul: {
+    2026: { L: [['01-06', '02-28'], ['04-01', '04-28']],
+      H: [['01-01', '01-03'], ['04-29', '05-09'], ['07-16', '08-23'], ['12-19', '12-31']] },
+    2027: { L: [['01-06', '02-28']],
+      H: [['01-01', '01-03'], ['04-29', '05-09'], ['07-16', '08-22'], ['12-20', '12-31']] },
+    2028: { L: [['01-06', '02-29']], H: [['01-01', '01-03']], until: '03-31' },
+  },
+  resort: {
+    2026: { L: [['01-07', '02-28'], ['04-01', '04-27'], ['05-10', '05-31'], ['07-01', '07-15']],
+      H: [['01-01', '01-03'], ['04-28', '05-09'], ['07-16', '08-23'], ['12-19', '12-31']] },
+    2027: { L: [['01-06', '02-28'], ['04-01', '04-28'], ['05-10', '05-31']],
+      H: [['01-01', '01-03'], ['04-29', '05-09'], ['07-16', '08-22'], ['12-20', '12-31']] },
+    2028: { L: [['01-06', '02-29']], H: [['01-01', '01-03']], until: '03-31' },
+  },
+}
+const ANA_SEASON_INDEX = { L: 0, R: 1, H: 2 }
+
+// 'L' / 'R' / 'H' for a flight date between Japan and the zone, null past the published charts
+export function anaSeason(zone, date) {
+  const year = ANA_SEASONS[ANA_SEASON_GROUP[zone]]?.[date.slice(0, 4)]
+  const md = date.slice(5)
+  if (!year || (year.until && md > year.until)) return null
+  for (const s of ['L', 'H']) if (year[s].some(([a, b]) => md >= a && md <= b)) return s
+  return 'R'
+}
+
+// One-way miles for a cabin on a date, null when the chart or the season isn't known
+export function anaMiles(zone, cabin, date) {
+  const season = anaSeason(zone, date)
+  return season ? ANA_ONE_WAY_MILES[zone]?.[cabin]?.[ANA_SEASON_INDEX[season]] ?? null : null
+}
 const ANA_CAL_TTL_MS = 10 * 60 * 1000
 const ANA_CAL_TIMEOUT_MS = 10000
 
-const anaCalRouteKey = rows => rows.slice(1).map(r => `${r[0]}→${r[1]}`)
-
-// File rows → dates in [start, end] with open seats on the route
-export function anaParseCalendar(rows, origin, destination, start, end) {
-  if (!Array.isArray(rows) || !Array.isArray(rows[0])) return []
-  const row = rows.slice(1).find(r => r[0] === origin && r[1] === destination)
-  if (!row) return []
-  const dates = []
-  for (let i = 2; i < rows[0].length; i++) {
-    const m = String(rows[0][i]).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
-    if (!m || !(+row[i] >= 2)) continue
-    const date = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
-    if (date >= start && date <= end) dates.push(date)
+// File rows → { dates, routes: [{ from, to, out, back }] }: from is the Japanese airport, out / back the
+// day states from / to Japan, days before today left out (all of them in a stale file); null if the
+// file didn't load
+export function anaParseZoneCalendar(rows, today) {
+  if (!Array.isArray(rows) || !Array.isArray(rows[0])) return null
+  const cols = []
+  rows[0].forEach((v, i) => {
+    const m = i >= 2 && String(v).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+    const date = m && `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+    if (date && date >= today) cols.push({ i, date })
+  })
+  const routes = []
+  for (let i = 1; i + 1 < rows.length; i += 2) {
+    const out = rows[i], back = rows[i + 1]
+    if (out[0] !== back[1] || out[1] !== back[0]) continue
+    routes.push({ from: out[0], to: out[1], out: cols.map(c => +out[c.i] || 0), back: cols.map(c => +back[c.i] || 0) })
   }
-  return dates
+  return { dates: cols.map(c => c.date), routes }
 }
 
 // One script at a time: every file calls the same global cal()
@@ -338,28 +407,16 @@ function anaCalLoad(file) {
 }
 
 const anaCalFiles = new Map()  // "X_Z6_N" → { at, rows: Promise }
-const anaCalZoneOf = {}        // "HND→LAX" → zone, learned from the files
-function anaCalRows(cls, zone, status = 'N') {
+function anaCalRows(cls, zone, status) {
   const key = `${cls}_${zone}_${status}`
   const hit = anaCalFiles.get(key)
   if (hit && Date.now() - hit.at < ANA_CAL_TTL_MS) return hit.rows
   const rows = anaCalLoad(`CAL_${key}.js`).then(data => {
-    if (Array.isArray(data)) for (const route of anaCalRouteKey(data)) anaCalZoneOf[route] = zone
+    if (!Array.isArray(data)) anaCalFiles.delete(key)  // try again next time
     return data
   })
   anaCalFiles.set(key, { at: Date.now(), rows })
   return rows
-}
-
-// The route's zone isn't known until a file listing it has loaded: look through the economy files,
-// which every zone has and which list every route
-async function anaCalRouteRows(cls, origin, destination, status) {
-  const route = `${origin}→${destination}`
-  for (const zone of ANA_CAL_ZONES) {
-    if (anaCalZoneOf[route]) break
-    await anaCalRows('X', zone)
-  }
-  return anaCalZoneOf[route] ? anaCalRows(cls, anaCalZoneOf[route], status) : null
 }
 
 export const anaProgram = {
@@ -396,35 +453,22 @@ export const anaProgram = {
     return anaMergeResults(lists)
   },
 
-  calendarRequiresSession: false,
-  calendarTip: 'Calendar mode covers only nonstop ANA-operated flights to/from Japan (no partners or connections), about 6 months ahead. It shows days with open seats, without mileage. Use Search mode for other routes.',
-  calendarOptions: [{
-    key: 'status', label: 'Member status', type: 'select', default: 'N', choices: ANA_CAL_STATUSES,
-    hint: 'Elite tiers see more seats, but only members with that status can book them',
-  }],
-
-  calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
-    return cabinFilter?.length || 4
-  },
-
-  async onCalendarSearch(origin, destination, cabinFilter, fromMonth, toMonth, onProgress, options = {}) {
-    const status = ANA_CAL_STATUSES.some(s => s.value === options.status) ? options.status : 'N'
-    const spans = monthSpans(fromMonth, toMonth)
-    if (!spans.length) return {}
-    const start = spans[0].start, end = spans.at(-1).end
-    const cabins = cabinFilter.length ? cabinFilter : ['F', 'J', 'N', 'Y']
-    const byDate = {}
-    let done = 0
-    for (const cabin of cabins) {
-      onProgress?.(null, { done, total: cabins.length, label: `Searching ${cabin}` })
-      const rows = await anaCalRouteRows(ANA_CAL_CLASS[cabin], origin, destination, status)
-      const partial = {}
-      for (const date of anaParseCalendar(rows, origin, destination, start, end)) {
-        partial[date] = { [cabin]: 0 }
-        byDate[date] = { ...byDate[date], [cabin]: 0 }
-      }
-      onProgress?.(Object.keys(partial).length ? partial : null, { done: ++done, total: cabins.length })
-    }
-    return byDate
+  // Calendar mode shows ANA's award calendar as the site does: every route of a zone, one class
+  zoneCalendar: {
+    zones: ANA_CAL_ZONES,
+    cabins: ['Y', 'N', 'J', 'F'],
+    cabinsFor: zone => ['Y', 'N', 'J', 'F'].filter(c => !ANA_CAL_NO_CABIN[c]?.includes(zone)),
+    statuses: ANA_CAL_STATUSES,
+    statusHint: 'Elite tiers see more seats, but only members with that status can book them',
+    note: 'ANA\'s award calendar: nonstop ANA flights to/from Japan, about 6 months ahead. Miles are one way from ANA\'s chart, by the season of the day.',
+    // Required-miles chart for the zone: one row per cabin, [low, regular, high]
+    chart: zone => ANA_ONE_WAY_MILES[zone] ?? null,
+    chartUrl: ANA_CHART_URL,
+    miles: anaMiles,
+    async load(zone, cabin, status) {
+      const cls = ANA_CAL_CLASS[cabin]
+      const tier = ANA_CAL_STATUSES.some(s => s.value === status) ? status : 'N'
+      return cls ? anaParseZoneCalendar(await anaCalRows(cls, zone, tier), todayISO()) : null
+    },
   },
 }
