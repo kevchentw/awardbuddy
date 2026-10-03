@@ -10,6 +10,7 @@ import { CalendarView, MonthRangePicker, calToRows, inMonthRange } from './Calen
 import { cx } from './util.js'
 import { useSearchRun, useSavedResults, SearchSummary, SearchControls } from './searchRun.jsx'
 import { HotelSearch } from './HotelSearch.jsx'
+import { ZoneCalendar } from './ZoneCalendar.jsx'
 import { useRecentSearches, RecentSearches } from './RecentSearches.jsx'
 
 // Airport list (combo) or comma-separated text (programs without an airport list)
@@ -115,7 +116,8 @@ function FlightSearch({ program, session }) {
   const set = patch => setForm(f => ({ ...f, ...patch }))
   // Some programs' airport list and calendar support depend on the selected carrier / search mode
   const airports = program.airportsFor?.(form.carrier) ?? program.airports
-  const hasCalendar = !!program.onCalendarSearch && (program.calendarFor?.(form.carrier) ?? true)
+  // zoneCalendar: a calendar laid out like the airline's own (no route or months to fill in)
+  const hasCalendar = !!(program.onCalendarSearch || program.zoneCalendar) && (program.calendarFor?.(form.carrier) ?? true)
   useEffect(() => { if (!hasCalendar) setCalMode(false) }, [hasCalendar])
   useEffect(() => {
     const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form
@@ -143,6 +145,7 @@ function FlightSearch({ program, session }) {
     const { form: f, calMode } = latest.current
     const origins = codes(f.origins), dests = codes(f.dests)
     const cabinFilter = [...f.cabins]
+    if (calMode && program.zoneCalendar) return
 
     if (calMode) {
       const { fromMonth, toMonth } = f
@@ -238,6 +241,14 @@ function FlightSearch({ program, session }) {
     if (!ctl.searching) search()
   }, [form, calMode])
 
+  const modeToggle = hasCalendar && (
+    <div class="ab-mode-toggle">
+      <button class={cx('ab-mode-btn', !calMode && 'active')} onClick={() => setCalMode(false)}>Search</button>
+      <button class={cx('ab-mode-btn', calMode && 'active')} onClick={() => setCalMode(true)}>Calendar</button>
+    </div>
+  )
+  if (calMode && program.zoneCalendar) return <>{modeToggle}<ZoneCalendar program={program} /></>
+
   const toggleCabin = c => set({ cabins: form.cabins.includes(c) ? form.cabins.filter(x => x !== c) : [...form.cabins, c] })
   const airportField = (key, label, placeholder) => (
     <div class="ab-field">
@@ -275,12 +286,7 @@ function FlightSearch({ program, session }) {
           ))}
         </div>
       )}
-      {hasCalendar && (
-        <div class="ab-mode-toggle">
-          <button class={cx('ab-mode-btn', !calMode && 'active')} onClick={() => setCalMode(false)}>Search</button>
-          <button class={cx('ab-mode-btn', calMode && 'active')} onClick={() => setCalMode(true)}>Calendar</button>
-        </div>
-      )}
+      {modeToggle}
       {hasCalendar && !calMode && program.searchTip && <div class="ab-tip">💡 {program.searchTip}</div>}
       <div class="ab-row">
         {airportField('origins', 'Origins', 'e.g. TPE, TSA')}

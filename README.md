@@ -20,7 +20,7 @@ It runs in your browser on the airline's or hotel's page, using your own session
 | Alaska Airlines (Atmos) | alaskaair.com | ✓ | Not needed |
 | American Airlines (AAdvantage) | aa.com | ✓ | Run one search on the page (**Get session**) |
 | Air Canada (Aeroplan) | aircanada.com | | Open the award search page |
-| ANA | ana.co.jp | | Log in to the award booking page |
+| ANA | ana.co.jp | ✓ (nonstop ANA flights to/from Japan) | Log in to the award booking page (calendar mode needs none) |
 | Cathay Pacific | cathaypacific.com | | Open the award booking page |
 | Delta Air Lines (SkyMiles) | delta.com | ✓ | Not needed |
 | EVA Air (Infinity MileageLands) | evaair.com | ✓ | Log in |
@@ -84,6 +84,8 @@ Go to a supported site. A button appears in the corner of the page (✈ on airli
 2. Click **Search**. Results come in as each request finishes. You can sort by date, duration or miles, and filter by cabin, number of stops or day of week. Each row links to the airline's booking page for that flight.
 
 On Delta, Basic, Main and Comfort fares all count as Economy (the lowest one is shown), Premium Select as Prem Eco, Delta One and partner business as Business, and Delta First as First. The **Book** link opens Delta's flexible-dates page for that day; pick the date and click **Continue**. Delta's calendar mode shows the lowest fare per day, filed under the cabin it flies; one request covers five weeks per cabin, and Prem Eco and First share a request (on routes without Premium Select it shows domestic First).
+
+ANA's calendar mode reads ANA's public award calendar, which is published per zone, like ANA's own calendar page: pick a zone (such as North America) and it shows the days with open seats on every nonstop ANA route of that zone, from and to Japan, on the calendar and in the table. A **Route** menu narrows it to one route. Each open day shows the one-way miles for its season (low, regular or high) from ANA's required-mileage chart, and the chart for the zone is shown above the calendar. It covers about 6 months ahead and needs no login. **Member status** picks the tier whose calendar is shown (General member by default): elite tiers see more seats, but only members with that status can book them.
 
 **Calendar mode** (on programs that support it) searches whole months and shows the lowest price per day on a calendar. It needs far fewer requests than searching day by day.
 
