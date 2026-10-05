@@ -10,7 +10,8 @@ const k = miles => `${(miles / 1000).toFixed(1).replace(/\.0$/, '')}k`
 export const inMonthRange = (date, fromMonth, toMonth) => date >= fromMonth && date <= toMonth + '-31'
 
 // calData: { isoDate: { "ORI→DST": { cabin: miles } } }, fromMonth/toMonth: "YYYY-MM"
-export function CalendarView({ calData, fromMonth, toMonth }) {
+// span: { start, end } days actually searched when that's less than whole months; others are greyed
+export function CalendarView({ calData, fromMonth, toMonth, span }) {
   const multiRoute = new Set(Object.values(calData).flatMap(r => Object.keys(r))).size > 1
   const months = []
   let [y, m] = fromMonth.split('-').map(Number)
@@ -29,8 +30,10 @@ export function CalendarView({ calData, fromMonth, toMonth }) {
               {DOW.map(d => <div class="ab-cal-dow" key={d}>{d}</div>)}
               {Array.from({ length: firstDow }, (_, i) => <div key={`b${i}`} />)}
               {Array.from({ length: daysInMonth }, (_, i) => {
-                const avail = calData[`${y}-${pad(m)}-${pad(i + 1)}`]
-                if (!avail) return <div class="ab-cal-day" key={i}><div class="ab-cal-day-num">{i + 1}</div></div>
+                const date = `${y}-${pad(m)}-${pad(i + 1)}`
+                const avail = calData[date]
+                const out = span && (date < span.start || date > span.end)
+                if (!avail) return <div class={cx('ab-cal-day', out && 'out')} key={i}><div class="ab-cal-day-num">{i + 1}</div></div>
                 return (
                   <div class="ab-cal-day avail" key={i}>
                     <div class="ab-cal-day-num">{i + 1}</div>

@@ -1,4 +1,4 @@
-import { sleep } from '../common/search.js'
+import { sleep, addDays } from '../common/search.js'
 
 // EVA Air – award availability via ASP.NET WebForms page
 // Requires login; captures __ZIPSTATE from page DOM or fetches fresh.
@@ -210,6 +210,14 @@ export function brWeekKey(origin, destination, date, cabin) {
   return `${origin}|${destination}|${cabin}|${d.toISOString().slice(0, 10)}`
 }
 
+// Sunday of each week overlapping start..end (YYYY-MM-DD), as the results page lays weeks out
+export function brWeekStarts(start, end) {
+  const weeks = []
+  const first = addDays(start, -new Date(`${start}T00:00:00Z`).getUTCDay())
+  for (let d = first; d <= end; d = addDays(d, 7)) weeks.push(d)
+  return weeks
+}
+
 function brPostWeek(origin, destination, date, cabin) {
   const key = brWeekKey(origin, destination, date, cabin)
   const hit = brWeekCache.get(key)
@@ -352,34 +360,24 @@ export const brProgram = {
     return !brChallenged && !!brCaptured.zipState && location.hostname === 'booking.evaair.com' && brHasManualSearch()
   },
 
-  calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
+  // Calendar takes a day range rather than months: each POST returns one Sun–Sat week, so the user
+  // can pick just the weeks they care about instead of paying for whole months.
+  calendarByDates: true,
+
+  calendarRequestsPerRoute(start, end, cabinFilter) {
     const cabins = (cabinFilter.length ? cabinFilter : ['J', 'N', 'Y']).filter(c => c !== 'F')
-    const start = new Date(`${fromMonth}-01`)
-    const end = new Date(`${toMonth}-28`); end.setMonth(end.getMonth() + 1)
-    let weeks = 0
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) weeks++
-    return cabins.length * weeks
+    return cabins.length * brWeekStarts(start, end).length
   },
 
-  async onCalendarSearch(origin, destination, cabins, fromMonth, toMonth, onProgress) {
+  async onCalendarSearch(origin, destination, cabins, start, end, onProgress) {
     const cabinsToSearch = (cabins.length ? cabins : ['J', 'N', 'Y']).filter(c => c !== 'F')
-    // Step through weeks (7 days) from start of fromMonth to end of toMonth
-    const startDate = new Date(`${fromMonth}-01`)
-    const endDate = new Date(`${toMonth}-28`) // safe last-week anchor; we filter by month range below
-    // Extend to cover the full toMonth
-    endDate.setMonth(endDate.getMonth() + 1)
-
-    const weekStarts = []
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 7))
-      weekStarts.push(d.toISOString().slice(0, 10))
-
+    const weekStarts = brWeekStarts(start, end)
     const total = cabinsToSearch.length * weekStarts.length
     let done = 0
     const byDate = {}
 
     for (const cabin of cabinsToSearch) {
       for (const weekStart of weekStarts) {
-        if (weekStart < fromMonth || weekStart > toMonth + '-38') { done++; continue }
         onProgress?.(null, { done, total, label: `${cabin} – week of ${weekStart}` })
         try {
           const html = await brPostWeek(origin, destination, weekStart, cabin)
@@ -391,8 +389,8 @@ export const brProgram = {
           const rows = doc.querySelectorAll('#content_control_Award_AvailabilityGO_div_Result tr.table-dataRow')
           const partial = {}
           const miles = brAwardMiles(origin, destination, cabin)
+          // Days of the fetched week just outside the range are kept: they cost nothing extra
           for (const [date, colIdx] of Object.entries(weekDates)) {
-            if (date < fromMonth || date > toMonth + '-31') continue
             for (const row of rows) {
               const td = row.querySelector(`[id$="_td_Day_${colIdx}"]`)
               if (!td) continue

@@ -612,7 +612,7 @@
 <main id="top">
   <div class="hero-bg">
     <div class="wrap hero">
-      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> ANA award calendar in <span id="cur-ver">v1.10.0</span> <span class="arrow">→</span></a>
+      <a class="badge" href="#changelog" data-i18n="hero.badge"><b>New</b> EVA Air calendar by week in <span id="cur-ver">v1.11.0</span> <span class="arrow">→</span></a>
       <h1 data-i18n="hero.h1">Search award space across <span class="grad">every date at once.</span></h1>
       <p class="lede" data-i18n="hero.lede">Award Buddy adds a search panel to airline and hotel booking sites. Pick your routes or hotels and a date range, and it checks every combination on the site for you, then puts the results in one sortable table and calendar.</p>
       <div class="cta">
@@ -882,9 +882,19 @@
       </div>
       <ul class="log" id="log">
         <li class="reveal">
+          <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.11.0">1.11.0</a><small><time datetime="2026-10-04">Oct 4, 2026</time></small></div>
+          <div>
+            <h3 data-i18n="c1110h">EVA Air calendar by week <span class="latest">Latest</span></h3>
+            <ul data-i18n="c1110u">
+              <li>EVA Air's calendar mode takes a date range instead of months. Each EVA request returns one Sunday–Saturday week, so only the weeks your range touches are searched: far fewer requests, and less chance of EVA's bot check.</li>
+              <li>Days outside the searched weeks are greyed out on the calendar, so they don't look like days with no seats. The range is shared with Search mode, which reuses the cached weeks after a calendar run.</li>
+            </ul>
+          </div>
+        </li>
+        <li class="reveal">
           <div class="ver"><a href="https://github.com/kevchentw/awardbuddy/releases/tag/v1.10.0">1.10.0</a><small><time datetime="2026-10-02">Oct 2, 2026</time></small></div>
           <div>
-            <h3 data-i18n="c1100h">ANA calendar mode <span class="latest">Latest</span></h3>
+            <h3 data-i18n="c1100h">ANA calendar mode</h3>
             <ul data-i18n="c1100u">
               <li>Calendar mode for ANA, from ANA's public award calendar: pick a zone, like on ANA's calendar page, to see the days with open seats on every nonstop ANA route of the zone, from and to Japan, on the calendar and in the table. A Route menu narrows it to one route.</li>
               <li>Each open day shows the one-way miles for its season (low, regular or high) from ANA's required-mileage chart, and the zone's chart is shown above the calendar. It covers about 6 months ahead. No login needed, so it also works on ANA's award calendar page.</li>
@@ -1065,7 +1075,7 @@
   const ZH = {
     'nav.features': '功能', 'nav.programs': '支援計畫', 'nav.changelog': '更新紀錄', 'nav.install': '安裝',
 
-    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.10.0</span> 全日空哩程票月曆模式 <span class="arrow">→</span>',
+    'hero.badge': '<b>新功能</b> <span id="cur-ver">v1.11.0</span> 長榮航空月曆可按週查詢 <span class="arrow">→</span>',
     'hero.h1': '哩程票、點數房<br><span class="grad">所有日期</span>一次查完',
     'hero.lede': 'Award Buddy 會在航空公司和飯店官網上多加一個搜尋面板。選好航線或飯店、設定日期區間，它就會直接在官網上幫你把每種組合都查一遍，最後整理成一張可以排序的表格和月曆。',
     'hero.install': '安裝 Award Buddy', 'hero.see': '看看支援哪些計畫',
@@ -1143,7 +1153,9 @@
     'c.kicker': '更新紀錄', 'c.h2': '最近更新了什麼',
     'c.sub': '每個版本都可以到 <a href="https://github.com/kevchentw/awardbuddy/releases">GitHub Releases</a> 下載。',
     'c.older': '看更早的版本', 'c.fewer': '收起更早的版本',
-    'c1100h': '全日空月曆模式 <span class="latest">最新</span>',
+    'c1110h': '長榮航空月曆按週查詢 <span class="latest">最新</span>',
+    'c1110u': '<li>長榮航空的月曆模式改成選日期區間，不再選月份。長榮每次查詢會回傳一整週（週日到週六），所以只會查你選的日期碰到的那幾週，請求數少很多，比較不會被機器人驗證擋下。</li><li>沒查到的日子在月曆上會變淡，不會被誤認成沒有位子。日期區間和一般搜尋共用，月曆查完再切回搜尋，會直接用已暫存的結果。</li>',
+    'c1100h': '全日空月曆模式',
     'c1100u': '<li>全日空新增月曆模式，資料來自全日空公開的哩程票月曆：跟官網月曆頁一樣先選區域，就會在月曆和列表上列出該區所有往返日本的全日空直飛航線哪幾天有空位。可以用 Route 選單只看一條航線。</li><li>每個有位的日子會依當天的淡季、平季或旺季，標出全日空所需哩程表上的單程哩程數，月曆上方也會列出該區的所需哩程表。約可查 6 個月內。不用登入，在全日空的哩程票月曆頁上也能用。</li><li>新增「Member status」選單（預設一般會員），可以看銅卡、白金卡、鑽石卡或 SFC 會員的月曆，這些等級看得到更多位子，但只有具備該等級的會員才訂得到。</li>',
     'c191h': '全日空搜尋修正',
     'c191u': '<li>全日空隔日抵達的航班不會再被漏掉，轉機行程會列出每一段航班和正確的目的地。</li><li>日文版全日空網站和合作夥伴航班的出發地、目的地會顯示機場代碼，不再是亂碼。</li><li>頁面停在「往復」分頁時也能搜尋；沒選艙等時會查所有艙等。</li><li>全日空 session 過期時會顯示警告，不再顯示「沒有空位」。隔日抵達的時間會標上 +1。</li>',
