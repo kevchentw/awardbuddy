@@ -150,6 +150,7 @@ export const CSS = `
   .ab-cal-day.avail:hover { background: #e8f4ff; }
   .ab-cal-day.sel { outline: 2px solid var(--ab-color); outline-offset: -1px; }
   .ab-cal-day-num { font-size: 10px; color: #666; }
+  .ab-cal-day.out { opacity: 0.35; background: #fafafa; }
   .ab-cal-m { padding: 1px 3px; border-radius: 3px; font-size: 9px; color: #fff; white-space: nowrap; margin-top: 1px; display: block; }
   .ab-cabin-btn:disabled { opacity: .4; cursor: default; }
   .ab-zc-hint { font-size: 11px; color: #888; margin-top: 3px; }

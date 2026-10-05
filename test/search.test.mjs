@@ -61,6 +61,14 @@ test('EVA week key groups dates into the Sun–Sat week the results page shows',
   assert.notEqual(k('2027-05-22'), k('2027-05-23'))
 })
 
+test('EVA calendar fetches the Sunday of every week the date range touches', async () => {
+  const { brWeekStarts } = await import('../src/programs/br.js')
+  assert.deepEqual(brWeekStarts('2026-11-04', '2026-11-04'), ['2026-11-01'])
+  assert.deepEqual(brWeekStarts('2026-11-01', '2026-11-07'), ['2026-11-01'])
+  assert.deepEqual(brWeekStarts('2026-11-07', '2026-11-08'), ['2026-11-01', '2026-11-08'])
+  assert.deepEqual(brWeekStarts('2026-12-30', '2027-01-12'), ['2026-12-27', '2027-01-03', '2027-01-10'])
+})
+
 test('EVA Akamai challenge / deny pages are recognised', async () => {
   const { brIsBlockedPage } = await import('../src/programs/br.js')
   assert.ok(brIsBlockedPage('<form name="sec_chlge_form"></form>'))

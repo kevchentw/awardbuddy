@@ -1,7 +1,7 @@
 import { render } from 'preact'
 import { useState, useRef, useEffect } from 'preact/hooks'
 import { CABIN_LABELS, CABIN_COLORS, CONCURRENCY } from '../common/constants.js'
-import { getDates, runPool, parseNumberList, combos, restoreDates, restoreMonths } from '../common/search.js'
+import { getDates, runPool, parseNumberList, combos, restoreDates, restoreMonths, addDays } from '../common/search.js'
 import { CSS } from './styles.js'
 import { AirportCombo } from './AirportCombo.jsx'
 import { DateRangePicker } from './DateRangePicker.jsx'
@@ -52,10 +52,21 @@ function initialForm(program) {
   }
 }
 
+// calendarByDates: the program's calendar takes the day range (start/end, shared with Search mode)
+// instead of months, e.g. when each request covers a week and whole months would waste requests
+const calMonths = (program, calMode) => calMode && !program.calendarByDates
+
+// Calendar span for a by-dates calendar: the range widened to whole Sun–Sat weeks, which is what
+// week-at-a-time programs fetch anyway
+function calWeekSpan(start, end) {
+  const dow = iso => new Date(`${iso}T00:00:00Z`).getUTCDay()
+  return { start: addDays(start, -dow(start)), end: addDays(end, 6 - dow(end)) }
+}
+
 // A search's inputs for the recent-searches list (only the dates its mode uses, so repeats match)
-function recentQuery(form, calMode) {
+function recentQuery(program, form, calMode) {
   const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form
-  return { origins, dests, calMode, ...(calMode ? { fromMonth, toMonth } : { start, end }), cabins, carrier, options }
+  return { origins, dests, calMode, ...(calMonths(program, calMode) ? { fromMonth, toMonth } : { start, end }), cabins, carrier, options }
 }
 // Form with a recent search's inputs filled in; dates already past are dropped as when restoring the form
 function formFromRecent(program, form, q) {
@@ -63,7 +74,7 @@ function formFromRecent(program, form, q) {
     ...form,
     origins: sameShape(q.origins, form.origins),
     dests: sameShape(q.dests, form.dests),
-    ...(q.calMode ? restoreMonths(q.fromMonth, q.toMonth) : restoreDates(q.start, q.end)),
+    ...(calMonths(program, q.calMode) ? restoreMonths(q.fromMonth, q.toMonth) : restoreDates(q.start, q.end)),
     carrier: program.carriers?.some(c => c.code === q.carrier) ? q.carrier : form.carrier,
     options: q.options && typeof q.options === 'object' ? q.options : {},
     cabins: Array.isArray(q.cabins) ? q.cabins.filter(c => program.cabins.includes(c)) : [],
@@ -72,7 +83,7 @@ function formFromRecent(program, form, q) {
 
 function summary(program, form, calMode) {
   const route = `${codes(form.origins).join(', ') || '?'} → ${codes(form.dests).join(', ') || '?'}`
-  const when = calMode ? `${form.fromMonth} – ${form.toMonth}` : form.start ? `${form.start} – ${form.end || form.start}` : '?'
+  const when = calMonths(program, calMode) ? `${form.fromMonth} – ${form.toMonth}` : form.start ? `${form.start} – ${form.end || form.start}` : '?'
   const cabins = form.cabins.length ? form.cabins.map(c => CABIN_LABELS[c]).join('/') : 'Any cabin'
   const carrier = program.carriers?.find(c => c.code === form.carrier)?.name
   const opts = optionFields(program, form).map(fd => `${fd.label} ${[optionRaw(fd, form)].flat().join(', ') || '?'}`)
@@ -83,8 +94,9 @@ function requestHint(program, form, calMode) {
   const routes = codes(form.origins).length * codes(form.dests).length
   if (!routes) return ''
   if (calMode) {
-    if (!form.fromMonth || !form.toMonth || form.toMonth < form.fromMonth) return ''
-    const per = program.calendarRequestsPerRoute?.(form.fromMonth, form.toMonth, form.cabins) ?? 1
+    const [from, to] = program.calendarByDates ? [form.start, form.end || form.start] : [form.fromMonth, form.toMonth]
+    if (!from || !to || to < from) return ''
+    const per = program.calendarRequestsPerRoute?.(from, to, form.cabins) ?? 1
     return `~${routes * per} request(s) (${routes} route(s)${per > 1 ? ` × ${per}` : ''})`
   }
   if (!form.start) return ''
@@ -148,15 +160,18 @@ function FlightSearch({ program, session }) {
     if (calMode && program.zoneCalendar) return
 
     if (calMode) {
-      const { fromMonth, toMonth } = f
-      if (!origins.length || !dests.length || !fromMonth || !toMonth) { setStatus('⚠ Fill in all fields'); return }
-      recent.add(recentQuery(f, true))
+      const byDates = !!program.calendarByDates
+      const [from, to] = byDates ? [f.start, f.end || f.start] : [f.fromMonth, f.toMonth]
+      if (!origins.length || !dests.length || !from || !to) { setStatus('⚠ Fill in all fields'); return }
+      const span = byDates ? calWeekSpan(from, to) : null
+      const fromMonth = byDates ? span.start.slice(0, 7) : from, toMonth = byDates ? span.end.slice(0, 7) : to
+      recent.add(recentQuery(program, f, true))
       run.begin(); setNoResults(false)
       setResults([])
       setStatus('Fetching calendar…')
       const merged = {}
       const found = () => Object.keys(merged).filter(d => inMonthRange(d, fromMonth, toMonth)).length
-      setCal({ data: merged, fromMonth, toMonth })
+      setCal({ data: merged, fromMonth, toMonth, span })
       let route = ''
       const onProgress = (partial, meta) => {
         if (partial) {
@@ -164,7 +179,7 @@ function FlightSearch({ program, session }) {
             merged[date] ??= {}
             merged[date][route] = { ...merged[date][route], ...cabinMiles }
           }
-          setCal({ data: { ...merged }, fromMonth, toMonth })
+          setCal({ data: { ...merged }, fromMonth, toMonth, span })
         }
         if (meta) {
           setProgress(meta.done / meta.total * 100)
@@ -175,7 +190,7 @@ function FlightSearch({ program, session }) {
         for (const d of dests) {
           if (ctl.stop) break
           route = `${o}→${d}`
-          const result = await program.onCalendarSearch(o, d, cabinFilter, fromMonth, toMonth, onProgress)
+          const result = await program.onCalendarSearch(o, d, cabinFilter, from, to, onProgress)
           if (result === 'SESSION_EXPIRED') {
             setStatus(program.expiredMessage ?? '⚠ Session expired — navigate to the award booking page to refresh')
             run.end(); return
@@ -192,7 +207,7 @@ function FlightSearch({ program, session }) {
     const from = f.start, to = f.end || f.start
     const optionSets = optionCombos(program, f)
     if (!origins.length || !dests.length || !from || !optionSets.length) { setStatus('⚠ Fill in all fields'); return }
-    recent.add(recentQuery(f, false))
+    recent.add(recentQuery(program, f, false))
     const dates = getDates(from, to)
     const total = origins.length * dests.length * dates.length * optionSets.length
     run.begin(); setNoResults(false)
@@ -292,7 +307,7 @@ function FlightSearch({ program, session }) {
         {airportField('origins', 'Origins', 'e.g. TPE, TSA')}
         {airportField('dests', 'Destinations', 'e.g. NRT, HND')}
       </div>
-      {calMode ? (
+      {calMode && !program.calendarByDates ? (
         <div class="ab-row">
           <div class="ab-field"><label>Months (click start, then end)</label>
             <MonthRangePicker from={form.fromMonth} to={form.toMonth} onChange={(fromMonth, toMonth) => set({ fromMonth, toMonth })} /></div>
@@ -300,7 +315,7 @@ function FlightSearch({ program, session }) {
       ) : (
         <div class="ab-row">
           <div class="ab-field">
-            <label>Dates</label>
+            <label>{calMode ? 'Dates (searched as whole Sun–Sat weeks)' : 'Dates'}</label>
             <DateRangePicker start={form.start} end={form.end} onChange={(start, end) => set({ start, end })} />
           </div>
         </div>
@@ -320,7 +335,7 @@ function FlightSearch({ program, session }) {
       </>}
       <SearchControls run={run} session={session} onSearch={search} />
       <div>
-        {cal && <CalendarView calData={cal.data} fromMonth={cal.fromMonth} toMonth={cal.toMonth} />}
+        {cal && <CalendarView calData={cal.data} fromMonth={cal.fromMonth} toMonth={cal.toMonth} span={cal.span} />}
         <ResultsTable results={cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results} />
         {noResults && <div class="ab-no-results">No award availability found.</div>}
       </div>

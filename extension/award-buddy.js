@@ -3944,6 +3944,7 @@
   .ab-cal-day.avail:hover { background: #e8f4ff; }
   .ab-cal-day.sel { outline: 2px solid var(--ab-color); outline-offset: -1px; }
   .ab-cal-day-num { font-size: 10px; color: #666; }
+  .ab-cal-day.out { opacity: 0.35; background: #fafafa; }
   .ab-cal-m { padding: 1px 3px; border-radius: 3px; font-size: 9px; color: #fff; white-space: nowrap; margin-top: 1px; display: block; }
   .ab-cabin-btn:disabled { opacity: .4; cursor: default; }
   .ab-zc-hint { font-size: 11px; color: #888; margin-top: 3px; }
@@ -4137,7 +4138,7 @@
   var byCabin = ([a3], [b2]) => CABIN_ORDER.indexOf(a3) - CABIN_ORDER.indexOf(b2);
   var k3 = (miles) => `${(miles / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
   var inMonthRange = (date, fromMonth, toMonth) => date >= fromMonth && date <= toMonth + "-31";
-  function CalendarView({ calData, fromMonth, toMonth }) {
+  function CalendarView({ calData, fromMonth, toMonth, span }) {
     const multiRoute = new Set(Object.values(calData).flatMap((r3) => Object.keys(r3))).size > 1;
     const months = [];
     let [y3, m3] = fromMonth.split("-").map(Number);
@@ -4156,8 +4157,10 @@
           DOW.map((d3) => /* @__PURE__ */ u3("div", { class: "ab-cal-dow", children: d3 }, d3)),
           Array.from({ length: firstDow }, (_3, i3) => /* @__PURE__ */ u3("div", {}, `b${i3}`)),
           Array.from({ length: daysInMonth }, (_3, i3) => {
-            const avail = calData[`${y4}-${pad(m4)}-${pad(i3 + 1)}`];
-            if (!avail) return /* @__PURE__ */ u3("div", { class: "ab-cal-day", children: /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }) }, i3);
+            const date = `${y4}-${pad(m4)}-${pad(i3 + 1)}`;
+            const avail = calData[date];
+            const out = span && (date < span.start || date > span.end);
+            if (!avail) return /* @__PURE__ */ u3("div", { class: cx("ab-cal-day", out && "out"), children: /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }) }, i3);
             return /* @__PURE__ */ u3("div", { class: "ab-cal-day avail", children: [
               /* @__PURE__ */ u3("div", { class: "ab-cal-day-num", children: i3 + 1 }),
               Object.entries(avail).map(([route, cabins]) => [
@@ -5501,16 +5504,21 @@
       cabins: Array.isArray(saved.cabins) ? saved.cabins.filter((c3) => program2.cabins.includes(c3)) : []
     };
   }
-  function recentQuery(form, calMode) {
+  var calMonths = (program2, calMode) => calMode && !program2.calendarByDates;
+  function calWeekSpan(start, end) {
+    const dow = (iso) => (/* @__PURE__ */ new Date(`${iso}T00:00:00Z`)).getUTCDay();
+    return { start: addDays(start, -dow(start)), end: addDays(end, 6 - dow(end)) };
+  }
+  function recentQuery(program2, form, calMode) {
     const { origins, dests, start, end, fromMonth, toMonth, cabins, carrier, options } = form;
-    return { origins, dests, calMode, ...calMode ? { fromMonth, toMonth } : { start, end }, cabins, carrier, options };
+    return { origins, dests, calMode, ...calMonths(program2, calMode) ? { fromMonth, toMonth } : { start, end }, cabins, carrier, options };
   }
   function formFromRecent(program2, form, q2) {
     return {
       ...form,
       origins: sameShape(q2.origins, form.origins),
       dests: sameShape(q2.dests, form.dests),
-      ...q2.calMode ? restoreMonths(q2.fromMonth, q2.toMonth) : restoreDates(q2.start, q2.end),
+      ...calMonths(program2, q2.calMode) ? restoreMonths(q2.fromMonth, q2.toMonth) : restoreDates(q2.start, q2.end),
       carrier: program2.carriers?.some((c3) => c3.code === q2.carrier) ? q2.carrier : form.carrier,
       options: q2.options && typeof q2.options === "object" ? q2.options : {},
       cabins: Array.isArray(q2.cabins) ? q2.cabins.filter((c3) => program2.cabins.includes(c3)) : []
@@ -5518,7 +5526,7 @@
   }
   function summary(program2, form, calMode) {
     const route = `${codes(form.origins).join(", ") || "?"} \u2192 ${codes(form.dests).join(", ") || "?"}`;
-    const when = calMode ? `${form.fromMonth} \u2013 ${form.toMonth}` : form.start ? `${form.start} \u2013 ${form.end || form.start}` : "?";
+    const when = calMonths(program2, calMode) ? `${form.fromMonth} \u2013 ${form.toMonth}` : form.start ? `${form.start} \u2013 ${form.end || form.start}` : "?";
     const cabins = form.cabins.length ? form.cabins.map((c3) => CABIN_LABELS[c3]).join("/") : "Any cabin";
     const carrier = program2.carriers?.find((c3) => c3.code === form.carrier)?.name;
     const opts = optionFields(program2, form).map((fd) => `${fd.label} ${[optionRaw(fd, form)].flat().join(", ") || "?"}`);
@@ -5528,8 +5536,9 @@
     const routes = codes(form.origins).length * codes(form.dests).length;
     if (!routes) return "";
     if (calMode) {
-      if (!form.fromMonth || !form.toMonth || form.toMonth < form.fromMonth) return "";
-      const per = program2.calendarRequestsPerRoute?.(form.fromMonth, form.toMonth, form.cabins) ?? 1;
+      const [from, to] = program2.calendarByDates ? [form.start, form.end || form.start] : [form.fromMonth, form.toMonth];
+      if (!from || !to || to < from) return "";
+      const per = program2.calendarRequestsPerRoute?.(from, to, form.cabins) ?? 1;
       return `~${routes * per} request(s) (${routes} route(s)${per > 1 ? ` \xD7 ${per}` : ""})`;
     }
     if (!form.start) return "";
@@ -5591,19 +5600,22 @@
       const cabinFilter = [...f4.cabins];
       if (calMode2 && program2.zoneCalendar) return;
       if (calMode2) {
-        const { fromMonth, toMonth } = f4;
-        if (!origins.length || !dests.length || !fromMonth || !toMonth) {
+        const byDates = !!program2.calendarByDates;
+        const [from2, to2] = byDates ? [f4.start, f4.end || f4.start] : [f4.fromMonth, f4.toMonth];
+        if (!origins.length || !dests.length || !from2 || !to2) {
           setStatus("\u26A0 Fill in all fields");
           return;
         }
-        recent.add(recentQuery(f4, true));
+        const span = byDates ? calWeekSpan(from2, to2) : null;
+        const fromMonth = byDates ? span.start.slice(0, 7) : from2, toMonth = byDates ? span.end.slice(0, 7) : to2;
+        recent.add(recentQuery(program2, f4, true));
         run.begin();
         setNoResults(false);
         setResults([]);
         setStatus("Fetching calendar\u2026");
         const merged = {};
         const found = () => Object.keys(merged).filter((d3) => inMonthRange(d3, fromMonth, toMonth)).length;
-        setCal({ data: merged, fromMonth, toMonth });
+        setCal({ data: merged, fromMonth, toMonth, span });
         let route = "";
         const onProgress = (partial, meta) => {
           if (partial) {
@@ -5611,7 +5623,7 @@
               merged[date] ?? (merged[date] = {});
               merged[date][route] = { ...merged[date][route], ...cabinMiles };
             }
-            setCal({ data: { ...merged }, fromMonth, toMonth });
+            setCal({ data: { ...merged }, fromMonth, toMonth, span });
           }
           if (meta) {
             setProgress(meta.done / meta.total * 100);
@@ -5622,7 +5634,7 @@
           for (const d3 of dests) {
             if (ctl.stop) break;
             route = `${o3}\u2192${d3}`;
-            const result = await program2.onCalendarSearch(o3, d3, cabinFilter, fromMonth, toMonth, onProgress);
+            const result = await program2.onCalendarSearch(o3, d3, cabinFilter, from2, to2, onProgress);
             if (result === "SESSION_EXPIRED") {
               setStatus(program2.expiredMessage ?? "\u26A0 Session expired \u2014 navigate to the award booking page to refresh");
               run.end();
@@ -5645,7 +5657,7 @@
         setStatus("\u26A0 Fill in all fields");
         return;
       }
-      recent.add(recentQuery(f4, false));
+      recent.add(recentQuery(program2, f4, false));
       const dates = getDates(from, to);
       const total = origins.length * dests.length * dates.length * optionSets.length;
       run.begin();
@@ -5734,11 +5746,11 @@
           airportField("origins", "Origins", "e.g. TPE, TSA"),
           airportField("dests", "Destinations", "e.g. NRT, HND")
         ] }),
-        calMode ? /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
+        calMode && !program2.calendarByDates ? /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
           /* @__PURE__ */ u3("label", { children: "Months (click start, then end)" }),
           /* @__PURE__ */ u3(MonthRangePicker, { from: form.fromMonth, to: form.toMonth, onChange: (fromMonth, toMonth) => set({ fromMonth, toMonth }) })
         ] }) }) : /* @__PURE__ */ u3("div", { class: "ab-row", children: /* @__PURE__ */ u3("div", { class: "ab-field", children: [
-          /* @__PURE__ */ u3("label", { children: "Dates" }),
+          /* @__PURE__ */ u3("label", { children: calMode ? "Dates (searched as whole Sun\u2013Sat weeks)" : "Dates" }),
           /* @__PURE__ */ u3(DateRangePicker, { start: form.start, end: form.end, onChange: (start, end) => set({ start, end }) })
         ] }) }),
         /* @__PURE__ */ u3("div", { style: { marginBottom: 10 }, children: [
@@ -5758,7 +5770,7 @@
       ] }),
       /* @__PURE__ */ u3(SearchControls, { run, session, onSearch: search }),
       /* @__PURE__ */ u3("div", { children: [
-        cal && /* @__PURE__ */ u3(CalendarView, { calData: cal.data, fromMonth: cal.fromMonth, toMonth: cal.toMonth }),
+        cal && /* @__PURE__ */ u3(CalendarView, { calData: cal.data, fromMonth: cal.fromMonth, toMonth: cal.toMonth, span: cal.span }),
         /* @__PURE__ */ u3(ResultsTable, { results: cal ? calToRows(cal.data, cal.fromMonth, cal.toMonth) : results }),
         noResults && /* @__PURE__ */ u3("div", { class: "ab-no-results", children: "No award availability found." })
       ] })
@@ -6803,6 +6815,12 @@
     d3.setUTCDate(d3.getUTCDate() - d3.getUTCDay());
     return `${origin}|${destination}|${cabin}|${d3.toISOString().slice(0, 10)}`;
   }
+  function brWeekStarts(start, end) {
+    const weeks = [];
+    const first = addDays(start, -(/* @__PURE__ */ new Date(`${start}T00:00:00Z`)).getUTCDay());
+    for (let d3 = first; d3 <= end; d3 = addDays(d3, 7)) weeks.push(d3);
+    return weeks;
+  }
   function brPostWeek(origin, destination, date, cabin) {
     const key = brWeekKey(origin, destination, date, cabin);
     const hit = brWeekCache.get(key);
@@ -6948,32 +6966,21 @@
     isSessionReady() {
       return !brChallenged && !!brCaptured.zipState && location.hostname === "booking.evaair.com" && brHasManualSearch();
     },
-    calendarRequestsPerRoute(fromMonth, toMonth, cabinFilter) {
+    // Calendar takes a day range rather than months: each POST returns one Sun–Sat week, so the user
+    // can pick just the weeks they care about instead of paying for whole months.
+    calendarByDates: true,
+    calendarRequestsPerRoute(start, end, cabinFilter) {
       const cabins = (cabinFilter.length ? cabinFilter : ["J", "N", "Y"]).filter((c3) => c3 !== "F");
-      const start = /* @__PURE__ */ new Date(`${fromMonth}-01`);
-      const end = /* @__PURE__ */ new Date(`${toMonth}-28`);
-      end.setMonth(end.getMonth() + 1);
-      let weeks = 0;
-      for (let d3 = new Date(start); d3 <= end; d3.setDate(d3.getDate() + 7)) weeks++;
-      return cabins.length * weeks;
+      return cabins.length * brWeekStarts(start, end).length;
     },
-    async onCalendarSearch(origin, destination, cabins, fromMonth, toMonth, onProgress) {
+    async onCalendarSearch(origin, destination, cabins, start, end, onProgress) {
       const cabinsToSearch = (cabins.length ? cabins : ["J", "N", "Y"]).filter((c3) => c3 !== "F");
-      const startDate = /* @__PURE__ */ new Date(`${fromMonth}-01`);
-      const endDate = /* @__PURE__ */ new Date(`${toMonth}-28`);
-      endDate.setMonth(endDate.getMonth() + 1);
-      const weekStarts = [];
-      for (let d3 = new Date(startDate); d3 <= endDate; d3.setDate(d3.getDate() + 7))
-        weekStarts.push(d3.toISOString().slice(0, 10));
+      const weekStarts = brWeekStarts(start, end);
       const total = cabinsToSearch.length * weekStarts.length;
       let done = 0;
       const byDate = {};
       for (const cabin of cabinsToSearch) {
         for (const weekStart of weekStarts) {
-          if (weekStart < fromMonth || weekStart > toMonth + "-38") {
-            done++;
-            continue;
-          }
           onProgress?.(null, { done, total, label: `${cabin} \u2013 week of ${weekStart}` });
           try {
             const html = await brPostWeek(origin, destination, weekStart, cabin);
@@ -6988,7 +6995,6 @@
             const partial = {};
             const miles = brAwardMiles(origin, destination, cabin);
             for (const [date, colIdx] of Object.entries(weekDates)) {
-              if (date < fromMonth || date > toMonth + "-31") continue;
               for (const row of rows) {
                 const td = row.querySelector(`[id$="_td_Day_${colIdx}"]`);
                 if (!td) continue;
